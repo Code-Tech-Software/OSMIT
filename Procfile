@@ -1,1 +1,1 @@
-web: gunicorn OSMIT.wsgi
+web:  python manage.py collectstatic && gunicorn OSMIT.wsgi

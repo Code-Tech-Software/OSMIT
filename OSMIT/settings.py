@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.admin',  # APICACION DEL ADMIN
+    'whitenoise.runserver_nostatic'
     'Usuario',  # APLICACION DE USUARIOS
     'ProductoTerminado',  # APLICACION
     'ProductoGranel',  # APLICACION
@@ -51,6 +52,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -144,6 +146,7 @@ STATICFILES_DIRS = [
     BASE_DIR / "static",  # Esta línea le indica a Django que busque los archivos estáticos en la carpeta "static"
     #BASE_DIR / "VentasPWA" / "static",
     ]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')#recolecta todo lo estatic
 
-
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 #'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''DESMADRE DEL PWA
