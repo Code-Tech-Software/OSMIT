@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.admin',  # APICACION DEL ADMIN
-    'whitenoise.runserver_nostatic'
+    'whitenoise.runserver_nostatic',
     'Usuario',  # APLICACION DE USUARIOS
     'ProductoTerminado',  # APLICACION
     'ProductoGranel',  # APLICACION
