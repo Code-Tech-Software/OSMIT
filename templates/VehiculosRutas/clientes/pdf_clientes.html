@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <style>
+        table, th, td {
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+
+        td {
+            padding-top: 3px;
+            padding-left: 3px;
+        }
+
+        th {
+            padding-top: 3px;
+            background-color:#dcdcdc;
+
+        }
+
+
+        footer {
+            background-color: #eaeaea;
+            text-align: center;
+            position: fixed;
+            width: 100%;
+        }
+
+        .foo {
+            padding-top: 5px;
+           
+        }
+        
+        
+        
+        
+          h2 {
+          
+            font-size: 16px;
+            text-align: center;
+         
+           
+        }
+
+     
+
+
+        
+        
+        
+
+    </style>
+</head>
+<body>
+
+<h2>Listado de Clientes</h2>
+
+<div style="font-size: 12px">
+    <span><strong>Ruta:</strong> {{ ruta|default:"Todas" }}</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <span><strong>Día:</strong> {{ dia|default:"Todos" }}</span>
+
+</div>
+<table>
+    <thead>
+    <tr>
+        <th>Nombre</th>
+        <th>Negocio</th>
+        <th>Dirección</th>
+        <th>Localidad</th>
+        <th>Colonia</th>
+        <th>Teléfono</th>
+        <th>Ruta</th>
+        <th>Días de Visita</th>
+     
+    </tr>
+    </thead>
+    <tbody>
+    {% for cliente in clientes %}
+        <tr>
+            <td>{{ cliente.nombre }}</td>
+            <td>{{ cliente.nombre_negocio }}</td>
+            <td>{{ cliente.direccion }}</td>
+        <td>{{ cliente.localidad }}</td>
+        <td>{{ cliente.colonia }}</td>
+            <td>{{ cliente.telefono }}</td>
+            <td>{{ cliente.ruta|default:"Sin ruta" }}</td>
+            <td>
+                {% for dia in cliente.clientediasvisita_set.all %}
+                    {{ dia.get_dia_semana_display }}{% if not forloop.last %}, {% endif %}
+                {% empty %}
+                    No asignados
+                {% endfor %}
+            </td>
+           
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+<div style="text-align: right; padding-top: 10px;" ><strong>Número de Clientes:</strong> {{ clientes|length }}</div>
+<!-- Optional footer -->
+<footer>
+    <p class="foo">&copy; 2025 OSMIT SISTEM</p>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,33 @@
+{% extends "Base/Sidebar.html" %}
+{% block content %}
+<h2>Lista de Ventas a Clientes</h2>
+
+<table border="1">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Usuario</th>
+            <th>Estado</th>
+            <th>Detalle</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for venta in ventas %}
+        <tr>
+            <td>{{ venta.id }}</td>
+            <td>{{ venta.fecha_venta }}</td>
+            <td>{{ venta.cliente.nombre }}</td>
+            <td>{{ venta.usuario.username }}</td>
+            <td>{{ venta.estado }}</td>
+            <td><a href="{% url 'venta_cliente_detalle' venta.id %}">Ver Detalle</a></td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6">No hay ventas registradas.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

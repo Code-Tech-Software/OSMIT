@@ -1,0 +1,258 @@
+{% extends "Base/Sidebar.html" %}
+{% load static %}
+
+{% block content %}
+    <!-- Estilos personalizados -->
+    <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
+    
+
+    <div>
+        <span class="fw-bold text-dark">Inventario</span>
+        <span class="mx-2 text-dark">|</span>
+        <span class="text-secondary">Registrar Salida de Productos</span>
+    </div>
+
+    <div class="custom-card mt-4">
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="row">
+                <div class="col-md-6">
+                    {{ salida_form.ruta.label_tag }}
+                    {{ salida_form.ruta }}
+                    {% for error in salida_form.ruta.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="col-md-6">
+                    {{ salida_form.destino.label_tag }}
+                    {{ salida_form.destino }}
+                    {% for error in salida_form.destino.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="mt-3">
+                {{ salida_form.nota.label_tag }}
+                {{ salida_form.nota }}
+                {% for error in salida_form.nota.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="table-responsive">
+                <table id="productosTable" class="table table-striped table-bordered">
+                    <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th style="text-align: left;">Gramaje</th>
+                        <th style="text-align: left;">Stock Disponible</th>
+                        <th>Cantidad a salir</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for producto in productos %}
+                        <tr>
+                            <td>{{ producto.nombre }}</td>
+                            <td style="text-align: left;">{{ producto.gramaje_producto_terminado.nombre }}</td>
+                            <td style="text-align: left;">
+                                {% if producto.stock == 0 %}
+                                    <span class="text-danger fw-semibold">{{ producto.stock }}</span>
+                                    <i class="bi bi-x-octagon-fill text-danger ms-1" title="Producto agotado"></i>
+                                {% elif producto.stock <= producto.stock_min %}
+                                    <span class="text-warning fw-semibold">{{ producto.stock }}</span>
+                                    <i class="bi bi-exclamation-triangle-fill text-warning ms-1"
+                                       title="Stock bajo mínimo"></i>
+                                {% else %}
+                                    <span class="fw-semibold">{{ producto.stock }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <input type="number" step="0.5" min="0" name="cantidad_{{ producto.id }}"
+                                       class="form-control" placeholder="0.0">
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="text-end mt-3">
+                <button type="submit" class="btn btn-custom-danger" id="submitBtn">
+                    <i class="bi bi-box-arrow-up"></i> Registrar Salida
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Modal de confirmación -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="confirmModalLabel">Confirmar salida de productos</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <h6>Resumen de productos seleccionados:</h6>
+            <div id="resumenPedido" style="max-height: 400px; overflow-y: auto; word-wrap: break-word;"></div>
+
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-custom-danger" id="confirmSubmit">Confirmar y registrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- JS: jQuery + DataTables -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            $('#productosTable').DataTable({
+                pageLength: 50,
+                responsive: true,
+                columnDefs: [
+                    {width: "30%", targets: 0},
+                    {width: "20%", targets: 1},
+                    {width: "20%", targets: 2},
+                    {width: "30%", targets: 3},
+                ],
+                language: {
+                    "decimal": "",
+                    "emptyTable": "No hay productos disponibles",
+                    "info": "Mostrando _START_ a _END_ de _TOTAL_ productos",
+                    "infoEmpty": "Mostrando 0 a 0 de 0 productos",
+                    "infoFiltered": "(filtrado de _MAX_ productos en total)",
+                    "lengthMenu": "Mostrar _MENU_ productos",
+                    "loadingRecords": "Cargando...",
+                    "processing": "Procesando...",
+                    "search": "Buscar:",
+                    "zeroRecords": "No se encontraron productos coincidentes",
+                    "paginate": {
+                        "first": '<i class="bi bi-rewind-fill"></i>',
+                        "last": '<i class="bi bi-fast-forward-fill"></i>',
+                        "next": '<i class="bi bi-caret-right-fill"></i>',
+                        "previous": '<i class="bi bi-caret-left-fill"></i>'
+                    }
+                }
+            });
+        });
+    </script>
+
+    
+       <!-- Notificaciones -->
+    <script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
+
+    {% if messages %}
+        <script>
+            const notyf = new Notyf({
+                duration: 9000,
+                position: {x: 'right', y: 'bottom'},
+                dismissible: true,
+            });
+
+            {% for message in messages %}
+                {% if message.tags == 'success' %}
+                    notyf.success("{{ message }}");
+                {% elif message.tags == 'error' %}
+                    notyf.error("{{ message }}");
+                {% endif %}
+            {% endfor %}
+        </script>
+    {% endif %}
+    
+    
+    
+    <!-- Modal & Confirmación -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        const form = document.querySelector('form');
+        const submitBtn = document.getElementById('submitBtn');
+        const confirmSubmit = document.getElementById('confirmSubmit');
+        const resumenPedido = document.getElementById('resumenPedido');
+        const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();  // Evita el envío inmediato
+
+            const rows = [];
+            document.querySelectorAll('input[name^="cantidad_"]').forEach(input => {
+                const cantidad = parseFloat(input.value);
+                if (cantidad > 0) {
+                    const row = input.closest('tr');
+                    const nombre = row.children[0].textContent.trim();
+                    const gramaje = row.children[1].textContent.trim();
+                    const stock = row.children[2].textContent.trim();
+
+                    rows.push(`<tr>
+                        <td>${nombre}</td>
+                        <td>${gramaje}</td>
+                        <td>${stock}</td>
+                        <td>${cantidad}</td>
+                    </tr>`);
+                }
+            });
+
+           if (rows.length === 0) {
+    const notyf = new Notyf({
+        duration: 2000,
+        position: { x: 'right', y: 'bottom' },
+        dismissible: true
+    });
+    notyf.error("Debe ingresar al menos una cantidad mayor a 0.");
+    return;
+}
+
+            const ruta = document.querySelector('[name="ruta"]').selectedOptions[0]?.text || '';
+const destino = document.querySelector('[name="destino"]').selectedOptions[0]?.text || '';
+const nota = document.querySelector('[name="nota"]').value || '(Sin nota)';
+
+resumenPedido.innerHTML = `
+    <div class="mb-3 p-3 bg-light rounded">
+        <p class="mb-1"><strong>Ruta:</strong> ${ruta}</p>
+        <p class="mb-1"><strong>Destino:</strong> ${destino}</p>
+        <p class="mb-0"><strong>Nota:</strong> ${nota}</p>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered table-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>Producto</th>
+                    <th>Gramaje</th>
+                    <th>Stock</th>
+                    <th>Cantidad</th>
+                </tr>
+            </thead>
+            <tbody>${rows.join('')}</tbody>
+        </table>
+    </div>
+`;
+
+            confirmModal.show(); // Mostrar modal
+        });
+
+        confirmSubmit.addEventListener('click', function () {
+            
+              // Spinner en botón de confirmar
+    confirmSubmit.disabled = true;
+    confirmSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando Salida...';
+
+            
+            
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando...';
+            form.submit(); // Ahora sí se envía
+        });
+    </script>
+
+ 
+{% endblock %}

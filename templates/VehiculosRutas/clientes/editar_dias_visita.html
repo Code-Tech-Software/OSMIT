@@ -1,0 +1,49 @@
+{% extends "Base/Sidebar.html" %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+
+<div class="section-title">
+    <span class="fw-bold text-dark">Gestión de Clientes</span>
+    <span class="mx-2 text-dark">|</span>
+    <span class="text-secondary">Editar Días de Visita</span>
+</div>
+
+<div class="custom-card mt-4">
+    <h5 class="mb-3">Cliente: <span style="color: var(--dark-hover);">{{ cliente.nombre }}</span></h5>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">{{ form.dias.label }}</label>
+            <div class="row">
+                {% for checkbox in form.dias %}
+                    <div class="col-md-4 mb-2">
+                        <div class="form-check">
+                            {{ checkbox.tag }}
+                            <label class="form-check-label" for="{{ checkbox.id_for_label }}">
+                                {{ checkbox.choice_label }}
+                            </label>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            {% if form.dias.errors %}
+                <div class="text-danger small">
+                    {{ form.dias.errors|striptags }}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="mt-4 d-flex flex-column flex-sm-row gap-2">
+            <button type="submit" class="btn btn-custom-success btn-sm">
+                <i class="bi bi-calendar-check-fill me-1"></i>Guardar Días de Visita
+            </button>
+            <a href="{% url 'listar_clientes' %}" class="btn btn-custom-secondary btn-sm">
+                <i class="bi bi-arrow-return-left me-1"></i>Volver al listado
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

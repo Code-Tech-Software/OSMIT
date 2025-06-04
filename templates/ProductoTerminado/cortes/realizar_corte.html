@@ -1,0 +1,155 @@
+{% extends "Base/Sidebar.html" %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+<link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+
+<div>
+    <span class="fw-bold text-dark">Inventario</span>
+    <span class="mx-2 text-dark">|</span>
+    <span class="text-secondary">Corte Productos Terminados</span>
+</div>
+
+<div class="custom-card mt-4">
+    {% if messages %}
+        <div class="mb-3">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <form id="formCorte" method="post">
+        {% csrf_token %}
+        <div class="mb-4">
+            <div class="card-body">
+                {{ form.as_p }}
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <div class="table-responsive">
+                <table id="tablaCorte" class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>}
+                            <th>Gramaje</th>
+                            <th class="text-center">Stock Teórico</th>
+                            <th>Stock Real</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for producto in productos %}
+                        <tr>
+                            <td>{{ producto.nombre }}</td>
+                        <td>{{ producto.gramaje_producto_terminado }}</td>
+                            <td class="text-center">
+                                {% if producto.stock == 0 %}
+                                    <span class="text-danger fw-semibold">{{ producto.stock }}</span>
+                                    <span class="text-danger fw-light">{{ producto.unidad_medida }}</span>
+                                    <i class="bi bi-x-octagon-fill text-danger ms-1" title="Producto agotado"></i>
+                                {% elif producto.stock <= producto.stock_min %}
+                                    <span class="fw-semibold">{{ producto.stock }}</span>
+                                    <span class="fw-light">{{ producto.unidad_medida }}</span>
+                                    <i class="bi bi-exclamation-triangle-fill text-warning ms-2"
+                                       title="Stock por debajo del mínimo"></i>
+                                {% else %}
+                                    <span class="fw-semibold">{{ producto.stock }}</span>
+                                    <span class="fw-light">{{ producto.unidad_medida }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <input type="number" name="stock_real_{{ producto.id }}"
+                                       class="form-control" step="0.5"
+                                       value="{{ producto.stock }}" min="0" required>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+            <a href="{% url 'lista_cortes_producto_terminado' %}" class="btn btn-custom-secondary btn-sm">
+                <i class="bi bi-x-circle me-1"></i> Cancelar
+            </a>
+            <button type="button" id="btnRegistrar" class="btn btn-custom-success btn-sm">
+                <i class="bi bi-clipboard-check me-1"></i> Guardar Corte
+            </button>
+        </div>
+    </form>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    $(document).ready(function () {
+        $('#tablaCorte').DataTable({
+            pageLength: 25,
+            responsive: true,
+            language: {
+                decimal: "",
+                emptyTable: "No hay productos disponibles",
+                info: "Mostrando _START_ a _END_ de _TOTAL_ productos",
+                infoEmpty: "Mostrando 0 a 0 de 0 productos",
+                infoFiltered: "(filtrado de _MAX_ productos en total)",
+                lengthMenu: "Mostrar _MENU_ productos",
+                loadingRecords: "Cargando...",
+                processing: "Procesando...",
+                search: "Buscar:",
+                zeroRecords: "No se encontraron productos coincidentes",
+                paginate: {
+                    first: '<i class="bi bi-rewind-fill"></i>',
+                    last: '<i class="bi bi-fast-forward-fill"></i>',
+                    next: '<i class="bi bi-caret-right-fill"></i>',
+                    previous: '<i class="bi bi-caret-left-fill"></i>'
+                }
+            }
+        });
+    });
+
+    document.getElementById('btnRegistrar').addEventListener('click', function () {
+        Swal.fire({
+            title: '¿Confirmar corte?',
+            text: "Se guardará el stock ingresado para los productos terminados.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: 'var(--success-color)',
+            cancelButtonColor: 'var(--secondary-color)',
+            confirmButtonText: 'Sí, guardar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('formCorte').submit();
+            }
+        });
+    });
+
+    {% if messages %}
+        const notyf = new Notyf({
+            duration: 6000,
+            position: {x: 'right', y: 'bottom'},
+            dismissible: true
+        });
+
+        {% for message in messages %}
+            {% if message.tags == 'success' %}
+                notyf.success("{{ message }}");
+            {% elif message.tags == 'error' %}
+                notyf.error("{{ message }}");
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+</script>
+{% endblock %}

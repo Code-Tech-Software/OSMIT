@@ -1,0 +1,307 @@
+{% load static %}
+{% load rol_tags %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSMIT SISTEM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.4/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-DQvkBjpPgn7RC31MCQoOeC9TI2kdqa4+BSgNMNj8v77fdC77Kj5zpWFTJaaAoMbC" crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static 'css/base/sidebar.css' %}">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+</head>
+
+<body>
+
+<header class="navbar bg-light border-bottom position-fixed top-0 w-100 shadow-sm px-3 d-flex justify-content-end align-items-center gap-3"
+        style="height: 65px;z-index: 1;">
+    <!-- Icono pantalla completa -->
+    <i id="fullscreenToggle"
+       class="bi bi-arrows-fullscreen fs-5 icon-hover"
+       style="cursor: pointer;"></i>
+
+    <!-- Icono campana con notificación -->
+    <i class="bi bi-bell fs-5 position-relative icon-hover" style="cursor: pointer;">
+        <span class="position-absolute top-0 start-100 translate-middle p-1 bg-primary border border-light rounded-circle"></span>
+    </i>
+
+    <!-- Icono sobre con notificación -->
+    <i class="bi bi-envelope fs-5 position-relative icon-hover" style="cursor: pointer;">
+        <span class="position-absolute top-0 start-100 translate-middle p-1 bg-primary border border-light rounded-circle"></span>
+    </i>
+
+    <!-- Usuario con menú -->
+    <div class="position-relative user-menu me-5">
+        <div class="d-flex align-items-center user-hover" id="userToggle" style="cursor: pointer;">
+            {% if user.foto %}
+                <img src="{{ user.foto.url }}" class="rounded-circle me-2 object-fit-cover" alt="Avatar" width="32"
+                     height="32">
+            {% else %}
+                <img src="{% static 'img/defaltperfil.jpg' %}"
+                     class="rounded-circle me-2" alt="Avatar" width="32" height="32">
+            {% endif %}
+            <div>
+                <span class="fw-bold d-block">Hola! {{ user.first_name }}</span>
+                <small class="text-muted">{{ user.rol.nombre|default:"Sin rol" }}</small>
+            </div>
+        </div>
+
+        <!-- Dropdown -->
+        <div class="dropdown-menu-user shadow-sm border rounded bg-white py-2 px-2" id="userDropdown">
+            <a href="{% url 'ver_perfil' %}" class="dropdown-item d-flex align-items-center gap-2 text-dark py-1">
+                <i class="bi bi-person"></i> Ver perfil
+            </a>
+            <a href="{% url 'logout' %}" class="dropdown-item d-flex align-items-center gap-2 text-dark py-1">
+                <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+            </a>
+        </div>
+    </div>
+
+
+</header>
+
+
+<div class="menu-btn sidebar-btn" id="sidebar-btn" style="z-index: 1;">
+    <i class='bx bx-menu'></i>
+    <i class='bx bx-x'></i>
+</div>
+
+<div class="dark-mode-btn" id="dark-mode-btn">
+</div>
+
+<div class="sidebar" id="sidebar" style="z-index: 1;">
+    <div class="header">
+        <div class="menu-btn" id="menu-btn">
+            <i class='bx bx-chevron-left'></i>
+        </div>
+        <div class="brand">
+            <img class="brand-light"
+                 src="https://cdn.shopify.com/s/files/1/0650/9042/0995/files/Logotipo-Osmit-Sombreado.png?height=628&pad_color=fff&v=1655916959&width=1200"
+                 alt="logo">
+            <span>Osmit</span>
+        </div>
+    </div>
+    <div class="menu-container">
+
+        <ul class="menu">
+
+            <li class="menu-item menu-item-static {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                <a href="{% url 'dashboard' %}" class="menu-link">
+                    <i class='bx bx-home-alt-2'></i>
+                    <span>Home</span>
+                </a>
+            </li>
+
+
+            <!-- GRANEL -->
+
+            {% if user|has_role:"Administrador,Producto a Granel" %}
+
+                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'registrar_entrada' or request.resolver_match.url_name == 'registrar_salida' or request.resolver_match.url_name == 'lista_pedidos' or request.resolver_match.url_name == 'lista_salidas' or request.resolver_match.url_name == 'lista_cortes' %}active{% endif %}">
+                    <a href="#" class="menu-link">
+                        <i class='bx bx-cube'></i>
+                        <span>Granel</span>
+                        <i class='bx bx-chevron-down'></i>
+                    </a>
+                    <ul class="sub-menu">
+                        <li><a href="{% url 'registrar_entrada' %}" class="sub-menu-link">Registrar Entrada</a></li>
+                        <li><a href="{% url 'registrar_salida' %}" class="sub-menu-link">Registrar Salida</a></li>
+                        <li><a href="{% url 'lista_pedidos' %}" class="sub-menu-link">Pedidos</a></li>
+                        <li><a href="{% url 'lista_salidas' %}" class="sub-menu-link">Devoluciones</a></li>
+                        <li><a href="{% url 'lista_cortes' %}" class="sub-menu-link">Cortes</a></li>
+                    </ul>
+                </li>
+
+            {% endif %}
+
+
+
+
+            <!-- PRODUCCIÓN -->
+            {% if user|has_role:"Administrador,Producción" %}
+                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'registrar_pedido_produccion' or request.resolver_match.url_name == 'turnos_asignados' %}active{% endif %}">
+                    <a href="#" class="menu-link">
+                        <i class='bx bx-rocket'></i>
+                        <span>Producción</span>
+                        <i class='bx bx-chevron-down'></i>
+                    </a>
+                    <ul class="sub-menu">
+                        <li><a href="{% url 'registrar_pedido_produccion' %}" class="sub-menu-link">Realizar Pedido</a>
+                        </li>
+                        <li><a href="{% url 'turnos_asignados' %}" class="sub-menu-link">Gestionar Turnos</a></li>
+                    </ul>
+                </li>
+            {% endif %}
+
+        
+
+
+            <!-- TERMINADO -->
+            {% if user|has_role:"Administrador,Producto Terminado" %}
+                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'registrar_entradaPT' or request.resolver_match.url_name == 'registrar_salidaPT'   or request.resolver_match.url_name == 'lista_cortes_producto_terminado' or request.resolver_match.url_name == 'ventas_por_dia' %}active{% endif %}">
+                    <a href="#" class="menu-link">
+                        <i class='bx bx-box'></i>
+                        <span>Terminado</span>
+                        <i class='bx bx-chevron-down'></i>
+                    </a>
+                    <ul class="sub-menu">
+                        <li><a href="{% url 'registrar_entradaPT' %}" class="sub-menu-link">Registrar Entrada</a></li>
+                        <li><a href="{% url 'registrar_salidaPT' %}" class="sub-menu-link">Registrar Salida</a></li>
+                        <li><a href="{% url 'ventas_por_dia' %}" class="sub-menu-link">Pedidos</a></li>
+                        <li><a href="{% url 'lista_cortes_producto_terminado' %}" class="sub-menu-link">Cortes</a></li>
+                    </ul>
+                </li>
+            {% endif %}
+
+
+
+
+
+
+            <!-- RUTAS -->
+            {% if user|has_role:"Administrador,Producto a Granel" %}
+                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'listar_vehiculos' or request.resolver_match.url_name == 'listar_rutas' or request.resolver_match.url_name == 'listar_clientes' %}active{% endif %}">
+                    <a href="#" class="menu-link">
+                        <i class='bx bx-map'></i>
+                        <span>Rutas</span>
+                        <i class='bx bx-chevron-down'></i>
+                    </a>
+                    <ul class="sub-menu">
+                        <li><a href="{% url 'listar_vehiculos' %}" class="sub-menu-link">Vehículos</a></li>
+                        <li><a href="{% url 'listar_rutas' %}" class="sub-menu-link">Rutas</a></li>
+                        <li><a href="{% url 'listar_clientes' %}" class="sub-menu-link">Clientes</a></li>
+                    </ul>
+                </li>
+
+            {% endif %}
+
+
+        
+        
+
+            <!-- ADMINISTRAR -->
+            {% if user|has_role:"Administrador" %}
+                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'listar_turnos' or request.resolver_match.url_name == 'listar_roles' or request.resolver_match.url_name == 'gestionar_usuarios' or request.resolver_match.url_name == 'lista_proveedores' or request.resolver_match.url_name == 'lista_categorias' or request.resolver_match.url_name == 'lista_gramajes' or request.resolver_match.url_name == 'lista_presentaciones' %}active{% endif %}">
+                    <a href="#" class="menu-link">
+                        <i class='bx bx-wrench'></i>
+                        <span>Administrar</span>
+                        <i class='bx bx-chevron-down'></i>
+                    </a>
+                    <ul class="sub-menu">
+
+                        <li><a href="{% url 'listar_turnos' %}" class="sub-menu-link">Turnos</a></li>
+                        <li><a href="{% url 'listar_roles' %}" class="sub-menu-link">Roles</a></li>
+                        <li><a href="{% url 'gestionar_usuarios' %}" class="sub-menu-link">Usuarios</a></li>
+
+                        <li><a href="{% url 'lista_proveedores' %}" class="sub-menu-link">Proveedores</a></li>
+                        <li><a href="{% url 'lista_categorias' %}" class="sub-menu-link">Categorías P</a></li>
+                        <li><a href="{% url 'lista_gramajes' %}" class="sub-menu-link">Gramajes PT</a></li>
+                        <li><a href="{% url 'lista_presentaciones' %}" class="sub-menu-link">Presentación PT</a></li>
+
+                    </ul>
+                </li>
+            {% endif %}
+
+        
+
+
+
+            <!-- INVENTARIOS -->
+            {% if user|has_role:"Administrador,Producto Terminado,Producto a Granel" %}
+                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'listar_productos_granel' or request.resolver_match.url_name == 'listar_productosPT' %}active{% endif %}">
+                    <a href="#" class="menu-link">
+                        <i class='bx bx-data'></i>
+                        <span>Inventarios</span>
+                        <i class='bx bx-chevron-down'></i>
+                    </a>
+                    <ul class="sub-menu">
+                        {% if user|has_role:"Administrador,Producto a Granel" %}
+                            <li><a href="{% url 'listar_productos_granel' %}" class="sub-menu-link">Producto Granel</a>
+                            </li>
+                            {% endif %}
+                            {% if user|has_role:"Administrador,Producto Terminado" %}
+                            
+                            <li><a href="{% url 'listar_productosPT' %}" class="sub-menu-link">Producto Terminado</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </li>
+            {% endif %}
+
+
+        </ul>
+    </div>
+    <div class="footer">
+        <ul class="menu">
+            <li class="menu-item menu-item-static">
+                <a href="#" class="menu-link">
+                    <i class='bx bx-bell'></i>
+                    <span>Notifications</span>
+                </a>
+            </li>
+            <li class="menu-item menu-item-static">
+                <a href="#" class="menu-link">
+                    <i class='bx bx-cog'></i>
+                    <span>Settings</span>
+                </a>
+            </li>
+        </ul>
+
+    </div>
+</div>
+<main style="margin-top: 50px;">
+    {% block content %}
+        <!-- Contenido específico de cada vista -->
+    {% endblock %}
+</main>
+
+
+<style>
+    .icon-hover:hover,
+    .user-hover:hover {
+        color: gray;
+
+    }
+
+    .dropdown-item:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+        border-radius: 4px;
+        transition: background-color 0.2s;
+
+    }
+
+    .dropdown-menu-user {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: 100%;
+        min-width: 160px;
+        z-index: 1050;
+    }
+
+    .user-menu:hover .dropdown-menu-user {
+        display: block;
+    }
+
+
+</style>
+
+
+<script src="{% static 'js/base/sidebar.js' %}"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.4/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YUe2LzesAfftltw+PEaao2tjU/QATaW/rOitAq67e0CT0Zi2VVRL0oC4+gAaeBKu"
+        crossorigin="anonymous"></script>
+
+
+</body>
+</html>
+
+
+
+
+

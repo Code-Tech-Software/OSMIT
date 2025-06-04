@@ -1,0 +1,36 @@
+{% extends "Base/Sidebar.html" %}
+{% block content %}
+<h2>Detalle de Venta</h2>
+
+<p><strong>Cliente:</strong> {{ venta.cliente.nombre }}</p>
+<p><strong>Fecha:</strong> {{ venta.fecha_venta }}</p>
+<p><strong>Estado:</strong> {{ venta.estado }}</p>
+
+<h3>Productos Vendidos:</h3>
+<table border="1">
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th>Presentación</th>
+            <th>Gramaje</th>
+            <th>Cantidad</th>
+            <th>Precio Unitario</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for detalle in detalles %}
+        <tr>
+            <td>{{ detalle.producto_terminado.nombre }}</td>
+            <td>{{ detalle.producto_terminado.presentacion_producto_terminado.nombre }}</td>
+            <td>{{ detalle.producto_terminado.gramaje_producto_terminado.nombre }}</td>
+            <td>{{ detalle.cantidad }}</td>
+            <td>${{ detalle.precio_unitario }}</td>
+          <td>${{ detalle.total|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<a href="{% url 'ventas_lista' %}">Volver a ventas</a>
+{% endblock %}

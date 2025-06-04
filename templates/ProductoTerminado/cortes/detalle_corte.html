@@ -1,0 +1,118 @@
+{% extends 'Base/Sidebar.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+<link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+
+<div>
+    <span class="fw-bold text-dark">Inventario</span>
+    <span class="mx-2 text-dark">|</span>
+    <span class="text-secondary">Detalle Corte #{{ corte.id }}</span>
+</div>
+
+<div class="custom-card mt-4">
+    <h5 class="mb-3 fw-bold text-secondary">Corte #{{ corte.id }}</h5>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h6 class="mb-2"><strong>Fecha del Corte:</strong> {{ corte.fecha }}</h6>
+            <h6 class="mb-2"><strong>Usuario:</strong> {{ corte.usuario.username }}</h6>
+            <h6 class="mb-2"><strong>Observaciones:</strong> {{ corte.observaciones|default:"(Sin observaciones)" }}</h6>
+            <h6 class="mb-0"><strong>Estado:</strong> {{ corte.get_estado_display }}</h6>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <h6 class="text-custom-primary">Detalles del Inventario</h6>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Producto</th>
+                        <th>Gramaje</th>
+                        <th>Stock Teórico</th>
+                        <th>Stock Real</th>
+                        <th>Diferencia</th>
+                        <th style="text-align: center">Ajuste Necesario</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in detalles %}
+                    <tr>
+                        <td>{{ d.producto_terminado.nombre }}</td>
+                    <td>{{ d.producto_terminado.gramaje_producto_terminado }}</td>
+                        <td>{{ d.stock_teorico }}</td>
+                        <td>{{ d.stock_real }}</td>
+                        <td>{{ d.diferencia }}</td>
+                        <td style="text-align: center">
+                            {% if d.ajuste_necesario %}
+                                <span class="badge bg-custom-danger">Sí</span>
+                            {% else %}
+                                <span class="badge bg-custom-success">No</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 mt-4">
+        <a href="{% url 'lista_cortes_producto_terminado' %}" class="btn btn-custom-secondary btn-sm">
+            <i class="bi bi-arrow-left-circle me-1"></i> Volver al listado
+        </a>
+
+        {% if corte.estado == 'pendiente' %}
+        <form id="ajustarInventarioForm" action="{% url 'ajustar_inventario_corte' corte.id %}" method="get" class="d-inline">
+            <button type="button" class="btn btn-custom-warning btn-sm" id="btnAjustar">
+                <i class="bi bi-tools me-1"></i> Ajustar Inventario
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    // Confirmación con SweetAlert2
+    document.getElementById('btnAjustar')?.addEventListener('click', function () {
+        Swal.fire({
+            title: '¿Ajustar inventario?',
+            text: "¿Seguro que quieres generar el ajuste automático para este corte?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: 'var(--warning-color)',
+            cancelButtonColor: 'var(--secondary-color)',
+            confirmButtonText: 'Sí, ajustar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('ajustarInventarioForm').submit();
+            }
+        });
+    });
+
+    // Notificaciones con Notyf
+    {% if messages %}
+        const notyf = new Notyf({
+            duration: 6000,
+            position: {x: 'right', y: 'bottom'},
+            dismissible: true
+        });
+
+        {% for message in messages %}
+            {% if message.tags == 'success' %}
+                notyf.success("{{ message }}");
+            {% elif message.tags == 'error' %}
+                notyf.error("{{ message }}");
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+</script>
+{% endblock %}
