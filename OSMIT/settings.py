@@ -50,8 +50,8 @@ INSTALLED_APPS = [
     'VehiculosRutas',  # APLICACION
     'VentasPWA',
     'rest_framework',
-
-
+    'cloudinary', #cloudinary
+    'cloudinary_storage', #cloudinary
 ]
 
 MIDDLEWARE = [
@@ -72,7 +72,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [BASE_DIR / 'templates',
-                 #BASE_DIR / "VentasPWA" / "templates"
+                 # BASE_DIR / "VentasPWA" / "templates"
                  ]
         ,
         'APP_DIRS': True,
@@ -126,8 +126,6 @@ USE_I18N = True  # Activar internacionalización
 USE_L10N = True  # Activar localización
 USE_TZ = True  # Activar soporte para zonas horarias
 
-
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # -----------------------COSAS NUEVAS  QUE MODIFIQUE-----------------------------------#
@@ -137,7 +135,8 @@ LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
 MEDIA_URL = '/media/'  # URL base para los archivos multimedia
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Ruta en el sistema de archivos donde se guardarán los archivos
+
+#MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Ruta en el sistema de archivos donde se guardarán los archivos
 # ---------
 
 
@@ -145,14 +144,24 @@ STATIC_URL = 'static/'
 
 STATICFILES_DIRS = [
     BASE_DIR / "static",  # Esta línea le indica a Django que busque los archivos estáticos en la carpeta "static"
-    #BASE_DIR / "VentasPWA" / "static",
-    ]
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')#recolecta todo lo estatic
+    # BASE_DIR / "VentasPWA" / "static",
+]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # recolecta todo lo estatic
+
 
 STORAGES = {
-    # ...
+    "default": {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+    },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
-#'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''DESMADRE DEL PWA
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
+    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
+}
+
+# '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''DESMADRE DEL PWA
