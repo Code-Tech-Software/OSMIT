@@ -31,7 +31,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = [
-    "https://web-production-c8b28.up.railway.app",
+    "https://osmit.up.railway.app",
 ]
 
 # Application definition
