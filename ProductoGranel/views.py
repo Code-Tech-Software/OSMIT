@@ -820,7 +820,7 @@ def eliminar_proveedor(request, pk):
 
 
 
-#''''''''''''''''''''''''''''''''''''''''''''PARA EL S}DAHBOAR
+#''''''''''''''''''''''''''''''''''''''''''''PARA EL DAHBOAR
 
 from django.db.models import Count, Sum
 from datetime import timedelta
@@ -891,7 +891,7 @@ def top_productos_mas_utilizados(request):
 from django.db.models import F
 
 def indicadores_dashboard(request):
-    total_productos = ProductoGranel.objects.count()
+    total_productos = ProductoGranel.objects.filter(estado=True).count()
     productos_bajo_min = ProductoGranel.objects.filter(stock__lt=F('stock_min')).count()
     productos_sin_stock = ProductoGranel.objects.filter(stock=0).count()
     pedidos_pendientes = PedidoProduccion.objects.filter(estado='pendiente').count()

@@ -1,6 +1,7 @@
 from django.urls import path
 
 from ProductoTerminado import views
+from ProductoTerminado.views import indicadores_producto_terminado
 
 urlpatterns = [
     path('agregar-producto/', views.agregar_producto, name='agregar_productoPT'),
@@ -37,4 +38,16 @@ urlpatterns = [
     path('editarGramajePT/<int:pk>/', views.editar_gramaje, name='editar_gramaje'),
     path('eliminarGramajePT/<int:pk>/', views.eliminar_gramaje, name='eliminar_gramaje'),
 
+
+    #DASBOAR
+
+     path('api/indicadoresPT/', indicadores_producto_terminado, name='api_indicadores'),
+
+
+#Graficas para el saboard pruebas#
+
+    path('api/ventas_por_dia/', views.ventas_por_dia),
+    path('api/productos_mas_vendidos/', views.productos_mas_vendidos),
+    path('api/stock_productos/', views.stock_productos),
+    path('api/diferencias_inventario/', views.diferencias_inventario),
 ]

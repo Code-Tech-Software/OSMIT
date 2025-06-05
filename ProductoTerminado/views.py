@@ -1,9 +1,12 @@
+from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
+
+from . import models
 from .forms import ProductoTerminadoForm, EntradaForm, CorteInventarioPTerminadoForm, GramajeProductoTerminadoForm
 from .models import ProductoTerminado, EntradaPTerminado, DetalleEntradaPTerminado, CorteInventarioPTerminado, \
-    DetalleCorteInventarioPTerminado, GramajeProductoTerminado
+    DetalleCorteInventarioPTerminado, GramajeProductoTerminado, VentaCliente
 from decimal import Decimal
 from django.contrib import messages
 
@@ -462,3 +465,68 @@ def eliminar_gramaje(request, pk):
     gramaje.save()
     messages.success(request, "Gramaje desactivado correctamente.")
     return redirect('lista_gramajes')
+
+#PARA EL DASSBOAR
+
+
+
+
+from django.db.models import F
+def indicadores_producto_terminado(request):
+    total_productos = ProductoTerminado.objects.filter(estado=True).count()
+    productos_bajo_min = ProductoTerminado.objects.filter(stock__lt=F('stock_min')).count()
+    productos_sin_stock = ProductoTerminado.objects.filter(estado=True, stock=0).count()
+    pedidos_pendientes = VentaCliente.objects.filter(estado='pendiente').count()
+
+    return JsonResponse({
+        'total_productos': total_productos,
+        'productos_bajo_min': productos_bajo_min,
+        'productos_sin_stock': productos_sin_stock,
+        'pedidos_pendientes': pedidos_pendientes,
+    })
+
+
+
+
+#Graficas prueba#
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from django.db.models import Sum
+from .models import DetalleVentaCliente, ProductoTerminado, DetalleCorteInventarioPTerminado, VentaCliente
+from django.utils.timezone import now, timedelta
+
+@api_view(['GET'])
+def ventas_por_dia(request):
+    desde = now() - timedelta(days=7)
+    ventas = (VentaCliente.objects
+              .filter(fecha_venta__gte=desde)
+              .extra({'dia': "date(fecha_venta)"})
+              .values('dia')
+              .annotate(total=Sum('detalleventacliente__cantidad')))
+    return Response(list(ventas))
+
+
+@api_view(['GET'])
+def productos_mas_vendidos(request):
+    top = (DetalleVentaCliente.objects
+           .values('producto_terminado__nombre')
+           .annotate(total=Sum('cantidad'))
+           .order_by('-total')[:5])
+    return Response(list(top))
+
+
+@api_view(['GET'])
+def stock_productos(request):
+    data = list(ProductoTerminado.objects.values(
+        'nombre', 'stock', 'stock_min'
+    ))
+    return Response(data)
+
+
+@api_view(['GET'])
+def diferencias_inventario(request):
+    data = list(DetalleCorteInventarioPTerminado.objects.values(
+        'producto_terminado__nombre', 'diferencia'
+    ))
+    return Response(data)
