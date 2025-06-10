@@ -24,7 +24,7 @@ class ProductoGranelForm(forms.ModelForm):
             'stock': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5', 'min': 0}),
             'stock_min': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5', 'min': 0}),
             'unidad_medida': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: kg, lts, etc.'}),
-            'costo': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5', 'min': 0}),
+            'costo': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
             'tiempo_caducidad': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'En días', 'min': 0}),
             'imagen': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'proveedor': forms.Select(attrs={'class': 'form-control'}),
