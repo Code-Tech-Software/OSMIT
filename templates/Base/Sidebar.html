@@ -184,7 +184,7 @@
         
 
             <!-- ADMINISTRAR -->
-            {% if user|has_role:"Administrador" %}
+            {% if user|has_role:"Administrador,Recursos Humanos" %}
                 <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'listar_turnos' or request.resolver_match.url_name == 'listar_roles' or request.resolver_match.url_name == 'gestionar_usuarios' or request.resolver_match.url_name == 'lista_proveedores' or request.resolver_match.url_name == 'lista_categorias' or request.resolver_match.url_name == 'lista_gramajes' or request.resolver_match.url_name == 'lista_presentaciones' %}active{% endif %}">
                     <a href="#" class="menu-link">
                         <i class='bx bx-wrench'></i>
@@ -211,7 +211,7 @@
 
 
             <!-- INVENTARIOS -->
-            {% if user|has_role:"Administrador,Producto Terminado,Producto a Granel" %}
+            {% if user|has_role:"Administrador,Producto Terminado,Producto a Granel,Recursos Humanos" %}
                 <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'listar_productos_granel' or request.resolver_match.url_name == 'listar_productosPT' %}active{% endif %}">
                     <a href="#" class="menu-link">
                         <i class='bx bx-data'></i>
@@ -219,11 +219,11 @@
                         <i class='bx bx-chevron-down'></i>
                     </a>
                     <ul class="sub-menu">
-                        {% if user|has_role:"Administrador,Producto a Granel" %}
+                        {% if user|has_role:"Administrador,Producto a Granel,Recursos Humanos" %}
                             <li><a href="{% url 'listar_productos_granel' %}" class="sub-menu-link">Producto Granel</a>
                             </li>
                             {% endif %}
-                            {% if user|has_role:"Administrador,Producto Terminado" %}
+                            {% if user|has_role:"Administrador,Producto Terminado,Recursos Humanos" %}
                             
                             <li><a href="{% url 'listar_productosPT' %}" class="sub-menu-link">Producto Terminado</a>
                             </li>

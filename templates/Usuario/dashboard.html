@@ -8,6 +8,8 @@
         {% include "Dashboard/productoGranel.html" %}
     {% elif user|has_role:"Producto Terminado" %}
         {% include "Dashboard/productoTerminado.html" %}
+    {% elif user|has_role:"Recursos Humanos" %}
+        {% include "Dashboard/recursosHumanos.html" %}
     {% else %}
         {% include "Dashboard/eperaTurno.html" %}
     {% endif %}

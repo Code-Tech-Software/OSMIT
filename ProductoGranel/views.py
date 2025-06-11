@@ -1,3 +1,4 @@
+from . import models
 from .models import PedidoProduccion, DetallePedidoProduccion, ProductoGranel, SalidaGranel, DetalleSalidaGranel, Lote, \
     EntradaGranel, DetalleEntradaGranel, DevolucionGranel, DetalleDevolucionGranel, DetalleCorteInventarioGranel, \
     CorteInventarioGranel, CategoriaProducto, Proveedor
@@ -888,13 +889,31 @@ def top_productos_mas_utilizados(request):
 
 
 
-from django.db.models import F
-
+from django.db.models import F, Sum, DecimalField, ExpressionWrapper
 def indicadores_dashboard(request):
-    total_productos = ProductoGranel.objects.filter(estado=True).count()
-    productos_bajo_min = ProductoGranel.objects.filter(stock__lt=F('stock_min')).count()
-    productos_sin_stock = ProductoGranel.objects.filter(stock=0).count()
+    productos_activos = ProductoGranel.objects.filter(estado=True)
+
+    total_productos = productos_activos.count()
+    # Productos con stock < stock_min, pero excluyendo los que tienen stock == 0
+    productos_bajo_min = productos_activos.filter(
+        stock__lt=F('stock_min'),
+        stock__gt=0
+    ).count()
+
+    # Productos sin stock
+    productos_sin_stock = productos_activos.filter(stock=0).count()
+
+    # Pedidos pendientes
     pedidos_pendientes = PedidoProduccion.objects.filter(estado='pendiente').count()
+
+    # Valor total del stock (stock * costo), solo para productos activos
+    productos_con_valor = productos_activos.annotate(
+        valor_total=ExpressionWrapper(
+            F('stock') * F('costo'),
+            output_field=DecimalField()
+        )
+    )
+    valor_total_stock = productos_con_valor.aggregate(total=Sum('valor_total'))['total'] or 0
 
     return JsonResponse({
         'total_productos': total_productos,
@@ -902,3 +921,42 @@ def indicadores_dashboard(request):
         'productos_sin_stock': productos_sin_stock,
         'pedidos_pendientes': pedidos_pendientes,
     })
+
+
+
+
+@login_required
+def recursos_humanos_json(request):
+    """
+    Retorna JSON con lista de productos bajo stock mínimo y sin stock,
+    incluyendo datos del proveedor.
+    """
+    bajo_qs = ProductoGranel.objects.filter(
+        estado=True,
+        stock__lt=F('stock_min'),
+        stock__gt=0
+    ).select_related('proveedor', 'categoria_producto')
+
+    sin_qs = ProductoGranel.objects.filter(
+        estado=True,
+        stock=0
+    ).select_related('proveedor', 'categoria_producto')
+
+    def serialize(qs):
+        return [
+            {
+                'nombre': p.nombre,
+                'categoria': p.categoria_producto.nombre,
+                'stock': float(p.stock),
+                'stock_min': float(p.stock_min),
+                'proveedor': p.proveedor.nombre,
+                'telefono': p.proveedor.telefono or '',
+                'correo': p.proveedor.correo or '',
+            }
+            for p in qs
+        ]
+
+    return JsonResponse({
+        'bajo_stock': serialize(bajo_qs),
+        'sin_stock': serialize(sin_qs),
+    }, json_dumps_params={'ensure_ascii': False})

@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .views import  recursos_humanos_json
 
 urlpatterns = [
     # ENTRADAS
@@ -51,5 +52,5 @@ urlpatterns = [
 
 path('api/top-productos-salidas/', views.top_productos_mas_utilizados, name='top_productos_salidas'),
 path('api/indicadores/', views.indicadores_dashboard, name='indicadores_dashboard'),
-
+    path('recursos-humanos/json/', recursos_humanos_json, name='recursos_humanos_json'),
 ]

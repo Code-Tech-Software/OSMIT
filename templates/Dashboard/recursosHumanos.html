@@ -1,0 +1,277 @@
+{% load static %}
+
+
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+<div class="container-fluid px-0 mb-4">
+
+
+    <div class="bg-light p-3 rounded mb-4 d-flex align-items-center">
+        <i class="bi bi-boxes fs-2 me-3" style="color: var(--primary-color);"></i>
+        <div>
+            <h2 class="h4 mb-0" style="color: var(--primary-color);">Indicadores de Inventario</h2>
+            <small class="text-muted">Resumen general del stock</small>
+        </div>
+    </div>
+
+
+    <div class="row g-3">
+        <!-- Tarjeta Total Productos -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-box-seam fs-4 " style="color: var(--primary-color);"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Total Productos</h6>
+                            <h3 id="total_productos" class="mb-0 fw-bold">...</h3>
+                        </div>
+                    </div>
+                </div>
+                <div style="height: 4px; background-color: var(--primary-color);"></div>
+            </div>
+        </div>
+
+        <!-- Tarjeta Bajo Mínimo -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-warning bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Bajo Mínimo</h6>
+                            <h3 id="productos_bajo_min" class="mb-0 fw-bold">...</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-warning opacity-10" style="height: 4px;"></div>
+            </div>
+        </div>
+
+        <!-- Tarjeta Sin Stock -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-danger bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-x-octagon fs-4 text-danger"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Sin Stock</h6>
+                            <h3 id="productos_sin_stock" class="mb-0 fw-bold">...</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-danger opacity-10" style="height: 4px;"></div>
+            </div>
+        </div>
+
+        <!-- Tarjeta Valor Total -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-success bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-currency-dollar fs-4 text-success"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Valor Total</h6>
+                            <h4 id="valor_total_stock" class="mb-0 fw-bold">...</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-success opacity-10" style="height: 4px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<style>
+    .card-indicator {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+
+    .text-gray-800 {
+        color: #2d3748;
+    }
+</style>
+
+
+<!-- Tabla de Bajo Stock
+ <button class="btn btn-sm btn-outline-primary" id="refresh-btn">
+     <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
+ </button>
+-->
+
+<!-- Tabla de Bajo Stock -->
+<div class="mb-4 border rounded p-3 shadow-sm">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h3 class="h5 mb-0">
+            <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Bajo Stock
+        </h3>
+        <span class="badge bg-warning text-dark px-3 py-2" id="low-stock-count">0</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+            <tr>
+                <th><i class="bi bi-box"></i> Producto</th>
+                <th><i class="bi bi-graph-down"></i> Stock</th>
+                <th><i class="bi bi-slash-circle"></i> Mínimo</th>
+                <th><i class="bi bi-truck"></i> Proveedor</th>
+                <th><i class="bi bi-telephone"></i> Contacto</th>
+            </tr>
+            </thead>
+            <tbody id="bajo-stock-body">
+            <tr>
+                <td colspan="6" class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-warning" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Tabla de Sin Stock -->
+<div class="border rounded p-3 shadow-sm">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h3 class="h5 mb-0">
+            <i class="bi bi-x-octagon-fill text-danger me-2"></i>Sin Stock
+        </h3>
+        <span class="badge bg-danger px-3 py-2" id="no-stock-count">0</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+            <tr>
+                <th><i class="bi bi-box"></i> Producto</th>
+                <th><i class="bi bi-truck"></i> Proveedor</th>
+                <th><i class="bi bi-telephone"></i> Contacto</th>
+            </tr>
+            </thead>
+            <tbody id="sin-stock-body">
+            <tr>
+                <td colspan="4" class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-danger" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const loadStockData = () => {
+            // Mostrar spinners
+            document.getElementById('bajo-stock-body').innerHTML = `
+        <tr><td colspan="6" class="text-center py-3">
+          <div class="spinner-border spinner-border-sm text-warning" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+        </td></tr>`;
+
+            document.getElementById('sin-stock-body').innerHTML = `
+        <tr><td colspan="4" class="text-center py-3">
+          <div class="spinner-border spinner-border-sm text-danger" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+        </td></tr>`;
+
+            fetch('{% url "recursos_humanos_json" %}')
+                .then(res => res.json())
+                .then(data => {
+                    const bajoBody = document.getElementById('bajo-stock-body');
+                    const sinBody = document.getElementById('sin-stock-body');
+
+                    // Actualizar contadores
+                    document.getElementById('low-stock-count').textContent = data.bajo_stock.length;
+                    document.getElementById('no-stock-count').textContent = data.sin_stock.length;
+
+                    // Renderizar bajo stock
+                    if (data.bajo_stock.length > 0) {
+                        bajoBody.innerHTML = data.bajo_stock.map((p, i) => `
+              <tr>
+                
+                <td>
+                  <div class="fw-semibold">${p.nombre}</div>
+                  <small class="text-muted">${p.categoria}</small>
+                </td>
+                <td class="${p.stock <= 0 ? 'text-danger fw-bold' : ''}">${p.stock}</td>
+                <td>${p.stock_min}</td>
+                <td>${p.proveedor}</td>
+                <td>
+                  ${p.telefono ? `<a href="tel:${p.telefono}" class="text-decoration-none d-block"><i class='bi bi-telephone text-primary me-1'></i>${p.telefono}</a>` : ''}
+                  ${p.correo ? `<a href='mailto:${p.correo}' class="text-decoration-none d-block"><i class='bi bi-envelope text-primary me-1'></i>Email</a>` : ''}
+                </td>
+              </tr>
+            `).join('');
+                    } else {
+                        bajoBody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">No hay productos con bajo stock</td></tr>`;
+                    }
+
+                    // Renderizar sin stock
+                    if (data.sin_stock.length > 0) {
+                        sinBody.innerHTML = data.sin_stock.map((p, i) => `
+              <tr>
+              
+                <td>
+                  <div class="fw-semibold">${p.nombre}</div>
+                  <small class="text-muted">${p.categoria}</small>
+                </td>
+                <td>${p.proveedor}</td>
+                <td>
+                  ${p.telefono ? `<a href="tel:${p.telefono}" class="text-decoration-none d-block"><i class='bi bi-telephone text-primary me-1'></i>${p.telefono}</a>` : ''}
+                  ${p.correo ? `<a href='mailto:${p.correo}' class="text-decoration-none d-block"><i class='bi bi-envelope text-primary me-1'></i>Email</a>` : ''}
+                </td>
+              </tr>
+            `).join('');
+                    } else {
+                        sinBody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">No hay productos sin stock</td></tr>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('bajo-stock-body').innerHTML = `
+            <tr><td colspan="6" class="text-center text-danger py-3">
+              <i class="bi bi-exclamation-triangle me-2"></i>Error al cargar los datos
+            </td></tr>`;
+                    document.getElementById('sin-stock-body').innerHTML = `
+            <tr><td colspan="4" class="text-center text-danger py-3">
+              <i class="bi bi-exclamation-triangle me-2"></i>Error al cargar los datos
+            </td></tr>`;
+                });
+        };
+
+        // Cargar datos iniciales
+        loadStockData();
+
+        // Configurar botón de actualización
+        document.getElementById('refresh-btn').addEventListener('click', loadStockData);
+    });
+</script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        fetch("/granel/api/indicadores/")  // por ejemplo: /api/indicadores/
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById("total_productos").textContent = data.total_productos;
+                document.getElementById("productos_bajo_min").textContent = data.productos_bajo_min;
+                document.getElementById("productos_sin_stock").textContent = data.productos_sin_stock;
+                document.getElementById("valor_total_stock").textContent = `$${parseFloat(data.valor_total_stock).toFixed(2)}`;
+            })
+            .catch(err => console.error("Error cargando indicadores:", err));
+    });
+</script>
