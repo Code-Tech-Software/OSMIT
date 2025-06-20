@@ -3,6 +3,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 
+from ProductoGranel.models import User
 from . import models
 from .forms import ProductoTerminadoForm, EntradaForm, CorteInventarioPTerminadoForm, GramajeProductoTerminadoForm
 from .models import ProductoTerminado, EntradaPTerminado, DetalleEntradaPTerminado, CorteInventarioPTerminado, \
@@ -473,16 +474,33 @@ def eliminar_gramaje(request, pk):
 
 from django.db.models import F
 def indicadores_producto_terminado(request):
-    total_productos = ProductoTerminado.objects.filter(estado=True).count()
-    productos_bajo_min = ProductoTerminado.objects.filter(stock__lt=F('stock_min')).count()
-    productos_sin_stock = ProductoTerminado.objects.filter(estado=True, stock=0).count()
+    productos_activos = ProductoTerminado.objects.filter(estado=True)
+
+    total_productos = productos_activos.count()
+
+    productos_bajo_min = productos_activos.filter(
+        stock__lt=F('stock_min'),
+        stock__gt=0
+    ).count()
+
+    productos_sin_stock = productos_activos.filter(stock=0).count()
     pedidos_pendientes = VentaCliente.objects.filter(estado='pendiente').count()
+
+    # Valor total del stock (stock * costo), solo para productos activos
+    productos_con_valor = productos_activos.annotate(
+        valor_total=ExpressionWrapper(
+            F('stock') * F('precio'),
+            output_field=DecimalField()
+        )
+    )
+    valor_total_stock = productos_con_valor.aggregate(total=Sum('valor_total'))['total'] or 0
 
     return JsonResponse({
         'total_productos': total_productos,
         'productos_bajo_min': productos_bajo_min,
         'productos_sin_stock': productos_sin_stock,
         'pedidos_pendientes': pedidos_pendientes,
+        'valor_total_stock':valor_total_stock,
     })
 
 
@@ -530,3 +548,151 @@ def diferencias_inventario(request):
         'producto_terminado__nombre', 'diferencia'
     ))
     return Response(data)
+
+
+
+
+
+
+
+#listado de salidas
+from django.db.models import Sum, F, ExpressionWrapper, DecimalField
+
+
+from django.views.generic import ListView
+
+class SalidaPTerminadoListView(ListView):
+    model = SalidaPTerminado
+    template_name = 'ProductoTerminado/salidas/lista_salidas.html'
+    context_object_name = 'salidas'
+    paginate_by = 50
+
+
+    def get_queryset(self):
+        queryset = super().get_queryset().select_related('usuario', 'ruta')
+
+        # Calculamos el total en dinero por salida
+        queryset = queryset.annotate(
+            total_dinero=Sum(
+                ExpressionWrapper(
+                    F('detallesalidapterminado__cantidad') * F('detallesalidapterminado__producto_terminado__precio'),
+                    output_field=DecimalField()
+                )
+            )
+        )
+
+        ruta_id = self.request.GET.get('ruta')
+        usuario_id = self.request.GET.get('usuario')
+        destino = self.request.GET.get('destino')
+        fecha_inicio = self.request.GET.get('fecha_inicio')
+        fecha_fin = self.request.GET.get('fecha_fin')
+        dia = self.request.GET.get('dia')
+
+        if ruta_id:
+            queryset = queryset.filter(ruta_id=ruta_id)
+
+        if usuario_id:
+            queryset = queryset.filter(usuario_id=usuario_id)
+
+        if destino:
+            queryset = queryset.filter(destino=destino)
+
+        if fecha_inicio and fecha_fin:
+            queryset = queryset.filter(fecha_salida__date__range=(fecha_inicio, fecha_fin))
+
+        elif dia:
+            queryset = queryset.filter(fecha_salida__date=dia)
+
+        return queryset.order_by('-fecha_salida')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Para poblar select dinámico
+
+        from .models import Ruta
+
+        context['rutas'] = Ruta.objects.all()
+        context['usuarios'] = User.objects.all()
+        context['DESTINO_CHOICES'] = dict(SalidaPTerminado.DESTINO_CHOICES)
+        return context
+
+
+from django.shortcuts import render
+from .models import ProductoTerminado
+
+def lista_productos_terminados(request):
+    productos = ProductoTerminado.objects.filter(estado=True)
+    return render(request, 'Produccion/lista_produccion_productoT.html', {'productos': productos})
+
+
+
+#''''''''''''''''''''''''''''''''''''''''''''PARA EL DASHBOARD Graficas
+
+from datetime import timedelta
+from django.utils.timezone import now
+from django.db.models.functions import TruncDate
+from django.http import JsonResponse
+
+def entradas_salidas_por_dia_terminado(request):
+    hoy = now().date()
+    hace_7_dias = hoy - timedelta(days=6)
+    dias = [hace_7_dias + timedelta(days=i) for i in range(7)]
+    labels = [d.strftime("%d/%m") for d in dias]
+
+    # Entradas por día (sumando cantidades)
+    entradas = (
+        DetalleEntradaPTerminado.objects
+        .filter(entrada_p_terminado__fecha_entrada__date__range=(hace_7_dias, hoy))
+        .annotate(fecha=TruncDate('entrada_p_terminado__fecha_entrada'))
+        .values('fecha')
+        .annotate(total=Sum('cantidad'))
+        .order_by('fecha')
+    )
+
+    # Salidas por día (sumando cantidades)
+    salidas = (
+        DetalleSalidaPTerminado.objects
+        .filter(salida_p_terminado__fecha_salida__date__range=(hace_7_dias, hoy))
+        .annotate(fecha=TruncDate('salida_p_terminado__fecha_salida'))
+        .values('fecha')
+        .annotate(total=Sum('cantidad'))
+        .order_by('fecha')
+    )
+
+    entradas_dict = {e['fecha']: float(e['total']) for e in entradas}
+    salidas_dict = {s['fecha']: float(s['total']) for s in salidas}
+
+    data_entradas = [entradas_dict.get(d, 0) for d in dias]
+    data_salidas = [salidas_dict.get(d, 0) for d in dias]
+
+    return JsonResponse({
+        'labels': labels,
+        'entradas': data_entradas,
+        'salidas': data_salidas,
+    })
+
+
+
+
+def top_productos_mas_utilizados_terminado(request):
+    hoy = now().date()
+    hace_7_dias = hoy - timedelta(days=7)
+
+    productos_top = (
+        DetalleSalidaPTerminado.objects
+        .filter(salida_p_terminado__fecha_salida__date__range=(hace_7_dias, hoy))
+        .values('producto_terminado__nombre', 'producto_terminado__gramaje_producto_terminado__nombre')
+        .annotate(total_salidas=Sum('cantidad'))
+        .order_by('-total_salidas')[:5]
+    )
+
+    labels = [
+        f"{item['producto_terminado__nombre']} ({item['producto_terminado__gramaje_producto_terminado__nombre']})"
+        for item in productos_top
+    ]
+    data = [float(item['total_salidas']) for item in productos_top]
+
+    return JsonResponse({
+        'labels': labels,
+        'data': data
+    })

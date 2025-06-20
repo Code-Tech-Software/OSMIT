@@ -21,8 +21,8 @@ class ProductoGranelForm(forms.ModelForm):
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre del producto'}),
             'categoria_producto': forms.Select(attrs={'class': 'form-control'}),
-            'stock': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5', 'min': 0}),
-            'stock_min': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5', 'min': 0}),
+            'stock': forms.NumberInput(attrs={'class': 'form-control',  'min': 0}),
+            'stock_min': forms.NumberInput(attrs={'class': 'form-control',  'min': 0}), #'step': '0.5', Es para subir de .5 en .5
             'unidad_medida': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: kg, lts, etc.'}),
             'costo': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
             'tiempo_caducidad': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'En días', 'min': 0}),

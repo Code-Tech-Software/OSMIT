@@ -220,7 +220,7 @@ def registrar_salida(request):
 
             if productos_procesados:
                 messages.success(request, "Salida registrada correctamente.")
-                return redirect('registrar_salida')  # Asegúrate de tener definida la ruta
+                return redirect('registrar_salida')
             else:
                 salida.delete()
                 messages.error(request, "No se registró ninguna salida, revisa las cantidades ingresadas.")
@@ -306,6 +306,17 @@ def lista_pedidos(request):
     """
     pedidos = PedidoProduccion.objects.all().order_by('-fecha_pedido')
     return render(request, 'ProductoGranel/pedidos/lista_pedidos.html', {'pedidos': pedidos})
+
+
+
+@login_required
+def lista_pedidos_produccion(request):
+    """
+    Vista para listar los pedidos de producción.
+    Se muestran todos los pedidos ordenados por fecha, de modo que los más recientes aparezcan primero.
+    """
+    pedidos = PedidoProduccion.objects.all().order_by('-fecha_pedido')
+    return render(request, 'Produccion/lista_pedidos.html', {'pedidos': pedidos})
 
 
 @login_required
@@ -823,7 +834,6 @@ def eliminar_proveedor(request, pk):
 
 #''''''''''''''''''''''''''''''''''''''''''''PARA EL DAHBOAR
 
-from django.db.models import Count, Sum
 from datetime import timedelta
 from django.utils.timezone import now
 from django.db.models.functions import TruncDate
@@ -871,12 +881,18 @@ def entradas_salidas_por_dia(request):
 
 
 def top_productos_mas_utilizados(request):
-    # Sumamos cantidad total salida por producto y ordenamos
+    hoy = now().date()
+    hace_7_dias = hoy - timedelta(days=7)
+
     productos_top = (
         DetalleSalidaGranel.objects
+        .filter(
+            salida_granel__fecha_salida__date__range=(hace_7_dias, hoy),
+            producto_granel__estado=True
+        )
         .values('producto_granel__nombre')
         .annotate(total_salidas=Sum('cantidad'))
-        .order_by('-total_salidas')[:7]
+        .order_by('-total_salidas')[:5]
     )
 
     labels = [item['producto_granel__nombre'] for item in productos_top]
@@ -886,7 +902,6 @@ def top_productos_mas_utilizados(request):
         'labels': labels,
         'data': data
     })
-
 
 
 from django.db.models import F, Sum, DecimalField, ExpressionWrapper
@@ -920,6 +935,7 @@ def indicadores_dashboard(request):
         'productos_bajo_min': productos_bajo_min,
         'productos_sin_stock': productos_sin_stock,
         'pedidos_pendientes': pedidos_pendientes,
+        'valor_total_stock': valor_total_stock,
     })
 
 
@@ -960,3 +976,17 @@ def recursos_humanos_json(request):
         'bajo_stock': serialize(bajo_qs),
         'sin_stock': serialize(sin_qs),
     }, json_dumps_params={'ensure_ascii': False})
+
+
+
+
+
+
+def lista_productos_granel(request):
+    # Filtra los productos cuyo estado es True
+    productos = ProductoGranel.objects.filter(estado=True)
+    return render(request, 'Produccion/lista_produccion_productoG.html', {'productos': productos})
+
+
+
+#Lista de pedidos el dia de Hoy

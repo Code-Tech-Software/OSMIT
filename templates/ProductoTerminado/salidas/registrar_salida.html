@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
     <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
     <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
-    
+
 
     <div>
         <span class="fw-bold text-dark">Inventario</span>
@@ -64,7 +64,7 @@
                                     <span class="text-danger fw-semibold">{{ producto.stock }}</span>
                                     <i class="bi bi-x-octagon-fill text-danger ms-1" title="Producto agotado"></i>
                                 {% elif producto.stock <= producto.stock_min %}
-                                    <span class="text-warning fw-semibold">{{ producto.stock }}</span>
+                                    <span class="fw-semibold">{{ producto.stock }}</span>
                                     <i class="bi bi-exclamation-triangle-fill text-warning ms-1"
                                        title="Stock bajo mínimo"></i>
                                 {% else %}
@@ -72,7 +72,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <input type="number" step="0.5" min="0" name="cantidad_{{ producto.id }}"
+                                <input type="number" step="any"  min="0" name="cantidad_{{ producto.id }}"
                                        class="form-control" placeholder="0.0">
                             </td>
                         </tr>
@@ -91,23 +91,24 @@
 
     <!-- Modal de confirmación -->
     <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="confirmModalLabel">Confirmar salida de productos</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-          </div>
-          <div class="modal-body">
-            <h6>Resumen de productos seleccionados:</h6>
-            <div id="resumenPedido" style="max-height: 400px; overflow-y: auto; word-wrap: break-word;"></div>
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmModalLabel">Confirmar salida de productos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>Resumen de productos seleccionados:</h6>
+                    <div id="resumenPedido" style="max-height: 400px; overflow-y: auto; word-wrap: break-word;"></div>
 
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="button" class="btn btn-custom-danger" id="confirmSubmit">Confirmar y registrar</button>
-          </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-custom-danger" id="confirmSubmit">Confirmar y registrar
+                    </button>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
 
     <!-- JS: jQuery + DataTables -->
@@ -147,8 +148,8 @@
         });
     </script>
 
-    
-       <!-- Notificaciones -->
+
+    <!-- Notificaciones -->
     <script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
 
     {% if messages %}
@@ -168,9 +169,9 @@
             {% endfor %}
         </script>
     {% endif %}
-    
-    
-    
+
+
+
     <!-- Modal & Confirmación -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -202,21 +203,21 @@
                 }
             });
 
-           if (rows.length === 0) {
-    const notyf = new Notyf({
-        duration: 2000,
-        position: { x: 'right', y: 'bottom' },
-        dismissible: true
-    });
-    notyf.error("Debe ingresar al menos una cantidad mayor a 0.");
-    return;
-}
+            if (rows.length === 0) {
+                const notyf = new Notyf({
+                    duration: 2000,
+                    position: {x: 'right', y: 'bottom'},
+                    dismissible: true
+                });
+                notyf.error("Debe ingresar al menos una cantidad mayor a 0.");
+                return;
+            }
 
             const ruta = document.querySelector('[name="ruta"]').selectedOptions[0]?.text || '';
-const destino = document.querySelector('[name="destino"]').selectedOptions[0]?.text || '';
-const nota = document.querySelector('[name="nota"]').value || '(Sin nota)';
+            const destino = document.querySelector('[name="destino"]').selectedOptions[0]?.text || '';
+            const nota = document.querySelector('[name="nota"]').value || '(Sin nota)';
 
-resumenPedido.innerHTML = `
+            resumenPedido.innerHTML = `
     <div class="mb-3 p-3 bg-light rounded">
         <p class="mb-1"><strong>Ruta:</strong> ${ruta}</p>
         <p class="mb-1"><strong>Destino:</strong> ${destino}</p>
@@ -241,18 +242,28 @@ resumenPedido.innerHTML = `
         });
 
         confirmSubmit.addEventListener('click', function () {
-            
-              // Spinner en botón de confirmar
-    confirmSubmit.disabled = true;
-    confirmSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando Salida...';
 
-            
-            
+            // Spinner en botón de confirmar
+            confirmSubmit.disabled = true;
+            confirmSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando Salida...';
+
+
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando...';
             form.submit(); // Ahora sí se envía
         });
     </script>
 
- 
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.querySelector('form');
+
+            // Previene que se envíe el formulario con Enter en inputs
+            form.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && e.target.tagName.toLowerCase() !== 'textarea') {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
 {% endblock %}

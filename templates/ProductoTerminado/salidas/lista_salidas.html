@@ -1,0 +1,294 @@
+
+
+{% extends "Base/Sidebar.html" %}
+{% load static %}
+
+{% block content %}
+    <!-- Estilos -->
+    <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+
+    <div>
+        <span class="fw-bold text-dark">Productos Terminado</span>
+        <span class="mx-2 text-dark">|</span>
+        <span class="text-secondary">Listado de Salidas</span>
+    </div>
+
+    <div class="custom-card p-4 mt-3">
+        <form method="get" class="row gy-2 gx-3 align-items-center">
+            <div class="col-md-2">
+                <label class="form-label">Ruta:</label>
+                <select name="ruta" class="form-select">
+                    <option value="">Todas</option>
+                    {% for ruta in rutas %}
+                        <option value="{{ ruta.id }}"
+                                {% if request.GET.ruta == ruta.id|stringformat:"s" %}selected{% endif %}>{{ ruta }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Usuario:</label>
+                <select name="usuario" class="form-select">
+                    <option value="">Todos</option>
+                    {% for usuario in usuarios %}
+                        <option value="{{ usuario.id }}"
+                                {% if request.GET.usuario == usuario.id|stringformat:"s" %}selected{% endif %}>{{ usuario.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Destino:</label>
+                <select name="destino" class="form-select">
+                    <option value="">Todos</option>
+                    {% for key, val in DESTINO_CHOICES.items %}
+                        <option value="{{ key }}"
+                                {% if request.GET.destino == key %}selected{% endif %}>{{ val }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Fecha Inicio:</label>
+                <input type="date" name="fecha_inicio" class="form-control" value="{{ request.GET.fecha_inicio }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Fecha Fin:</label>
+                <input type="date" name="fecha_fin" class="form-control" value="{{ request.GET.fecha_fin }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Día específico:</label>
+                <input type="date" name="dia" class="form-control" value="{{ request.GET.dia }}">
+            </div>
+            <div class="col-md-12 text-end mt-3">
+                <button type="submit" class="btn btn-custom-info btn-sm px-4" id="filtrarBtn">
+                    <i class="bi bi-filter"></i> Filtrar
+                </button>
+
+                {% if request.GET.ruta or request.GET.usuario or request.GET.destino or request.GET.fecha_inicio or request.GET.fecha_fin or request.GET.dia %}
+                    <a href="{% url 'lista_salidas_termindo' %}" class="btn btn-secondary btn-sm px-4 " id="limpiarBtn">
+                        <i class="bi bi-x-circle"></i> Limpiar
+                    </a>
+                {% endif %}
+            </div>
+
+        </form>
+    </div>
+
+    <div class="custom-card mt-4">
+        <div class="table-responsive">
+            <table id="salidasTable" class="table table-striped table-bordered">
+                <thead class="table-light">
+                <tr>
+                    <th style="text-align: center">ID</th>
+                    <th>Fecha</th>
+                    <th>Usuario</th>
+                    <th>Ruta</th>
+                    <th>Destino</th>
+                    <th>Nota</th>
+                    <th>Detalles</th>
+                    <th style="text-align: center">Total</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for salida in salidas %}
+                    <tr>
+                        <td style="text-align: center">{{ salida.id }}</td>
+                        <td>{{ salida.fecha_salida }}</td>
+                        <td>{{ salida.usuario }}</td>
+                        <td>{{ salida.ruta }}</td>
+                        <td>{{ salida.get_destino_display }}</td>
+                        <td>{{ salida.nota }}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-custom-secondary ver-detalles-btn"
+                                    data-id="{{ salida.id }}"
+                                    data-fecha="{{ salida.fecha_salida }}"
+                                    data-usuario="{{ salida.usuario }}"
+                                    data-ruta="{{ salida.ruta }}"
+                                    data-destino="{{ salida.get_destino_display }}"
+                                    data-total="{{ salida.total_dinero|floatformat:2 }}"
+                                    data-detalles='[
+                {% for detalle in salida.detallesalidapterminado_set.all %}
+                    {"producto": "{{ detalle.producto_terminado }}", "gramaje": "{{ detalle.producto_terminado.gramaje_producto_terminado }}", "cantidad": "{{ detalle.cantidad }}" }{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ]'>
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </td>
+
+                        <td style="text-align: center">${{ salida.total_dinero|floatformat:2 }}</td>
+                    </tr>
+
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal de detalles -->
+    <div class="modal fade" id="detalleModal" tabindex="-1" aria-labelledby="detalleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="detalleModalLabel">Detalles de la salida</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <!-- Card con información principal -->
+                    <div class="card mb-4 shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-2">
+                                    <strong>Fecha:</strong> <span id="modalFecha"></span>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <strong>Usuario:</strong> <span id="modalUsuario"></span>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <strong>Ruta:</strong> <span id="modalRuta"></span>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <strong>Destino:</strong> <span id="modalDestino"></span>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <strong>Total:</strong> $<span id="modalTotal"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de productos -->
+                    <h6 class="mt-4">Productos:</h6>
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Gramaje</th>
+                                <th>Cantidad</th>
+                            </tr>
+                            </thead>
+                            <tbody id="modalDetallesTabla"></tbody>
+                        </table>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+
+
+
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const limpiarBtn = document.getElementById('limpiarBtn');
+
+            limpiarBtn.addEventListener('click', function (e) {
+                // Evita redirección inmediata
+                e.preventDefault();
+
+                // Desactiva el botón y muestra el spinner
+                limpiarBtn.classList.add('disabled');
+                limpiarBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Limpiando...';
+
+                // Espera un pequeño tiempo antes de redirigir (para que se vea el spinner)
+                setTimeout(() => {
+                    window.location.href = limpiarBtn.href;
+                }, 100); // puedes subir a 300ms si quieres que se note más
+            });
+        });
+    </script>
+    
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.querySelector('form');
+            const filtrarBtn = document.getElementById('filtrarBtn');
+
+            form.addEventListener('submit', function () {
+                filtrarBtn.disabled = true;
+                filtrarBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Filtrando...';
+            });
+        });
+    </script>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            $('#salidasTable').DataTable({
+                order: [[1, 'desc']],
+                language: {
+                    decimal: "",
+                    emptyTable: "No hay datos disponibles",
+                    info: "Mostrando _START_ a _END_ de _TOTAL_ salidas",
+                    infoEmpty: "Mostrando 0 a 0 de 0 salidas",
+                    infoFiltered: "(filtrado de _MAX_ salidas totales)",
+                    lengthMenu: "Mostrar _MENU_ salidas",
+                    loadingRecords: "Cargando...",
+                    processing: "Procesando...",
+                    search: "Buscar:",
+                    zeroRecords: "No se encontraron coincidencias",
+                    paginate: {
+                        first: '<i class="bi bi-rewind-fill"></i>',
+                        last: '<i class="bi bi-fast-forward-fill"></i>',
+                        next: '<i class="bi bi-caret-right-fill"></i>',
+                        previous: '<i class="bi bi-caret-left-fill"></i>'
+                    }
+                },
+                responsive: true
+            });
+        });
+
+    </script>
+
+    <!-- Bootstrap modal (asegúrate de tener Bootstrap 5) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const modal = new bootstrap.Modal(document.getElementById('detalleModal'));
+            const tabla = document.getElementById('modalDetallesTabla');
+
+            document.querySelectorAll('.ver-detalles-btn').forEach(button => {
+                button.addEventListener('click', function () {
+                    document.getElementById('modalFecha').textContent = this.dataset.fecha;
+                    document.getElementById('modalUsuario').textContent = this.dataset.usuario;
+                    document.getElementById('modalRuta').textContent = this.dataset.ruta;
+                    document.getElementById('modalDestino').textContent = this.dataset.destino;
+                    document.getElementById('modalTotal').textContent = this.dataset.total;
+
+                    const detalles = JSON.parse(this.dataset.detalles.replace(/&quot;/g, '"'));
+                    tabla.innerHTML = ''; // Limpiar
+
+                    detalles.forEach(det => {
+                        const row = `<tr>
+                        <td>${det.producto}</td>
+                        <td>${det.gramaje}</td>
+                        <td>${det.cantidad}</td>
+                    </tr>`;
+                        tabla.insertAdjacentHTML('beforeend', row);
+                    });
+
+                    modal.show();
+                });
+            });
+        });
+    </script>
+
+
+
+
+{% endblock %}

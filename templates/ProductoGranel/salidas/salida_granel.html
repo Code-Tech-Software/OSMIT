@@ -54,7 +54,7 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <input type="number" name="cantidad_{{ producto.id }}" min="0" step="0.5"
+                                    <input type="number" name="cantidad_{{ producto.id }}" min="0" step="any"
                                            class="form-control" placeholder="0.0">
                                 </td>
                             </tr>
@@ -129,7 +129,20 @@
         });
     </script>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.querySelector('form');
 
+            // Previene que se envíe el formulario con Enter en inputs
+            form.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && e.target.tagName.toLowerCase() !== 'textarea') {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
+    
+    
     <!-- Notificaciones con Notyf -->
     <script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">

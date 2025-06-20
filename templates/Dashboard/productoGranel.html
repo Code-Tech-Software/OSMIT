@@ -27,15 +27,106 @@
         margin: 0 auto;
     }
 
+    
+    
+    .card-indicator {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .text-gray-800 {
+        color: #2d3748;
+    }
+    
+    
 
 </style>
 
 
-<div class="container-fluid px-4">
 
 
-    <!-- Sección de Métricas -->
-    <div class="row g-4 mb-4" id="indicadores"></div>
+<div class="container-fluid px-0 mb-4">
+    
+
+    <div class="row g-3">
+        <!-- Tarjeta Total Productos -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-box-seam fs-4 " style="color: var(--primary-color);"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Total Productos</h6>
+                            <h3 id="total_productos" class="mb-0 fw-bold">...</h3>
+                        </div>
+                    </div>
+                </div>
+                <div style="height: 4px; background-color: var(--primary-color);"></div>
+            </div>
+        </div>
+
+        <!-- Tarjeta Bajo Mínimo -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-warning bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Bajo Mínimo</h6>
+                            <h3 id="productos_bajo_min" class="mb-0 fw-bold">...</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-warning opacity-10" style="height: 4px;"></div>
+            </div>
+        </div>
+
+        <!-- Tarjeta Sin Stock -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-danger bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-x-octagon fs-4 text-danger"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Sin Stock</h6>
+                            <h3 id="productos_sin_stock" class="mb-0 fw-bold">...</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-danger opacity-10" style="height: 4px;"></div>
+            </div>
+        </div>
+
+        <!-- Pedidos pendientes -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-success bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-clock-history fs-4 text-success"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Pedidos Pendientes</h6>
+                            <h4 id="pedidos_pendientes" class="mb-0 fw-bold">...</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-success opacity-10" style="height: 4px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<div class="bt-4">
+
+    
 
     <!-- Accesos Directos -->
     <div class="row g-4 mb-4">
@@ -113,6 +204,9 @@
             <div id="chart-top-productos"></div>
         </div>
     </div>
+    
+    
+    
 </div>
 
 
@@ -143,88 +237,6 @@
     }
 </style>
 
-<script>
-    // Función para animar números
-    function animateNumber(element, finalValue, duration = 1000) {
-        let start = 0;
-        const increment = finalValue / (duration / 16);
-        const updateNumber = () => {
-            start += increment;
-            if (start < finalValue) {
-                element.textContent = Math.ceil(start);
-                requestAnimationFrame(updateNumber);
-            } else {
-                element.textContent = finalValue;
-            }
-        };
-        requestAnimationFrame(updateNumber);
-    }
-
-    fetch('/granel/api/indicadores/')
-        .then(response => response.json())
-        .then(data => {
-            const metrics = [
-                {
-                    title: "Productos Registrados",
-                    value: data.total_productos,
-                    color: "border-primary",
-                    icon: "bi-box-seam",
-
-                },
-                {
-                    title: "Stock Bajo",
-                    value: data.productos_bajo_min,
-                    color: "border-warning",
-                    icon: "bi-exclamation-triangle",
-
-                },
-                {
-                    title: "Sin Stock",
-                    value: data.productos_sin_stock,
-                    color: "border-danger",
-                    icon: "bi-x-circle",
-
-                },
-                {
-                    title: "Pedidos Pendientes",
-                    value: data.pedidos_pendientes,
-                    color: "border-info",
-                    icon: "bi-clock-history",
-
-                }
-            ];
-
-            const container = document.getElementById("indicadores");
-
-            metrics.forEach(metric => {
-                const card = document.createElement("div");
-                card.className = "col-6 col-md-3 mb-3";
-
-                card.innerHTML = `
-                <div class="card metric-card h-100 ${metric.color}">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <div class="metric-icon bg-${metric.color.replace('border-', '')}-subtle">
-                                <i class="bi ${metric.icon} fs-4 text-${metric.color.replace('border-', '')}"></i>
-                            </div>
-                         
-<h2 class="card-title display-6 fw-bold mt-0">0</h2>
-                        </div>
-                        <h6 class="card-subtitle mb-2 text-muted">${metric.title}</h6>
-                  
-                 
-                    </div>
-                </div>
-                `;
-
-                container.appendChild(card);
-
-                // Animación del número
-                const numberElement = card.querySelector('.card-title');
-                animateNumber(numberElement, metric.value);
-            });
-        });
-</script>
 
 
 <!-- Grafica Top 5-->
@@ -249,7 +261,7 @@
                     }
                 },
                 title: {
-                    text: 'Top 7 Productos con más salidas',
+                    text: 'Productos con más salidas en los últimos 7 dias',
                     align: 'center'
                 },
                 colors: ['#FF4560', '#00E396', '#775DD0', '#FEB019', '#0090FF'],
@@ -313,4 +325,20 @@
             const chart = new ApexCharts(document.querySelector("#chart-entradas-salidas"), options);
             chart.render();
         });
+</script>
+
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        fetch("/granel/api/indicadores/")  // por ejemplo: /api/indicadores/
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById("total_productos").textContent = data.total_productos;
+                document.getElementById("productos_bajo_min").textContent = data.productos_bajo_min;
+                document.getElementById("productos_sin_stock").textContent = data.productos_sin_stock;
+                document.getElementById("pedidos_pendientes").textContent = data.pedidos_pendientes;
+            })
+            .catch(err => console.error("Error cargando indicadores:", err));
+    });
 </script>

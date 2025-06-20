@@ -5,8 +5,7 @@
     <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
     <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-
-
+    
     <style>
         .truncate-text {
             max-width: 50px; /* ajustar según el diseño */
@@ -17,14 +16,19 @@
 
     </style>
 
-
     <div>
-        <span class="fw-bold text-dark">Producto a Granel</span>
+        <span class="fw-bold text-dark">Producción</span>
         <span class="mx-2 text-dark">|</span>
-        <span class="text-secondary">Lista de Pedidos de Producción</span>
+        <span class="text-secondary">Lista de Pedidos</span>
     </div>
 
-    <div class="custom-card mt-4">
+    <div class="text-end">
+        <a href="{% url 'registrar_pedido_produccion' %}" class="btn btn-custom-success btn-add mb-4">
+            <i class="bi bi-plus-circle"></i> Realizar un pedido
+        </a>
+    </div>
+
+    <div class="custom-card ">
         {% if messages %}
             <div id="message-container"></div>
         {% endif %}
@@ -125,26 +129,7 @@
                         {% endif %}
                     </div>
                     <div class="modal-footer">
-                        {% if pedido.estado == "pendiente" %}
 
-
-
-
-                            <form action="{% url 'aceptar_pedido_produccion' pedido.id %}" method="post"
-                                  class="d-inline">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-custom-success btn-aceptar">
-                                    <span class="icono"><i class="bi bi-check-circle-fill me-1"></i></span>
-                                    <span class="spinner-border spinner-border-sm d-none" role="status"
-                                          aria-hidden="true"></span>
-                                    Aceptar Pedido
-                                </button>
-                            </form>
-
-
-
-
-                        {% endif %}
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                     </div>
                 </div>
@@ -208,16 +193,5 @@
                 {% endif %}
             {% endfor %}
         {% endif %}
-
-
-        // Spinner al aceptar pedido
-        $(document).on('submit', 'form', function () {
-            const btn = $(this).find('.btn-aceptar');
-            btn.prop('disabled', true);
-            btn.find('.icono').addClass('d-none');
-            btn.find('.spinner-border').removeClass('d-none');
-        });
-
-
     </script>
 {% endblock %}

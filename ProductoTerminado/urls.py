@@ -1,7 +1,7 @@
 from django.urls import path
 
 from ProductoTerminado import views
-from ProductoTerminado.views import indicadores_producto_terminado
+from ProductoTerminado.views import indicadores_producto_terminado, SalidaPTerminadoListView
 
 urlpatterns = [
     path('agregar-producto/', views.agregar_producto, name='agregar_productoPT'),
@@ -50,4 +50,14 @@ urlpatterns = [
     path('api/productos_mas_vendidos/', views.productos_mas_vendidos),
     path('api/stock_productos/', views.stock_productos),
     path('api/diferencias_inventario/', views.diferencias_inventario),
+
+    path('salidas/', SalidaPTerminadoListView.as_view(), name='lista_salidas_termindo'),
+
+    path('productos-terminados/', views.lista_productos_terminados, name='lista_productos_terminados'),
+
+
+
+    # DASBOAR
+    path('api/entradas-salidas/PT/', views.entradas_salidas_por_dia_terminado, name='entradas_salidasPT'),
+    path('api/top-productos-salidas/PT/', views.top_productos_mas_utilizados_terminado, name='top_productos_salidasPT'),
 ]

@@ -13,11 +13,11 @@ class ProductoTerminadoForm(forms.ModelForm):
         ]
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre del producto'}),
-            'costo': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5', 'min': 0}),
-            'precio': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5', 'min': 0}),
+            'costo': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'precio': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
             'categoria_producto': forms.Select(attrs={'class': 'form-control'}),
-            'stock': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5', 'min': 0}),
-            'stock_min': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5', 'min': 0}),
+            'stock': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'stock_min': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
             'presentacion_producto_terminado': forms.Select(attrs={'class': 'form-control'}),
             'gramaje_producto_terminado': forms.Select(attrs={'class': 'form-control'}),
             'imagen': forms.ClearableFileInput(attrs={'class': 'form-control'}),

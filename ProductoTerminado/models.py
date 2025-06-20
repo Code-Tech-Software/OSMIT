@@ -167,7 +167,7 @@ class SalidaPTerminado(models.Model):
         ('opcion1', 'Ruta'),
         ('opcion2', 'Mitsu'),
         ('opcion3', 'Maestro'),
-        ('opcion3', 'Otros'),
+        ('opcion4', 'Otros'),
     )
     fecha_salida = models.DateTimeField()
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -187,7 +187,7 @@ class DetalleSalidaPTerminado(models.Model):
     def __str__(self):
         return f"Detalle Salida {self.salida_p_terminado.id}"
 
-#AQUI TERMINA EL DESMADRE
+
 
 class EntradaPTerminado(models.Model):
     fecha_entrada = models.DateTimeField()

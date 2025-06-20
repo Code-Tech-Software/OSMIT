@@ -1,0 +1,478 @@
+{% load static %}
+
+
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+<style>
+    .card-indicator {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .text-gray-800 {
+        color: #2d3748;
+    }
+    
+    :root {
+    --titulo: #3f5b77;
+
+}
+</style>
+
+
+<div class="container-fluid px-0 mb-4">
+    
+    <div class="bg-light p-3 rounded mb-4 d-flex align-items-center">
+        <i class="bi bi-boxes fs-2 me-3" style="color: var(--titulo);"></i>
+        <div>
+            <h2 class="h4 mb-0" style="color: var(--titulo);">Inventario Producto a Granel</h2>
+            <small class="text-muted">Resumen general del stock a granel</small>
+        </div>
+    </div>
+
+
+    <div class="row g-3">
+        <!-- Tarjeta Total Productos -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-box-seam fs-4 " style="color: var(--primary-color);"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Total Productos</h6>
+                            <h3 id="total_productos" class="mb-0 fw-bold">...</h3>
+                        </div>
+                    </div>
+                </div>
+                <div style="height: 4px; background-color: var(--primary-color);"></div>
+            </div>
+        </div>
+
+        <!-- Tarjeta Bajo Mínimo -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-warning bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Bajo Mínimo</h6>
+                            <h3 id="productos_bajo_min" class="mb-0 fw-bold">...</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-warning opacity-10" style="height: 4px;"></div>
+            </div>
+        </div>
+
+        <!-- Tarjeta Sin Stock -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-danger bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-x-octagon fs-4 text-danger"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Sin Stock</h6>
+                            <h3 id="productos_sin_stock" class="mb-0 fw-bold">...</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-danger opacity-10" style="height: 4px;"></div>
+            </div>
+        </div>
+
+        <!-- Tarjeta Valor Total -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-success bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-currency-dollar fs-4 text-success"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Valor Total</h6>
+                            <h4 id="valor_total_stock" class="mb-0 fw-bold">...</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-success opacity-10" style="height: 4px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+    <!-- Gráficos -->
+
+    <div class=" card bg-white">
+        <div class="card-body">
+            <div id="chart-entradas-salidasPG"></div>
+        </div>
+    </div>
+
+
+    <div class="my-4"></div>
+
+
+    <div class="card bg-white">
+        <div class="card-body">
+            <div id="chart-top-productosPG"></div>
+        </div>
+    </div>
+
+
+
+
+<div class="container-fluid px-0 mb-4 mt-4">
+    
+    <div class="bg-light p-3 rounded mb-4 d-flex align-items-center">
+        <i class="bi bi-boxes fs-2 me-3" style="color: var(--titulo);"></i>
+        <div>
+            <h2 class="h4 mb-0" style="color: var(--titulo);">Inventario Producto Terminado</h2>
+            <small class="text-muted">Resumen general del stock terminado</small>
+        </div>
+    </div>
+
+
+    <div class="row g-3">
+        <!-- Tarjeta Total Productos -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-box-seam fs-4 " style="color: var(--primary-color);"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Total Productos</h6>
+                            <h3 id="total_productosPT" class="mb-0 fw-bold">...</h3>
+                        </div>
+                    </div>
+                </div>
+                <div style="height: 4px; background-color: var(--primary-color);"></div>
+            </div>
+        </div>
+
+        <!-- Tarjeta Bajo Mínimo -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-warning bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Bajo Mínimo</h6>
+                            <h3 id="productos_bajo_minPT" class="mb-0 fw-bold">...</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-warning opacity-10" style="height: 4px;"></div>
+            </div>
+        </div>
+
+        <!-- Tarjeta Sin Stock -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-danger bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-x-octagon fs-4 text-danger"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Sin Stock</h6>
+                            <h3 id="productos_sin_stockPT" class="mb-0 fw-bold">...</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-danger opacity-10" style="height: 4px;"></div>
+            </div>
+        </div>
+
+        <!-- Tarjeta Valor Total -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-success bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-currency-dollar fs-4 text-success"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Valor Total</h6>
+                            <h4 id="valor_total_stockPT" class="mb-0 fw-bold">...</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-success opacity-10" style="height: 4px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+    <!-- Gráficos -->
+
+    <div class=" card bg-white">
+        <div class="card-body">
+            <div id="chart-entradas-salidasPT"></div>
+        </div>
+    </div>
+
+
+    <div class="my-4"></div>
+
+
+    <div class="card bg-white">
+        <div class="card-body">
+            <div id="chart-top-productosPT"></div>
+        </div>
+    </div>
+
+
+
+
+
+
+
+
+
+<!-- Grafica Top 7 Granel-->
+
+<script>
+    fetch('/granel/api/top-productos-salidas/')
+        .then(response => response.json())
+        .then(data => {
+            const options = {
+                chart: {
+                    type: 'bar',
+                    height: 350
+                },
+                series: [{
+                    name: 'Cantidad Salida',
+                    data: data.data
+                }],
+                xaxis: {
+                    categories: data.labels,
+                    title: {
+                        text: 'Producto'
+                    }
+                },
+                title: {
+                    text: 'Productos con más salidas en los últimos 7 dias',
+                    align: 'center'
+                },
+                colors: ['#FF4560', '#00E396', '#775DD0', '#FEB019', '#0090FF'],
+                plotOptions: {
+                    bar: {
+                        distributed: true, // ✅ Esto permite un color por barra
+                        borderRadius: 6,
+                        columnWidth: '55%'
+                    }
+                }
+            };
+
+            const chart = new ApexCharts(document.querySelector("#chart-top-productosPG"), options);
+            chart.render();
+        });
+</script>
+
+
+<!-- Entrada VS salidas Granel-->
+
+<script>
+    fetch('/granel/api/entradas-salidas/')
+        .then(response => response.json())
+        .then(data => {
+            const options = {
+                chart: {
+                    type: 'line',
+                    height: 350
+                },
+                series: [{
+                    name: 'Entradas',
+                    data: data.entradas
+                }, {
+                    name: 'Salidas',
+                    data: data.salidas
+                }],
+                xaxis: {
+                    categories: data.labels,
+                    title: {
+                        text: 'Fecha'
+                    }
+                },
+                yaxis: {
+                    title: {
+                        text: 'Cantidad'
+                    }
+                },
+                title: {
+                    text: 'Cantidad de Productos Entrados vs Salidos (últimos 7 días)',
+                    align: 'center'
+                },
+                stroke: {
+                    curve: 'smooth'
+                },
+                markers: {
+                    size: 5
+                },
+                colors: ['#00E396', '#FF4560']
+            };
+
+            const chart = new ApexCharts(document.querySelector("#chart-entradas-salidasPG"), options);
+            chart.render();
+        });
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- Entrada VS salidas-->
+
+<script>
+    fetch('/terminado/api/entradas-salidas/PT/')
+        .then(response => response.json())
+        .then(data => {
+            const options = {
+                chart: {
+                    type: 'line',
+                    height: 350
+                },
+                series: [{
+                    name: 'Entradas',
+                    data: data.entradas
+                }, {
+                    name: 'Salidas',
+                    data: data.salidas
+                }],
+                xaxis: {
+                    categories: data.labels,
+                    title: {
+                        text: 'Fecha'
+                    }
+                },
+                yaxis: {
+                    title: {
+                        text: 'Cantidad'
+                    }
+                },
+                title: {
+                    text: 'Cantidad de Productos Entrados vs Salidos (últimos 7 días)',
+                    align: 'center'
+                },
+                stroke: {
+                    curve: 'smooth'
+                },
+                markers: {
+                    size: 5
+                },
+                colors: ['#00E396', '#FF4560']
+            };
+
+            const chart = new ApexCharts(document.querySelector("#chart-entradas-salidasPT"), options);
+            chart.render();
+        });
+</script>
+
+
+
+
+<!-- Grafica Top 5-->
+
+<script>
+    fetch('/terminado/api/top-productos-salidas/PT/')
+        .then(response => response.json())
+        .then(data => {
+            const options = {
+                chart: {
+                    type: 'bar',
+                    height: 350
+                },
+                series: [{
+                    name: 'Cantidad Salida',
+                    data: data.data
+                }],
+                xaxis: {
+                    categories: data.labels,
+                    title: {
+                        text: 'Producto'
+                    }
+                },
+                title: {
+                    text: 'Productos con más salidas en los últimos  7 dias',
+                    align: 'center'
+                },
+                colors: ['#FF4560', '#00E396', '#775DD0', '#FEB019', '#0090FF'],
+                plotOptions: {
+                    bar: {
+                        distributed: true, // ✅ Esto permite un color por barra
+                        borderRadius: 6,
+                        columnWidth: '55%'
+                    }
+                }
+            };
+
+            const chart = new ApexCharts(document.querySelector("#chart-top-productosPT"), options);
+            chart.render();
+        });
+</script>
+
+
+
+
+
+
+
+
+
+<!-- Indicadores de inventario a Granel-->
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        fetch("/granel/api/indicadores/")  
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById("total_productos").textContent = data.total_productos;
+                document.getElementById("productos_bajo_min").textContent = data.productos_bajo_min;
+                document.getElementById("productos_sin_stock").textContent = data.productos_sin_stock;
+                document.getElementById("valor_total_stock").textContent = `$${parseFloat(data.valor_total_stock).toFixed(2)}`;
+            })
+            .catch(err => console.error("Error cargando indicadores:", err));
+    });
+</script>
+
+<!-- Indicadores de Inventario Terminado-->
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        fetch("/terminado/api/indicadoresPT/") 
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById("total_productosPT").textContent = data.total_productos;
+                document.getElementById("productos_bajo_minPT").textContent = data.productos_bajo_min;
+                document.getElementById("productos_sin_stockPT").textContent = data.productos_sin_stock;
+                document.getElementById("valor_total_stockPT").textContent = `$${parseFloat(data.valor_total_stock).toFixed(2)}`;
+            })
+            .catch(err => console.error("Error cargando indicadores:", err));
+    });
+</script>
