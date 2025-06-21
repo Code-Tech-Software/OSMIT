@@ -990,3 +990,32 @@ def lista_productos_granel(request):
 
 
 #Lista de pedidos el dia de Hoy
+from django.views.decorators.http import require_GET
+@login_required
+@require_GET
+def pedidos_hoy_json(request):
+    hoy = now().date()
+    pedidos = PedidoProduccion.objects.filter(fecha_pedido__date=hoy).order_by('-fecha_pedido')
+
+    data = []
+    for pedido in pedidos:
+        detalles = DetallePedidoProduccion.objects.filter(pedido_produccion=pedido).select_related('producto_granel')
+        detalles_data = [
+            {
+                "producto": detalle.producto_granel.nombre,
+                "cantidad": float(detalle.cantidad),
+                "unidad": detalle.producto_granel.unidad_medida,
+                "usuario": detalle.usuario.first_name,
+            }
+            for detalle in detalles
+        ]
+        data.append({
+            "id": pedido.id,
+            "fecha": pedido.fecha_pedido.strftime('%Y-%m-%d %H:%M'),
+            "usuario": pedido.usuario.first_name,
+            "nota": pedido.nota,
+             "estado": pedido.get_estado_display(),
+            "detalles": detalles_data,
+        })
+
+    return JsonResponse(data, safe=False)

@@ -3,15 +3,13 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 
-from ProductoGranel.models import User
+from ProductoGranel.models import User, PedidoProduccion
 from . import models
 from .forms import ProductoTerminadoForm, EntradaForm, CorteInventarioPTerminadoForm, GramajeProductoTerminadoForm
 from .models import ProductoTerminado, EntradaPTerminado, DetalleEntradaPTerminado, CorteInventarioPTerminado, \
     DetalleCorteInventarioPTerminado, GramajeProductoTerminado, VentaCliente
 from decimal import Decimal
 from django.contrib import messages
-
-
 
 from django.shortcuts import render, redirect
 from django.utils import timezone
@@ -21,6 +19,8 @@ from .forms import SalidaForm
 from .models import ProductoTerminado, SalidaPTerminado, DetalleSalidaPTerminado
 from decimal import Decimal, InvalidOperation
 from django.contrib.messages import get_messages
+
+
 @login_required
 def agregar_producto(request):
     """
@@ -96,9 +96,6 @@ def registrar_entrada(request):
         'form': form,
         'productos': productos
     })
-
-
-
 
 
 @login_required
@@ -223,20 +220,11 @@ def ajustar_inventario_corte(request, pk):
     return redirect('detalle_corte_producto_terminado', pk=corte.pk)
 
 
-
-
-
-
-
-
-
-
-
-
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from .models import ProductoTerminado
 from .forms import ProductoTerminadoForm
+
 
 @login_required
 def listar_productos(request):
@@ -250,16 +238,8 @@ def listar_productos(request):
     else:
         productos = ProductoTerminado.objects.filter(estado=True)
 
-
-    return render(request, 'ProductoTerminado/productos/listar_productos.html', {'productos': productos,'mostrar_todos': mostrar_todos})
-
-
-
-
-
-
-
-
+    return render(request, 'ProductoTerminado/productos/listar_productos.html',
+                  {'productos': productos, 'mostrar_todos': mostrar_todos})
 
 
 @login_required
@@ -278,6 +258,7 @@ def editar_producto(request, pk):
         form = ProductoTerminadoForm(instance=producto)
     return render(request, 'ProductoTerminado/productos/editar_producto.html', {'form': form})
 
+
 @login_required
 def eliminar_producto(request, pk):
     """
@@ -290,17 +271,7 @@ def eliminar_producto(request, pk):
     return redirect('listar_productosPT')
 
 
-
-
-
-
-
-
-
-
-
-
-#--------------------------------------
+# --------------------------------------
 
 @login_required
 def realizar_corte_producto_terminado(request):
@@ -374,17 +345,14 @@ def detalle_corte_producto_terminado(request, pk):
     })
 
 
-
-
-
-#View de Presentacio de productos terminados----------------------------------------#
+# View de Presentacio de productos terminados----------------------------------------#
 
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import PresentacionProductoTerminado
 from .forms import PresentacionProductoTerminadoForm
 
-def lista_presentaciones(request):
 
+def lista_presentaciones(request):
     mostrar_todos = request.GET.get('mostrar_todos') == '1'
 
     if mostrar_todos:
@@ -392,7 +360,8 @@ def lista_presentaciones(request):
     else:
         presentaciones = PresentacionProductoTerminado.objects.filter(estado=True)
 
-    return render(request, 'ProductoTerminado/presentaciones/lista.html', {'presentaciones': presentaciones,'mostrar_todos': mostrar_todos})
+    return render(request, 'ProductoTerminado/presentaciones/lista.html',
+                  {'presentaciones': presentaciones, 'mostrar_todos': mostrar_todos})
 
 
 def crear_presentacion(request):
@@ -406,6 +375,7 @@ def crear_presentacion(request):
         form = PresentacionProductoTerminadoForm()
     return render(request, 'ProductoTerminado/presentaciones/crear.html', {'form': form})
 
+
 def editar_presentacion(request, pk):
     presentacion = get_object_or_404(PresentacionProductoTerminado, pk=pk)
     form = PresentacionProductoTerminadoForm(request.POST or None, request.FILES or None, instance=presentacion)
@@ -415,6 +385,7 @@ def editar_presentacion(request, pk):
         return redirect('lista_presentaciones')
     return render(request, 'ProductoTerminado/presentaciones/editar.html', {'form': form, 'presentacion': presentacion})
 
+
 def eliminar_presentacion(request, pk):
     presentacion = get_object_or_404(PresentacionProductoTerminado, pk=pk)
     presentacion.estado = False
@@ -423,14 +394,10 @@ def eliminar_presentacion(request, pk):
     return redirect('lista_presentaciones')
 
 
-
-
-#VISTAS PARA GRAMAJE  DE PRODUCTOS TERMINADOS
-
+# VISTAS PARA GRAMAJE  DE PRODUCTOS TERMINADOS
 
 
 def lista_gramajes(request):
-
     mostrar_todos = request.GET.get('mostrar_todos') == '1'
 
     if mostrar_todos:
@@ -438,7 +405,9 @@ def lista_gramajes(request):
     else:
         gramajes = GramajeProductoTerminado.objects.filter(estado=True)
 
-    return render(request, 'ProductoTerminado/gramajes/lista.html', {'gramajes': gramajes,'mostrar_todos': mostrar_todos})
+    return render(request, 'ProductoTerminado/gramajes/lista.html',
+                  {'gramajes': gramajes, 'mostrar_todos': mostrar_todos})
+
 
 def crear_gramaje(request):
     if request.method == 'POST':
@@ -451,6 +420,7 @@ def crear_gramaje(request):
         form = GramajeProductoTerminadoForm()
     return render(request, 'ProductoTerminado/gramajes/crear.html', {'form': form})
 
+
 def editar_gramaje(request, pk):
     gramaje = get_object_or_404(GramajeProductoTerminado, pk=pk)
     form = GramajeProductoTerminadoForm(request.POST or None, request.FILES or None, instance=gramaje)
@@ -460,6 +430,7 @@ def editar_gramaje(request, pk):
         return redirect('lista_gramajes')
     return render(request, 'ProductoTerminado/gramajes/editar.html', {'form': form, 'gramaje': gramaje})
 
+
 def eliminar_gramaje(request, pk):
     gramaje = get_object_or_404(GramajeProductoTerminado, pk=pk)
     gramaje.estado = False
@@ -467,12 +438,13 @@ def eliminar_gramaje(request, pk):
     messages.success(request, "Gramaje desactivado correctamente.")
     return redirect('lista_gramajes')
 
-#PARA EL DASSBOAR
 
-
+# PARA EL DASSBOAR
 
 
 from django.db.models import F
+
+
 def indicadores_producto_terminado(request):
     productos_activos = ProductoTerminado.objects.filter(estado=True)
 
@@ -500,19 +472,18 @@ def indicadores_producto_terminado(request):
         'productos_bajo_min': productos_bajo_min,
         'productos_sin_stock': productos_sin_stock,
         'pedidos_pendientes': pedidos_pendientes,
-        'valor_total_stock':valor_total_stock,
+        'valor_total_stock': valor_total_stock,
     })
 
 
-
-
-#Graficas prueba#
+# Graficas prueba#
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.db.models import Sum
 from .models import DetalleVentaCliente, ProductoTerminado, DetalleCorteInventarioPTerminado, VentaCliente
 from django.utils.timezone import now, timedelta
+
 
 @api_view(['GET'])
 def ventas_por_dia(request):
@@ -550,23 +521,17 @@ def diferencias_inventario(request):
     return Response(data)
 
 
-
-
-
-
-
-#listado de salidas
+# listado de salidas
 from django.db.models import Sum, F, ExpressionWrapper, DecimalField
 
-
 from django.views.generic import ListView
+
 
 class SalidaPTerminadoListView(ListView):
     model = SalidaPTerminado
     template_name = 'ProductoTerminado/salidas/lista_salidas.html'
     context_object_name = 'salidas'
     paginate_by = 50
-
 
     def get_queryset(self):
         queryset = super().get_queryset().select_related('usuario', 'ruta')
@@ -620,18 +585,19 @@ class SalidaPTerminadoListView(ListView):
 from django.shortcuts import render
 from .models import ProductoTerminado
 
+
 def lista_productos_terminados(request):
     productos = ProductoTerminado.objects.filter(estado=True)
     return render(request, 'Produccion/lista_produccion_productoT.html', {'productos': productos})
 
 
-
-#''''''''''''''''''''''''''''''''''''''''''''PARA EL DASHBOARD Graficas
+# ''''''''''''''''''''''''''''''''''''''''''''PARA EL DASHBOARD Graficas
 
 from datetime import timedelta
 from django.utils.timezone import now
 from django.db.models.functions import TruncDate
 from django.http import JsonResponse
+
 
 def entradas_salidas_por_dia_terminado(request):
     hoy = now().date()
@@ -672,8 +638,6 @@ def entradas_salidas_por_dia_terminado(request):
     })
 
 
-
-
 def top_productos_mas_utilizados_terminado(request):
     hoy = now().date()
     hace_7_dias = hoy - timedelta(days=7)
@@ -695,4 +659,26 @@ def top_productos_mas_utilizados_terminado(request):
     return JsonResponse({
         'labels': labels,
         'data': data
+    })
+
+
+def indicadores_de_produccion(request):
+    hoy = now().date()  # Fecha actual
+    productos_activos = ProductoTerminado.objects.filter(estado=True)
+    productos_bajo_min = productos_activos.filter(
+        stock__lt=F('stock_min'),
+        stock__gt=0
+    ).count()
+    productos_sin_stock = productos_activos.filter(stock=0).count()
+
+    pedidos_pendientes = PedidoProduccion.objects.filter(estado='pendiente', fecha_pedido__date=hoy).count()
+
+    pedidos_en_produccion = PedidoProduccion.objects.filter(estado='en_produccion', fecha_pedido__date=hoy).count()
+
+    return JsonResponse({
+        'productos_bajo_min': productos_bajo_min,
+        'productos_sin_stock': productos_sin_stock,
+        'pedidos_pendientes': pedidos_pendientes,
+        'pedidos_en_produccion': pedidos_en_produccion,
+
     })

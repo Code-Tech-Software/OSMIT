@@ -1,0 +1,359 @@
+<!-- templates/pedidos_hoy.html -->
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+
+
+
+
+<style>
+    .dashboard-card {
+        transition: all 0.3s ease;
+        border: none;
+        border-radius: 15px;
+        overflow: hidden;
+    }
+
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12);
+    }
+
+    .card-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+    }
+    
+    .card-indicator {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .text-gray-800 {
+        color: #2d3748;
+    }
+</style>
+
+
+
+<!-- Sección de tarjetas Indicadoras -->
+<div class="container-fluid mb-4">
+    <div class="row g-3">
+        <!-- Tarjeta Total Productos -->
+        
+        
+        
+        
+        
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-success bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-check-square fs-4 " style="color: var(--success-color);"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Pedidos en Producción</h6>
+                            <h3 id="pedidos_en_produccion" class="mb-0 fw-bold">...</h3>
+                        </div>
+                    </div>
+                </div>
+                <div style="height: 4px; background-color: var(--success-color);"></div>
+            </div>
+        </div>
+        
+        
+        
+        
+        <!-- Pedidos pendientes -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-dark bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-question-octagon fs-4 text-dark"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Pedidos Pendientes</h6>
+                            <h4 id="pedidos_pendientes" class="mb-0 fw-bold">...</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-dark opacity-10" style="height: 4px;"></div>
+            </div>
+        </div>
+
+        <!-- Tarjeta Bajo Mínimo -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-warning bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Producto T. bajo de stock</h6>
+                            <h3 id="productos_bajo_min" class="mb-0 fw-bold">...</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-warning opacity-10" style="height: 4px;"></div>
+            </div>
+        </div>
+
+        <!-- Tarjeta Sin Stock -->
+        <div class="col-md-6 col-xl-3">
+            <div class="card card-indicator h-100 border-0 shadow-sm overflow-hidden">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-danger bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-x-octagon fs-4 text-danger"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Producto T. sin stock</h6>
+                            <h3 id="productos_sin_stock" class="mb-0 fw-bold">...</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-danger opacity-10" style="height: 4px;"></div>
+            </div>
+        </div>
+
+
+    </div>
+    
+    
+    
+    
+    
+    
+</div>
+
+
+
+
+<!-- Sección de tarjetas accesos directos -->
+
+<div class="bt-4">
+    <!-- Accesos Directos -->
+    <div class="row g-4 mb-4">
+        <div class="col-6 col-md-3">
+            <a href="{% url 'lista_productos_granel' %}" class="text-decoration-none">
+                <div class="dashboard-card card bg-white h-100 text-center pt-4 pb-3">
+                    <div class="card-icon bg-danger bg-opacity-10">
+                        <i class="bi bi-boxes text-danger fs-2"></i>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title text-dark mb-0">Inventario a Granel</h5>
+                        <small class="text-muted">Stock de Productos a Granel</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <a href="{% url 'lista_productos_terminados' %}" class="text-decoration-none">
+                <div class="dashboard-card card bg-white h-100 text-center pt-4 pb-3">
+                    <div class="card-icon bg-success bg-opacity-10">
+                        <i class="bi bi-box-seam text-success fs-2"></i>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title text-dark mb-0">Inventario Terminado</h5>
+                        <small class="text-muted">Stock de Producto Terminado</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <a href="{% url 'lista_pedidos_produccion' %}" class="text-decoration-none">
+                <div class="dashboard-card card bg-white h-100 text-center pt-4 pb-3">
+                    <div class="card-icon bg-primary bg-opacity-10">
+                        <i class="bi bi-clipboard-data text-primary fs-2"></i>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title text-dark mb-0">Ver Pedidos</h5>
+                        <small class="text-muted">Ver todos los pedidos</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-6 col-md-3">
+            <a href="{% url 'registrar_pedido_produccion' %}" class="text-decoration-none">
+                <div class="dashboard-card card bg-white h-100 text-center pt-4 pb-3">
+                    <div class="card-icon bg-dark bg-opacity-10">
+                        <i class="bi bi-plus-square text-dark fs-2"></i>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title text-dark mb-0">Realizar pedido</h5>
+                        <small class="text-muted">Crear un nuevo pedido</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+    
+</div>
+
+
+
+
+<!-- Sección del titulo-->
+<div class="bg-light p-3 rounded mb-4 d-flex align-items-center">
+    <i class="bi bi-clipboard-check fs-2 me-3" style="color: var(--titulo);"></i>
+    <div>
+        <h2 class="h4 mb-0" style="color: var(--titulo);">Pedidos del Día</h2>
+        <small class="text-muted">Pedidos Realizados el dia de hoy</small>
+    </div>
+</div>
+<!-- Contenedor con indicador de carga -->
+<div id="loading" class="text-center py-5">
+    <div class="spinner-border text-dark" role="status">
+        <span class="visually-hidden">Cargando...</span>
+    </div>
+    <p class="mt-2">Cargando pedidos...</p>
+</div>
+    
+<!-- Contenedor de pedidos en 3 columnas -->
+<div id="lista-pedidos" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 d-none">
+    <!-- Los pedidos se insertarán aquí -->
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="detalleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title">Detalle del Pedido</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p><strong>Fecha:</strong> <span id="modal-fecha" class="text-muted"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Usuario:</strong> <span id="modal-usuario" class="text-muted"></span></p>
+                    </div>
+                </div>
+                <p><strong>Nota:</strong> <span id="modal-nota" class="text-muted"></span></p>
+                <p><strong>Estado:</strong> <span id="modal-estado" class="badge bg-primary"></span></p>
+                <hr>
+                <h6>Productos:</h6>
+                <ul id="modal-productos" class="list-group"></ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function cargarPedidos() {
+        try {
+            const resp = await fetch("{% url 'pedidos_hoy_json' %}");
+            const pedidos = await resp.json();
+            const contenedor = document.getElementById("lista-pedidos");
+            const loading = document.getElementById("loading");
+
+            contenedor.innerHTML = "";
+
+            pedidos.forEach(p => {
+                const col = document.createElement("div");
+                col.className = "col";
+                col.innerHTML = `
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title">Pedido #${p.id}</h5>
+                                <p class="card-text"><small class="text-muted">${p.fecha}</small></p>
+                                <p class="card-text">Usuario: <strong>${p.usuario}</strong></p>
+                                <span class="badge ${getEstadoClass(p.estado)}">${p.estado}</span>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <button class="btn btn-outline-dark btn-sm w-100" 
+                                        onclick='verDetalle(${JSON.stringify(JSON.stringify(p))})'>
+                                    Ver Detalle
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                contenedor.appendChild(col);
+            });
+
+            // Ocultar loading y mostrar contenido
+            loading.classList.add("d-none");
+            contenedor.classList.remove("d-none");
+
+        } catch (error) {
+            console.error("Error al cargar pedidos:", error);
+            document.getElementById("loading").innerHTML = `
+                    <div class="alert alert-danger">
+                        Error al cargar los pedidos. Intente recargar la página.
+                    </div>
+                `;
+        }
+    }
+
+    function getEstadoClass(estado) {
+        const estados = {
+            "Pendiente": "bg-warning text-dark",
+            "Completado": "bg-success",
+            "Cancelado": "bg-danger",
+            "En proceso": "bg-info"
+        };
+        return estados[estado] || "bg-success";
+    }
+
+    function verDetalle(pedidoJSON) {
+        const pedido = JSON.parse(pedidoJSON);
+        document.getElementById("modal-fecha").textContent = pedido.fecha;
+        document.getElementById("modal-usuario").textContent = pedido.usuario;
+        document.getElementById("modal-nota").textContent = pedido.nota || "(Sin nota)";
+
+        const estadoElement = document.getElementById("modal-estado");
+        estadoElement.textContent = pedido.estado;
+        estadoElement.className = "badge " + getEstadoClass(pedido.estado);
+
+        const productos = document.getElementById("modal-productos");
+        productos.innerHTML = "";
+        pedido.detalles.forEach(d => {
+            const li = document.createElement("li");
+            li.className = "list-group-item d-flex justify-content-between align-items-center";
+            li.innerHTML = `
+                    <div>
+                        <strong>${d.producto}</strong><br>
+                        <small class="text-muted">${d.cantidad} ${d.unidad}</small>
+                    </div>
+                    <small class="text-muted">${d.usuario}</small>
+                `;
+            productos.appendChild(li);
+        });
+
+        new bootstrap.Modal(document.getElementById('detalleModal')).show();
+    }
+
+    document.addEventListener("DOMContentLoaded", cargarPedidos);
+</script>
+
+
+
+<!-- Las tarjetas con indicadores-->
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        fetch("/terminado/api/indicadoresProduccion/")  // la ruta de la appi
+            .then(res => res.json())
+            .then(data => {
+               
+                document.getElementById("productos_bajo_min").textContent = data.productos_bajo_min;
+                document.getElementById("productos_sin_stock").textContent = data.productos_sin_stock;
+                document.getElementById("pedidos_pendientes").textContent = data.pedidos_pendientes;
+                document.getElementById("pedidos_en_produccion").textContent = data.pedidos_en_produccion;
+            })
+            .catch(err => console.error("Error cargando indicadores:", err));
+    });
+</script>

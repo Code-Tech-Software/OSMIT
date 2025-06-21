@@ -24,15 +24,18 @@
        class="bi bi-arrows-fullscreen fs-5 icon-hover"
        style="cursor: pointer;"></i>
 
+
+    <!-- Icono de recargar con animación de spinner -->
+    <i class="bi bi-arrow-clockwise fs-5 icon-hover"
+       style="cursor: pointer;"
+       id="reloadIcon"></i>
+
+
     <!-- Icono campana con notificación -->
     <i class="bi bi-bell fs-5 position-relative icon-hover" style="cursor: pointer;">
         <span class="position-absolute top-0 start-100 translate-middle p-1 bg-primary border border-light rounded-circle"></span>
     </i>
 
-    <!-- Icono sobre con notificación -->
-    <i class="bi bi-envelope fs-5 position-relative icon-hover" style="cursor: pointer;">
-        <span class="position-absolute top-0 start-100 translate-middle p-1 bg-primary border border-light rounded-circle"></span>
-    </i>
 
     <!-- Usuario con menú -->
     <div class="position-relative user-menu me-5">
@@ -130,16 +133,19 @@
                         <i class='bx bx-chevron-down'></i>
                     </a>
                     <ul class="sub-menu">
-                        <li><a href="{% url 'registrar_pedido_produccion' %}" class="sub-menu-link">Realizar Pedido</a></li>
+                        <li><a href="{% url 'registrar_pedido_produccion' %}" class="sub-menu-link">Realizar Pedido</a>
+                        </li>
                         <li><a href="{% url 'lista_pedidos_produccion' %}" class="sub-menu-link">Pedidos</a></li>
                         <li><a href="{% url 'turnos_asignados' %}" class="sub-menu-link">Gestionar Turnos</a></li>
-                        <li><a href="{% url 'lista_productos_granel' %}" class="sub-menu-link">Inventario Granel</a></li>
-                        <li><a href="{% url 'lista_productos_terminados' %}" class="sub-menu-link">Inventario Terminado</a></li>
+                        <li><a href="{% url 'lista_productos_granel' %}" class="sub-menu-link">Inventario Granel</a>
+                        </li>
+                        <li><a href="{% url 'lista_productos_terminados' %}" class="sub-menu-link">Inventario
+                            Terminado</a></li>
                     </ul>
                 </li>
             {% endif %}
 
-        
+
 
 
             <!-- TERMINADO -->
@@ -155,8 +161,8 @@
                         <li><a href="{% url 'registrar_salidaPT' %}" class="sub-menu-link">Registrar Salida</a></li>
                         <li><a href="{% url 'ventas_por_dia' %}" class="sub-menu-link">Pedidos</a></li>
                         <li><a href="{% url 'lista_cortes_producto_terminado' %}" class="sub-menu-link">Cortes</a></li>
-                         <li><a href="{% url 'lista_salidas_termindo' %}" class="sub-menu-link">Salidas</a></li>
-                    
+                        <li><a href="{% url 'lista_salidas_termindo' %}" class="sub-menu-link">Salidas</a></li>
+
                     </ul>
                 </li>
             {% endif %}
@@ -184,8 +190,8 @@
             {% endif %}
 
 
-        
-        
+
+
 
             <!-- ADMINISTRAR -->
             {% if user|has_role:"Administrador,Recursos Humanos" %}
@@ -210,7 +216,7 @@
                 </li>
             {% endif %}
 
-        
+
 
 
 
@@ -226,9 +232,9 @@
                         {% if user|has_role:"Administrador,Producto a Granel,Recursos Humanos" %}
                             <li><a href="{% url 'listar_productos_granel' %}" class="sub-menu-link">Producto Granel</a>
                             </li>
-                            {% endif %}
-                            {% if user|has_role:"Administrador,Producto Terminado,Recursos Humanos" %}
-                            
+                        {% endif %}
+                        {% if user|has_role:"Administrador,Producto Terminado,Recursos Humanos" %}
+
                             <li><a href="{% url 'listar_productosPT' %}" class="sub-menu-link">Producto Terminado</a>
                             </li>
                         {% endif %}
@@ -264,6 +270,15 @@
 </main>
 
 
+<script src="{% static 'js/base/sidebar.js' %}"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.4/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YUe2LzesAfftltw+PEaao2tjU/QATaW/rOitAq67e0CT0Zi2VVRL0oC4+gAaeBKu"
+        crossorigin="anonymous"></script>
+
+
+</body>
+
 <style>
     .icon-hover:hover,
     .user-hover:hover {
@@ -295,14 +310,35 @@
 </style>
 
 
-<script src="{% static 'js/base/sidebar.js' %}"></script>
+<style>
+    /* Animación de giro continuo */
+    #reloadIcon.spinning {
+        animation: spin 1s linear infinite;
+    }
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.4/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-YUe2LzesAfftltw+PEaao2tjU/QATaW/rOitAq67e0CT0Zi2VVRL0oC4+gAaeBKu"
-        crossorigin="anonymous"></script>
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
+<script>
+    document.getElementById('reloadIcon').addEventListener('click', function () {
+        // Activar animación infinita
+        this.classList.add('spinning');
+
+        // Recargar la página después de un pequeño delay para que se vea la animación
+        setTimeout(() => {
+            location.reload();
+        }, 200);
+    });
+</script>
 
 
-</body>
 </html>
 
 
