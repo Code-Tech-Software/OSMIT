@@ -18,7 +18,11 @@
         <div class="card mb-4">
             <div class="card-body">
                 <h6 class="mb-2"><strong>Fecha:</strong> {{ fecha }}</h6>
-                <h6 class="mb-0"><strong>Usuario:</strong> {{ usuario.first_name }}</h6>
+                <h6 class="mb-1"><strong>Usuario:</strong> {{ usuario.first_name }}</h6>
+
+                <h6 class="mb-1"><strong>Ruta:</strong> {{ usuario.ruta_set.first.nombre }}</h6>
+                <h6 class="mb-1"><strong>Vehículo:</strong> {{ usuario.ruta_set.first.vehiculo }}</h6>
+
             </div>
         </div>
 
@@ -53,23 +57,22 @@
         </div>
 
 
-<div class="d-flex flex-column flex-md-row justify-content-end gap-2 mt-4">
+        <div class="d-flex flex-column flex-md-row justify-content-end gap-2 mt-4">
 
-    <a href="{% url 'ventas_por_dia' %}" class="btn btn-custom-secondary btn-sm">
-        <i class="bi bi-arrow-left-circle me-1"></i> Volver al Listado Diario
-    </a>
+            <a href="{% url 'ventas_por_dia' %}" class="btn btn-custom-secondary btn-sm">
+                <i class="bi bi-arrow-left-circle me-1"></i> Volver al Listado Diario
+            </a>
 
-    {% if detalles %}
-        <form method="post" action="{% url 'procesar_ventas_dia' fecha=fecha user_id=user_id %}">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-custom-success btn-sm">
-                <i class="bi bi-check-circle me-1"></i> Registrar Venta y Descontar Stock
-            </button>
-        </form>
-    {% endif %}
+            {% if detalles %}
+                <form method="post" action="{% url 'procesar_ventas_dia' fecha=fecha user_id=user_id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-custom-success btn-sm">
+                        <i class="bi bi-check-circle me-1"></i> Registrar Venta y Descontar Stock
+                    </button>
+                </form>
+            {% endif %}
 
-</div>
-
+        </div>
 
 
     </div>
