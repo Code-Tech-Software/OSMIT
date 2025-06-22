@@ -16,7 +16,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from .models import ProductoGranel
 from .forms import ProductoGranelForm
-
+from django.views.decorators.http import require_POST
 
 # REGISTRO DE ENTRADAS
 
@@ -322,7 +322,7 @@ def lista_pedidos_produccion(request):
 @login_required
 def aceptar_pedido_produccion(request, pedido_id):
     """
-    Vista para aceptar un pedido de producción sin modificar los modelos.
+    Vista para aceptar un pedido de producción.
     Se valida que exista stock suficiente en los lotes activos para cada producto, se descuenta utilizando
     la lógica FIFO (por lotes) y se registra la salida correspondiente.
     Finalmente, se actualiza el pedido a 'en_produccion' y se marca como procesado.
@@ -408,6 +408,17 @@ def aceptar_pedido_produccion(request, pedido_id):
         messages.error(request, f"Ocurrió un error al procesar el pedido: {str(e)}")
     return redirect('lista_pedidos')
 
+
+@require_POST
+def rechazar_pedido_produccion(request, pedido_id):
+    pedido = get_object_or_404(PedidoProduccion, pk=pedido_id)
+    if pedido.estado == 'pendiente':
+        pedido.estado = 'rechazado'
+        pedido.save()
+        messages.success(request, f'El pedido #{pedido.id} fue rechazado correctamente.')
+    else:
+        messages.error(request, 'Este pedido no puede ser rechazado.')
+    return redirect('lista_pedidos')  # Reemplaza con el nombre de la vista actual
 
 # ----------------------------------------------------------------------------------------------------------------------DEVOLUCIONES
 
@@ -911,7 +922,7 @@ def indicadores_dashboard(request):
     total_productos = productos_activos.count()
     # Productos con stock < stock_min, pero excluyendo los que tienen stock == 0
     productos_bajo_min = productos_activos.filter(
-        stock__lt=F('stock_min'),
+        stock__lte=F('stock_min'),  # Cambiado < a <=
         stock__gt=0
     ).count()
 

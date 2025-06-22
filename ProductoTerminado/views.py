@@ -447,11 +447,10 @@ from django.db.models import F
 
 def indicadores_producto_terminado(request):
     productos_activos = ProductoTerminado.objects.filter(estado=True)
-
     total_productos = productos_activos.count()
 
     productos_bajo_min = productos_activos.filter(
-        stock__lt=F('stock_min'),
+        stock__lte=F('stock_min'),  # Cambiado < a <=
         stock__gt=0
     ).count()
 

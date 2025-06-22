@@ -40,7 +40,9 @@ class RutaForm(forms.ModelForm):
             'usuario': forms.Select(attrs={'class': 'form-control'}),
             'estado':  forms.CheckboxInput(attrs={'class': 'form-check-input' }),
         }
-
+    def __init__(self, *args, **kwargs):
+        super(RutaForm, self).__init__(*args, **kwargs)
+        self.fields['vehiculo'].queryset = Vehiculo.objects.filter(estado=True)
 
 
 #--------------------------------------------CLientes#
@@ -69,8 +71,9 @@ class ClienteForm(forms.ModelForm):
             'ruta': forms.Select(attrs={'class': 'form-control'}),
             'estado': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
-
-
+    def __init__(self, *args, **kwargs):
+        super(ClienteForm, self).__init__(*args, **kwargs)
+        self.fields['ruta'].queryset = Ruta.objects.filter(estado=True)
 
 #DIAS DE VISITA
 

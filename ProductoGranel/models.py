@@ -75,7 +75,7 @@ class PedidoProduccion(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
     nota = models.TextField(blank=True, null=True)
     procesado = models.BooleanField(default=False)
-    estado = models.CharField(max_length=20, choices=[('pendiente', 'Pendiente'), ('en_produccion', 'En Producción'), ('finalizado', 'Finalizado')], default='pendiente')
+    estado = models.CharField(max_length=20, choices=[('pendiente', 'Pendiente'), ('en_produccion', 'En Producción'), ('finalizado', 'Finalizado'),('rechazado', 'Rechazado')], default='pendiente')
 
     def __str__(self):
         return f"Pedido {self.id} - Estado: {self.estado}"

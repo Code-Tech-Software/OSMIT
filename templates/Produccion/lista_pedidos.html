@@ -61,6 +61,8 @@
                         <td class="text-center">
                             {% if pedido.estado == "pendiente" %}
                                 <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% elif pedido.estado == "rechazado" %}
+                                <span class="badge bg-danger">Rechazado</span>
                             {% else %}
                                 <span class="badge bg-success">Procesado</span>
                             {% endif %}

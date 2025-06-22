@@ -57,6 +57,8 @@
                         <td class="text-center">
                             {% if pedido.estado == "pendiente" %}
                                 <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% elif pedido.estado == "rechazado" %}
+                                <span class="badge bg-danger">Rechazado</span>
                             {% else %}
                                 <span class="badge bg-success">Procesado</span>
                             {% endif %}
@@ -142,6 +144,18 @@
                             </form>
 
 
+                            <form action="{% url 'rechazar_pedido_produccion' pedido.id %}" method="post"
+                                  class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-rechazar">
+                                    <span class="icono"><i class="bi bi-x-circle-fill me-1"></i></span>
+                                    <span class="spinner-border spinner-border-sm d-none" role="status"
+                                          aria-hidden="true"></span>
+                                    Rechazar Pedido
+                                </button>
+                            </form>
+
+
 
 
                         {% endif %}
@@ -209,10 +223,11 @@
             {% endfor %}
         {% endif %}
 
+        
 
-        // Spinner al aceptar pedido
+        // Spinner al aceptar o rechazar pedido
         $(document).on('submit', 'form', function () {
-            const btn = $(this).find('.btn-aceptar');
+            const btn = $(this).find('button[type="submit"]');
             btn.prop('disabled', true);
             btn.find('.icono').addClass('d-none');
             btn.find('.spinner-border').removeClass('d-none');
