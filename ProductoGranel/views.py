@@ -18,6 +18,7 @@ from .models import ProductoGranel
 from .forms import ProductoGranelForm
 from django.views.decorators.http import require_POST
 
+
 # REGISTRO DE ENTRADAS
 
 @login_required
@@ -56,7 +57,6 @@ def agregar_producto_granel(request):
     else:
         form = ProductoGranelForm()
     return render(request, 'ProductoGranel/agregar_producto_granel.html', {'form': form})
-
 
 
 @login_required
@@ -109,6 +109,7 @@ def registrar_entrada(request):
         return redirect('registrar_entrada')
 
     return render(request, 'ProductoGranel/entradas/registrar_entrada.html', {'productos': productos})
+
 
 # -----------------------SALIDA
 
@@ -291,17 +292,21 @@ def registrar_pedido_produccion(request):
                     )
 
             # Enviar notificación a través de Pusher
-            pusher_client = get_pusher_client()
-            pusher_client.trigger(
-                'pedidos-channel',
-                'nuevo-pedido',
-                {
-                    'message': 'Nuevo pedido registrado',
-                    'pedido_id': pedido.id,
-                    'usuario': request.user.username,
-                    'fecha': pedido.fecha_pedido.strftime("%Y-%m-%d %H:%M:%S")
-                }
-            )
+            try:
+                pusher_client = get_pusher_client()
+                pusher_client.trigger(
+                    'pedidos-channel',
+                    'nuevo-pedido',
+                    {
+                        'message': 'Nuevo pedido registrado',
+                        'pedido_id': pedido.id,
+                        'usuario': request.user.username,
+                        'fecha': pedido.fecha_pedido.strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                )
+            except Exception as e:
+                # Puedes registrar el error para depuración, sin detener la app
+                print(f"Error al enviar notificación Pusher: {e}")
 
             messages.success(request, "Pedido de producción registrado correctamente en estado 'pendiente'.")
             return redirect('registrar_pedido_produccion')  # Ajusta la ruta según tu proyecto
@@ -318,9 +323,8 @@ def lista_pedidos(request):
     Vista para listar los pedidos de producción.
     Se muestran todos los pedidos ordenados por fecha, de modo que los más recientes aparezcan primero.
     """
-    pedidos = PedidoProduccion.objects.all().order_by('-fecha_pedido')
+    pedidos = PedidoProduccion.objects.all().order_by('-fecha_pedido')[:50]  # Solo consulta 50
     return render(request, 'ProductoGranel/pedidos/lista_pedidos.html', {'pedidos': pedidos})
-
 
 
 @login_required
@@ -329,7 +333,7 @@ def lista_pedidos_produccion(request):
     Vista para listar los pedidos de producción.
     Se muestran todos los pedidos ordenados por fecha, de modo que los más recientes aparezcan primero.
     """
-    pedidos = PedidoProduccion.objects.all().order_by('-fecha_pedido')
+    pedidos = PedidoProduccion.objects.all().order_by('-fecha_pedido')[:50]  # Solo consulta 50
     return render(request, 'Produccion/lista_pedidos.html', {'pedidos': pedidos})
 
 
@@ -435,11 +439,9 @@ def rechazar_pedido_produccion(request, pedido_id):
     return redirect('lista_pedidos')  # Reemplaza con el nombre de la vista actual
 
 
-
-
-
 from django.conf import settings
 import pusher
+
 
 def get_pusher_client():
     return pusher.Pusher(
@@ -449,8 +451,9 @@ def get_pusher_client():
         cluster=settings.PUSHER_CLUSTER,
         ssl=True
     )
-# ----------------------------------------------------------------------------------------------------------------------DEVOLUCIONES
 
+
+# ----------------------------------------------------------------------------------------------------------------------DEVOLUCIONES
 
 
 @login_required
@@ -519,7 +522,8 @@ def registrar_devolucion(request, salida_id):
                         })
 
                     if not cantidades_validas:
-                        messages.error(request, "Debe ingresar al menos una cantidad mayor a 0 para registrar una devolución.")
+                        messages.error(request,
+                                       "Debe ingresar al menos una cantidad mayor a 0 para registrar una devolución.")
                         raise Exception("Sin cantidades válidas.")
 
                     # Guardar devolución principal
@@ -565,6 +569,7 @@ def registrar_devolucion(request, salida_id):
         'devolucion_form': devolucion_form,
     }
     return render(request, 'ProductoGranel/devoluciones/registrar_devolucion.html', context)
+
 
 @login_required
 def lista_salidas(request):
@@ -663,8 +668,6 @@ def lista_cortes(request):
     return render(request, 'ProductoGranel/cortes/lista_cortes.html', context)
 
 
-
-
 @login_required
 def ajustar_inventario(request, corte_id):
     """
@@ -752,7 +755,8 @@ def listar_productos_granel(request):
     else:
         productos = ProductoGranel.objects.filter(estado=True)
 
-    return render(request, 'ProductoGranel/productos/listar_productos.html',{'productos': productos, 'mostrar_todos': mostrar_todos})
+    return render(request, 'ProductoGranel/productos/listar_productos.html',
+                  {'productos': productos, 'mostrar_todos': mostrar_todos})
 
 
 @login_required
@@ -784,12 +788,9 @@ def eliminar_producto_granel(request, pk):
     return redirect('listar_productos_granel')
 
 
-
-
-#CATEGORIAS DE PRODUCTOS--------------------------------------------------------------------------------
+# CATEGORIAS DE PRODUCTOS--------------------------------------------------------------------------------
 
 def lista_categorias(request):
-
     mostrar_todos = request.GET.get('mostrar_todos') == '1'
 
     if mostrar_todos:
@@ -797,8 +798,9 @@ def lista_categorias(request):
     else:
         categorias = CategoriaProducto.objects.filter(estado=True)
 
+    return render(request, 'ProductoGranel/categorias/lista.html',
+                  {'categorias': categorias, 'mostrar_todos': mostrar_todos})
 
-    return render(request, 'ProductoGranel/categorias/lista.html', {'categorias': categorias,'mostrar_todos': mostrar_todos})
 
 def crear_categoria(request):
     if request.method == 'POST':
@@ -811,6 +813,7 @@ def crear_categoria(request):
         form = CategoriaProductoForm()
     return render(request, 'ProductoGranel/categorias/crear.html', {'form': form})
 
+
 def editar_categoria(request, pk):
     categoria = get_object_or_404(CategoriaProducto, pk=pk)
     form = CategoriaProductoForm(request.POST or None, request.FILES or None, instance=categoria)
@@ -820,6 +823,7 @@ def editar_categoria(request, pk):
         return redirect('lista_categorias')
     return render(request, 'ProductoGranel/categorias/editar.html', {'form': form, 'categoria': categoria})
 
+
 def eliminar_categoria(request, pk):
     categoria = get_object_or_404(CategoriaProducto, pk=pk)
     categoria.estado = False
@@ -828,10 +832,8 @@ def eliminar_categoria(request, pk):
     return redirect('lista_categorias')
 
 
-
-#==========-------------------------------------------------------------------------PROVEEDORES DE PRODUCTO A GRANEL#
+# ==========-------------------------------------------------------------------------PROVEEDORES DE PRODUCTO A GRANEL#
 def lista_proveedores(request):
-
     mostrar_todos = request.GET.get('mostrar_todos') == '1'
 
     if mostrar_todos:
@@ -839,9 +841,9 @@ def lista_proveedores(request):
     else:
         proveedores = Proveedor.objects.filter(estado=True)
 
+    return render(request, 'ProductoGranel/proveedores/lista.html',
+                  {'proveedores': proveedores, 'mostrar_todos': mostrar_todos})
 
-
-    return render(request, 'ProductoGranel/proveedores/lista.html', {'proveedores': proveedores,'mostrar_todos': mostrar_todos})
 
 def crear_proveedor(request):
     if request.method == 'POST':
@@ -854,6 +856,7 @@ def crear_proveedor(request):
         form = ProveedorForm()
     return render(request, 'ProductoGranel/proveedores/crear.html', {'form': form})
 
+
 def editar_proveedor(request, pk):
     proveedor = get_object_or_404(Proveedor, pk=pk)
     form = ProveedorForm(request.POST or None, instance=proveedor)
@@ -863,6 +866,7 @@ def editar_proveedor(request, pk):
         return redirect('lista_proveedores')
     return render(request, 'ProductoGranel/proveedores/editar.html', {'form': form, 'proveedor': proveedor})
 
+
 def eliminar_proveedor(request, pk):
     proveedor = get_object_or_404(Proveedor, pk=pk)
     proveedor.estado = False
@@ -871,13 +875,13 @@ def eliminar_proveedor(request, pk):
     return redirect('lista_proveedores')
 
 
-
-#''''''''''''''''''''''''''''''''''''''''''''PARA EL DAHBOAR
+# ''''''''''''''''''''''''''''''''''''''''''''PARA EL DAHBOAR
 
 from datetime import timedelta
 from django.utils.timezone import now
 from django.db.models.functions import TruncDate
 from django.http import JsonResponse
+
 
 def entradas_salidas_por_dia(request):
     hoy = now().date()
@@ -918,8 +922,6 @@ def entradas_salidas_por_dia(request):
     })
 
 
-
-
 def top_productos_mas_utilizados(request):
     hoy = now().date()
     hace_7_dias = hoy - timedelta(days=7)
@@ -945,6 +947,8 @@ def top_productos_mas_utilizados(request):
 
 
 from django.db.models import F, Sum, DecimalField, ExpressionWrapper
+
+
 def indicadores_dashboard(request):
     productos_activos = ProductoGranel.objects.filter(estado=True)
 
@@ -977,8 +981,6 @@ def indicadores_dashboard(request):
         'pedidos_pendientes': pedidos_pendientes,
         'valor_total_stock': valor_total_stock,
     })
-
-
 
 
 @login_required
@@ -1018,19 +1020,16 @@ def recursos_humanos_json(request):
     }, json_dumps_params={'ensure_ascii': False})
 
 
-
-
-
-
 def lista_productos_granel(request):
     # Filtra los productos cuyo estado es True
     productos = ProductoGranel.objects.filter(estado=True)
     return render(request, 'Produccion/lista_produccion_productoG.html', {'productos': productos})
 
 
-
-#Lista de pedidos el dia de Hoy
+# Lista de pedidos el dia de Hoy
 from django.views.decorators.http import require_GET
+
+
 @login_required
 @require_GET
 def pedidos_hoy_json(request):
@@ -1054,7 +1053,7 @@ def pedidos_hoy_json(request):
             "fecha": pedido.fecha_pedido.strftime('%Y-%m-%d %H:%M'),
             "usuario": pedido.usuario.first_name,
             "nota": pedido.nota,
-             "estado": pedido.get_estado_display(),
+            "estado": pedido.get_estado_display(),
             "detalles": detalles_data,
         })
 
