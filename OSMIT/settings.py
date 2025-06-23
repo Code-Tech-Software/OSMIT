@@ -32,6 +32,7 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = [
     "https://osmit.up.railway.app",
+    "https://7623-2806-261-5480-10e3-94f4-f3dc-81cf-2e8c.ngrok-free.app"
 ]
 
 # Application definition
@@ -163,4 +164,8 @@ CLOUDINARY_STORAGE = {
     'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
     'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
 }
-# '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''DESMADRE DEL noti
+
+PUSHER_APP_ID = os.getenv('PUSHER_APP_ID')
+PUSHER_KEY = os.getenv('PUSHER_KEY')
+PUSHER_SECRET = os.getenv('PUSHER_SECRET')
+PUSHER_CLUSTER = os.getenv('PUSHER_CLUSTER')

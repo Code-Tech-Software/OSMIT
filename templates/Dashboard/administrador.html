@@ -12,7 +12,7 @@
     .text-gray-800 {
         color: #2d3748;
     }
-    
+
     :root {
     --titulo: #3f5b77;
 
@@ -21,7 +21,7 @@
 
 
 <div class="container-fluid px-0 mb-4">
-    
+
     <div class="bg-light p-3 rounded mb-4 d-flex align-items-center">
         <i class="bi bi-boxes fs-2 me-3" style="color: var(--titulo);"></i>
         <div>
@@ -131,7 +131,7 @@
 
 
 <div class="container-fluid px-0 mb-4 mt-4">
-    
+
     <div class="bg-light p-3 rounded mb-4 d-flex align-items-center">
         <i class="bi bi-boxes fs-2 me-3" style="color: var(--titulo);"></i>
         <div>
@@ -443,7 +443,7 @@
 <!-- Indicadores de inventario a Granel-->
 <script>
     document.addEventListener("DOMContentLoaded", () => {
-        fetch("/granel/api/indicadores/")  
+        fetch("/granel/api/indicadores/")
             .then(res => res.json())
             .then(data => {
                 document.getElementById("total_productos").textContent = data.total_productos;
@@ -459,7 +459,7 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", () => {
-        fetch("/terminado/api/indicadoresPT/") 
+        fetch("/terminado/api/indicadoresPT/")
             .then(res => res.json())
             .then(data => {
                 document.getElementById("total_productosPT").textContent = data.total_productos;

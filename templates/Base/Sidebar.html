@@ -59,11 +59,8 @@
        id="reloadIcon"></i>
 
 
-    <!-- Icono campana con notificación -->
-    <i class="bi bi-bell fs-5 position-relative icon-hover" style="cursor: pointer;">
-        <span class="position-absolute top-0 start-100 translate-middle p-1 bg-primary border border-light rounded-circle"></span>
-    </i>
-
+<!-- Icono campana -->
+<i id="notificationToggle" class="bi fs-5 position-relative icon-hover bi-bell-fill" style="cursor: pointer;"></i>
 
     <!-- Usuario con menú -->
     <div class="position-relative user-menu me-5">
@@ -308,8 +305,6 @@
 </body>
 
 
-
-
 <style>
     /* Animación de giro continuo */
     #reloadIcon.spinning {
@@ -338,6 +333,112 @@
     });
 </script>
 
+
+
+{% if user|has_role:"Administrador,Producto a Granel" %}
+  
+<!-- Librerías -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    const notificationSound = new Audio('/static/sounds/notify.mp3');
+    notificationSound.load();
+
+    let notificationsEnabled = JSON.parse(localStorage.getItem('notificationsEnabled')) ?? true;
+    let soundEnabled = JSON.parse(localStorage.getItem('soundEnabled')) ?? true;
+
+    const icon = document.getElementById('notificationToggle');
+
+    function updateIcon() {
+        if (notificationsEnabled && soundEnabled) {
+            icon.className = 'bi fs-5 position-relative icon-hover bi-bell-fill';
+        } else {
+            icon.className = 'bi fs-5 position-relative icon-hover bi-bell-slash-fill text-muted';
+        }
+    }
+
+    icon.addEventListener('click', () => {
+        // Alternar el estado
+        const turningOn = !(notificationsEnabled && soundEnabled);
+        notificationsEnabled = turningOn;
+        soundEnabled = turningOn;
+
+        // Guardar en localStorage
+        localStorage.setItem('notificationsEnabled', notificationsEnabled);
+        localStorage.setItem('soundEnabled', soundEnabled);
+        updateIcon();
+
+        // Si se está activando, pedir permiso de audio
+        if (turningOn) {
+            notificationSound.play().catch(e => {
+                console.warn("Sonido bloqueado, mostrando alerta:", e);
+                Swal.fire({
+                    title: '🔊 Activa el sonido',
+                    text: 'Haz clic en este mensaje para permitir notificaciones con audio.',
+                    icon: 'info',
+                    confirmButtonText: 'Activar sonido',
+                    background: '#f0f9ff'
+                }).then(() => {
+                    notificationSound.play().catch(err => console.log("Error persistente:", err));
+                });
+            });
+        }
+    });
+
+    updateIcon();
+
+    // Pusher
+    const pusher = new Pusher('f15154bb7979deba25ba', {
+        cluster: 'us2',
+        encrypted: true
+    });
+
+    const channel = pusher.subscribe('pedidos-channel');
+    channel.bind('nuevo-pedido', function (data) {
+        if (!notificationsEnabled) return;
+
+        const mensaje = `🛒 Nuevo pedido de <strong>${data.usuario}</strong> (ID: ${data.pedido_id})`;
+
+        // Notificación
+        Swal.fire({
+            title: '¡Nuevo pedido!',
+            html: mensaje,
+            icon: 'success',
+            position: 'bottom-end',
+            background: '#343a40',
+            color: '#fff',
+            showConfirmButton: false,
+            timer: 5000,
+            toast: true
+        });
+
+        // Sonido
+        if (soundEnabled) {
+            notificationSound.play().catch(e => {
+                Swal.fire({
+                    title: '🔔 Activa el sonido',
+                    text: 'Haz clic para permitir notificaciones con audio.',
+                    icon: 'info',
+                    confirmButtonText: 'Entendido'
+                }).then(() => {
+                    notificationSound.play().catch(err => console.log("Error persistente:", err));
+                });
+            });
+        }
+    });
+</script>
+
+<style>
+    .icon-hover:hover {
+        color: #078bcf;
+    }
+    .bi-bell-slash-fill.text-muted {
+        opacity: 0.6;
+    }
+</style>
+{% endif %}
 
 </html>
 

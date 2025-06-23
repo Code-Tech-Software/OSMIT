@@ -289,6 +289,20 @@ def registrar_pedido_produccion(request):
                         usuario=request.user,
                         cantidad=cantidad
                     )
+
+            # Enviar notificación a través de Pusher
+            pusher_client = get_pusher_client()
+            pusher_client.trigger(
+                'pedidos-channel',
+                'nuevo-pedido',
+                {
+                    'message': 'Nuevo pedido registrado',
+                    'pedido_id': pedido.id,
+                    'usuario': request.user.username,
+                    'fecha': pedido.fecha_pedido.strftime("%Y-%m-%d %H:%M:%S")
+                }
+            )
+
             messages.success(request, "Pedido de producción registrado correctamente en estado 'pendiente'.")
             return redirect('registrar_pedido_produccion')  # Ajusta la ruta según tu proyecto
     else:
@@ -420,6 +434,21 @@ def rechazar_pedido_produccion(request, pedido_id):
         messages.error(request, 'Este pedido no puede ser rechazado.')
     return redirect('lista_pedidos')  # Reemplaza con el nombre de la vista actual
 
+
+
+
+
+from django.conf import settings
+import pusher
+
+def get_pusher_client():
+    return pusher.Pusher(
+        app_id=settings.PUSHER_APP_ID,
+        key=settings.PUSHER_KEY,
+        secret=settings.PUSHER_SECRET,
+        cluster=settings.PUSHER_CLUSTER,
+        ssl=True
+    )
 # ----------------------------------------------------------------------------------------------------------------------DEVOLUCIONES
 
 
