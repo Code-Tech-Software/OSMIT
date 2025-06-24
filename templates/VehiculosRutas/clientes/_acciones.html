@@ -1,0 +1,12 @@
+{# VehiculosRutas/templates/VehiculosRutas/clientes/_acciones.html #}
+<div class="d-flex justify-content-center gap-2">
+  <a href="{% url 'editar_cliente' cliente.id %}" class="btn btn-custom-info btn-sm" title="Editar">
+    <i class="bi bi-pencil"></i>
+  </a>
+  <a href="{% url 'eliminar_cliente' cliente.id %}" class="btn btn-custom-danger btn-sm btn-delete" title="Eliminar">
+    <i class="bi bi-trash"></i>
+  </a>
+  <a href="{% url 'editar_dias_visita' cliente.id %}" class="btn btn-custom-warning btn-sm" title="Editar días de visita">
+    <i class="bi bi-calendar"></i>
+  </a>
+</div>

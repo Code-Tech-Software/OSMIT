@@ -2,7 +2,6 @@ from django.urls import path
 
 from VehiculosRutas import views
 
-
 urlpatterns = [
     path('listarVehiculos/', views.listar_vehiculos, name='listar_vehiculos'),
     path('agregarVehiculos/', views.agregar_vehiculo, name='agregar_vehiculo'),
@@ -16,8 +15,7 @@ urlpatterns = [
     path('editarRutas/<int:pk>/', views.editar_ruta, name='editar_ruta'),
     path('eliminarRutas/<int:pk>/', views.eliminar_ruta, name='eliminar_ruta'),
 
-
-    #VENTAS
+    # VENTAS
     path('venta/', views.lista_ventas_cliente, name='ventas_lista'),  # lista principal
     path('venta/<int:venta_id>/', views.venta_cliente_detalle, name='venta_cliente_detalle'),
     path('por-dia/', views.ventas_por_dia, name='ventas_por_dia'),
@@ -39,6 +37,6 @@ urlpatterns = [
 
     path('clientes/pdf/', views.descargar_clientes_pdf, name='descargar_clientes_pdf'),
 
-
+    path('clientes/data/', views.clientes_data, name='clientes_data'),
 
 ]

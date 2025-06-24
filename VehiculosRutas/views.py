@@ -236,7 +236,87 @@ def listar_clientes(request):
         'mostrar_todos': mostrar_todos
     })
 
+import json
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q
+from django.http import JsonResponse
+from django.template.loader import render_to_string
 
+@login_required
+def clientes_data(request):
+    # Parámetros de DataTables
+    draw   = int(request.GET.get('draw', 1))
+    start  = int(request.GET.get('start', 0))
+    length = int(request.GET.get('length', 10))
+    search_value = request.GET.get('search[value]', '').strip()
+
+    # Filtros personalizados
+    ruta_id = request.GET.get('ruta')
+    dia     = request.GET.get('dia')
+    mostrar_todos = request.GET.get('mostrar_todos') == '1'
+
+    qs = Cliente.objects.all()
+    if not mostrar_todos:
+        qs = qs.filter(estado=True)
+
+    if ruta_id == "sin_ruta":
+        qs = qs.filter(ruta__isnull=True)
+    elif ruta_id:
+        qs = qs.filter(ruta__id=ruta_id)
+
+    if dia == "sin_dia":
+        qs = qs.filter(clientediasvisita__isnull=True)
+    elif dia:
+        qs = qs.filter(clientediasvisita__dia_semana=dia)
+
+    # Búsqueda global por nombre o negocio
+    if search_value:
+        qs = qs.filter(
+            Q(nombre__icontains=search_value) |
+            Q(nombre_negocio__icontains=search_value) |
+            Q(direccion__icontains=search_value) |
+            Q(telefono__icontains=search_value)
+        )
+
+    total_records    = qs.count()
+    qs = qs.distinct().order_by('nombre')[start:start+length]
+
+    # Para evitar N+1
+    qs = qs.prefetch_related('clientediasvisita_set', 'ruta')
+
+    data = []
+    for cliente in qs:
+        # Compongo los días de visita
+        dias = cliente.clientediasvisita_set.all()
+        if dias:
+            lista_dias = ", ".join(d.get_dia_semana_display() for d in dias)
+        else:
+            lista_dias = "No asignados"
+
+        # Renderizo los botones de acciones desde un partial
+        acciones_html = render_to_string('VehiculosRutas/clientes/_acciones.html',
+                                         {'cliente': cliente},
+                                         request=request)
+
+        data.append({
+            'nombre'       : cliente.nombre,
+            'nombre_negocio': cliente.nombre_negocio,
+            'direccion'    : cliente.direccion,
+            'telefono'     : cliente.telefono,
+            'ruta'         : cliente.ruta.nombre if cliente.ruta else '',
+            'dias_visita'  : lista_dias,
+            'estado'       : '<span class="badge bg-custom-success">Activo</span>'
+                              if cliente.estado
+                              else '<span class="badge bg-custom-danger">Inactivo</span>',
+            'acciones'     : acciones_html,
+        })
+
+    return JsonResponse({
+        'draw'            : draw,
+        'recordsTotal'    : total_records,
+        'recordsFiltered' : total_records,
+        'data'            : data
+    })
 def descargar_clientes_pdf(request):
     ruta = request.GET.get('ruta')
     dia = request.GET.get('dia')

@@ -23,6 +23,8 @@
         .filtros select {
             margin-right: 1rem;
         }
+
+
     </style>
 
 
@@ -79,61 +81,15 @@
                     <th>Nombre</th>
                     <th>Negocio</th>
                     <th>Dirección</th>
-                    <th style="text-align: left;">Teléfono</th>
-                    <th style="text-align: left;">Ruta</th>
+                    <th>Teléfono</th>
+                    <th>Ruta</th>
                     <th>Días de Visita</th>
                     <th>Estado</th>
-                    <th class="text-center">Acciones</th>
+                    <th>Acciones</th>
                 </tr>
                 </thead>
                 <tbody>
-                {% for cliente in clientes %}
-                    <tr>
-                        <td class="truncate-text" title="{{ cliente.nombre }}">{{ cliente.nombre }}</td>
-                        <td class="truncate-text" title="{{ cliente.nombre_negocio }}">{{ cliente.nombre_negocio }}</td>
-                        <td class="truncate-text" title="{{ cliente.direccion }}">{{ cliente.direccion }}</td>
-                        <td style="text-align: left;" class="truncate-text"
-                            title="{{ cliente.telefono }}">{{ cliente.telefono }}</td>
-                        <td style="text-align: left;" class="truncate-text"
-                            title="{{ cliente.ruta }}">{{ cliente.ruta }}</td>
-                        <td class="truncate-text">
-                            {% for dia in cliente.clientediasvisita_set.all %}
-                                <span class="truncate-text"
-                                      title="{{ dia.get_dia_semana_display }}">{{ dia.get_dia_semana_display }}</span>
-                                {% if not forloop.last %}, {% endif %}
-                            {% empty %}
-                                <span class="text-muted">No asignados</span>
-                            {% endfor %}
-                        </td>
-                        <td class="text-center">
-                            {% if cliente.estado %}
-                                <span class="badge bg-custom-success">Activo</span>
-                            {% else %}
-                                <span class="badge bg-custom-danger">Inactivo</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-center">
-                            <div class="d-flex justify-content-center gap-2">
-                                <a href="{% url 'editar_cliente' cliente.id %}" class="btn btn-custom-info btn-sm"
-                                   title="Editar">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-
-
-                                <a href="{% url 'eliminar_cliente' cliente.id %}"
-                                   class="btn btn-custom-danger btn-sm btn-delete" title="Eliminar">
-                                    <i class="bi bi-trash"></i>
-                                </a>
-
-
-                                <a href="{% url 'editar_dias_visita' cliente.id %}"
-                                   class="btn btn-custom-warning btn-sm" title="Editar días de visita">
-                                    <i class="bi bi-calendar"></i>
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                {% endfor %}
+                {# DataTables llenará esto vía AJAX #}
                 </tbody>
             </table>
 
@@ -146,7 +102,7 @@
                 <i class="bi bi-download me-2"></i> Descargar PDF
             </a>
 
-        
+
             <!-- Switch mostrar todos -->
             <div class="form-check form-switch mt-4">
                 <input class="form-check-input" type="checkbox" id="toggleEstado"
@@ -166,60 +122,59 @@
     <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
 
     <script>
-
-
-        // Switch lógica
-        $('#toggleEstado').on('change', function () {
-            const isChecked = $(this).is(':checked');
-            const url = new URL(window.location.href);
-
-            if (isChecked) {
-                url.searchParams.set('mostrar_todos', '1');
-            } else {
-                url.searchParams.delete('mostrar_todos');
-            }
-
-            window.location.href = url.toString();
-        });
-
-
         $(document).ready(function () {
-            $('#clientesTable').DataTable({
-                columnDefs: [
-                    {width: "15%", targets: 0},
-                    {width: "15%", targets: 1},
-                    {width: "20%", targets: 2},
-                    {width: "10%", targets: 3},
-                    {width: "10%", targets: 4},
-                    {width: "15%", targets: 5},
-                    {width: "5%", targets: 6, className: "text-center"},
-                    {width: "10%", targets: 7, className: "text-center"}
-                ],
-                language: {
-                    "emptyTable": "No hay datos disponibles",
-                    "info": "Mostrando _START_ a _END_ de _TOTAL_ clientes",
-                    "infoEmpty": "Mostrando 0 a 0 de 0 clientes",
-                    "infoFiltered": "(filtrado de _MAX_ clientes totales)",
-                    "lengthMenu": "Mostrar _MENU_ clientes",
-                    "loadingRecords": "Cargando...",
-                    "processing": "Procesando...",
-                    "search": "Buscar:",
-                    "zeroRecords": "No se encontraron clientes",
-                    "paginate": {
-                        "first": '<i class="bi bi-rewind-fill"></i>',
-                        "last": '<i class="bi bi-fast-forward-fill"></i>',
-                        "next": '<i class="bi bi-caret-right-fill"></i>',
-                        "previous": '<i class="bi bi-caret-left-fill"></i>'
+            const table = $('#clientesTable').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: {
+                    url: '{% url "clientes_data" %}',
+                    data: function (d) {
+                        // Incluimos los filtros actuales
+                        d.ruta = $('#ruta').val();
+                        d.dia = $('#dia').val();
+                        d.mostrar_todos = $('#toggleEstado').is(':checked') ? '1' : '';
                     }
                 },
-                responsive: true
+                columns: [
+                    {data: 'nombre'},
+                    {data: 'nombre_negocio'},
+                    {data: 'direccion'},
+                    {data: 'telefono'},
+                    {data: 'ruta'},
+                    {data: 'dias_visita'},
+                    {data: 'estado', orderable: false, searchable: false},
+                    {data: 'acciones', orderable: false, searchable: false}
+                ],
+                language: {
+
+
+                    emptyTable: "No hay datos disponibles",
+                    info: "Mostrando _START_ a _END_ de _TOTAL_ clientes",
+                    infoEmpty: "Mostrando 0 a 0 de 0 clientes",
+                    lengthMenu: "Mostrar _MENU_ clientes",
+                    search: "Buscar:",
+                    paginate: {
+                        first: '<i class="bi bi-rewind-fill"></i>',
+                        last: '<i class="bi bi-fast-forward-fill"></i>',
+                        next: '<i class="bi bi-caret-right-fill"></i>',
+                        previous: '<i class="bi bi-caret-left-fill"></i>'
+                    }
+                },
+                responsive: true,
             });
 
+            // Refrescar tabla al cambiar filtros
+            $('#ruta, #dia').on('change', function () {
+                table.ajax.reload();
+            });
+            $('#toggleEstado').on('change', function () {
+                table.ajax.reload();
+            });
 
-            $('.btn-delete').on('click', function (e) {
+            // Confirmación de borrado (delegación de evento)
+            $('#clientesTable').on('click', '.btn-delete', function (e) {
                 e.preventDefault();
                 const url = $(this).attr('href');
-
                 Swal.fire({
                     title: '¿Estás seguro?',
                     text: "Esta acción desactivará el cliente.",
@@ -229,32 +184,11 @@
                     cancelButtonColor: 'var(--secondary-color)',
                     confirmButtonText: 'Sí, desactivar',
                     cancelButtonText: 'Cancelar'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.location.href = url;
-                    }
+                }).then(result => {
+                    if (result.isConfirmed) window.location.href = url;
                 });
             });
         });
-
-        // Notificaciones con Notyf
-        {% if messages %}
-            const notyf = new Notyf({
-                duration: 3000,
-                position: {x: 'right', y: 'bottom'},
-                dismissible: true,
-                types: [
-                    {type: 'Success'},
-                    {type: 'Error'}
-                ]
-            });
-            {% for message in messages %}
-                {% if message.tags == 'success' %}
-                    notyf.success("{{ message }}");
-                {% elif message.tags == 'error' %}
-                    notyf.error("{{ message }}");
-                {% endif %}
-            {% endfor %}
-        {% endif %}
     </script>
+
 {% endblock %}
