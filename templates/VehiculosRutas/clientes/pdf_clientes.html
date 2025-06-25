@@ -1,56 +1,64 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <style>
-        table, th, td {
-            border: 1px solid black;
-            border-collapse: collapse;
-        }
-
-        td {
-            padding-top: 3px;
-            padding-left: 3px;
-        }
-
-        th {
-            padding-top: 3px;
-            background-color:#dcdcdc;
-
-        }
 
 
-        footer {
-            background-color: #eaeaea;
-            text-align: center;
-            position: fixed;
-            width: 100%;
-        }
+<style>
 
-        .foo {
-            padding-top: 5px;
-           
-        }
-        
-        
-        
-        
-          h2 {
-          
-            font-size: 16px;
-            text-align: center;
-         
-           
-        }
+    @page {
+        size: A4 landscape;
+        margin: 1cm;
+    }
 
-     
+    body {
+        font-family: Arial, sans-serif;
+        font-size: 7px;
+    }
+
+    table, th, td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        table-layout: fixed; /* Muy importante para que los anchos fijos funcionen */
+        width: 100%;
+    }
+
+    th, td {
+        padding: 2px 0px 0px 2px; /* top → right → bottom → left*/
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 
 
-        
-        
-        
+    footer {
+        background-color: #eaeaea;
+        text-align: center;
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+    }
 
-    </style>
-</head>
+    .foo {
+        padding-top: 5px;
+    }
+
+    h2 {
+        font-size: 16px;
+        text-align: center;
+    }
+
+    .col-giro {
+        width: 50%; /* ajusta según necesites */
+    }
+
+    .col-exhibidor {
+        width: 50% /* ajusta según necesites */
+    }
+
+    .col-telefono {
+        width: 50% /* ajusta según necesites */
+    }
+</style>
+
 <body>
 
 <h2>Listado de Clientes</h2>
@@ -65,13 +73,14 @@
     <tr>
         <th>Nombre</th>
         <th>Negocio</th>
+        <th class="col-giro">Giro</th>
         <th>Dirección</th>
         <th>Localidad</th>
         <th>Colonia</th>
-        <th>Teléfono</th>
-        <th>Ruta</th>
-        <th>Días de Visita</th>
-     
+        <th class="col-telefono">Teléfono</th>
+        <th class="col-exhibidor">Exhibidor</th>
+
+
     </tr>
     </thead>
     <tbody>
@@ -79,25 +88,19 @@
         <tr>
             <td>{{ cliente.nombre }}</td>
             <td>{{ cliente.nombre_negocio }}</td>
+            <td class="col-giro">{{ cliente.giro }}</td>
             <td>{{ cliente.direccion }}</td>
-        <td>{{ cliente.localidad }}</td>
-        <td>{{ cliente.colonia }}</td>
-            <td>{{ cliente.telefono }}</td>
-            <td>{{ cliente.ruta|default:"Sin ruta" }}</td>
-            <td>
-                {% for dia in cliente.clientediasvisita_set.all %}
-                    {{ dia.get_dia_semana_display }}{% if not forloop.last %}, {% endif %}
-                {% empty %}
-                    No asignados
-                {% endfor %}
-            </td>
-           
+            <td>{{ cliente.localidad }}</td>
+            <td>{{ cliente.colonia }}</td>
+            <td class="col-telefono">{{ cliente.telefono }}</td>
+            <td class="col-exhibidor">{{ cliente.tipo_exhibidor }}</td>
+
+
         </tr>
     {% endfor %}
     </tbody>
 </table>
-<div style="text-align: right; padding-top: 10px;" ><strong>Número de Clientes:</strong> {{ clientes|length }}</div>
-<!-- Optional footer -->
+<div style="text-align: right; padding-top: 10px;"><strong>Número de Clientes:</strong> {{ clientes|length }}</div>
 <footer>
     <p class="foo">&copy; 2025 OSMIT SISTEM</p>
 </footer>

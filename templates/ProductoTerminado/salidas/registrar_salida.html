@@ -49,6 +49,7 @@
                     <thead>
                     <tr>
                         <th>Producto</th>
+                        <th style="text-align: left;">Presentación</th>
                         <th style="text-align: left;">Gramaje</th>
                         <th style="text-align: left;">Stock Disponible</th>
                         <th>Cantidad a salir</th>
@@ -58,6 +59,7 @@
                     {% for producto in productos %}
                         <tr>
                             <td>{{ producto.nombre }}</td>
+                            <td>{{ producto.presentacion_producto_terminado }}</td>
                             <td style="text-align: left;">{{ producto.gramaje_producto_terminado.nombre }}</td>
                             <td style="text-align: left;">
                                 {% if producto.stock == 0 %}
@@ -72,7 +74,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <input type="number" step="any"  min="0" name="cantidad_{{ producto.id }}"
+                                <input type="number" step="any" min="0" name="cantidad_{{ producto.id }}"
                                        class="form-control" placeholder="0.0">
                             </td>
                         </tr>
@@ -121,10 +123,11 @@
                 pageLength: 50,
                 responsive: true,
                 columnDefs: [
-                    {width: "30%", targets: 0},
-                    {width: "20%", targets: 1},
+                    {width: "20%", targets: 0},
+                    {width: "15%", targets: 1},
                     {width: "20%", targets: 2},
-                    {width: "30%", targets: 3},
+                    {width: "20%", targets: 3},
+                    {width: "25%", targets: 4},
                 ],
                 language: {
                     "decimal": "",

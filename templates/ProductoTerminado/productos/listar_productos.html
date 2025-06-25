@@ -34,11 +34,11 @@
                 <thead>
                 <tr>
                     <th>Nombre</th>
+                    <th>Presentación</th>
                     <th>Gramaje</th>
-                    <th>Costo</th>
-                    <th>Precio</th>
-                    <th>Categoría</th>
-                    <th>Stock</th>
+                    <th style="text-align: center">Costo</th>
+                    <th style="text-align: center">Precio</th>
+                    <th style="text-align: center">Stock</th>
                     <th>Estado</th>
                     <th class="text-center">Acciones</th>
                 </tr>
@@ -47,12 +47,13 @@
                 {% for producto in productos %}
                     <tr>
                         <td class="truncate-text" title="{{ producto.nombre }}">{{ producto.nombre }}</td>
-                     <td>${{ producto.gramaje_producto_terminado.nombre }}</td>
-                        <td>${{ producto.costo }}</td>
-                        <td>${{ producto.precio }}</td>
                         <td class="truncate-text"
-                            title="{{ producto.categoria_producto }}">{{ producto.categoria_producto }}</td>
-                        <td>{{ producto.stock }}</td>
+                            title="{{ producto.presentacion_producto_terminado }}">{{ producto.presentacion_producto_terminado }}</td>
+                        <td>{{ producto.gramaje_producto_terminado.nombre }}</td>
+                        <td  style="text-align: center">${{ producto.costo }}</td>
+                        <td  style="text-align: center">${{ producto.precio }}</td>
+
+                        <td  style="text-align: center">{{ producto.stock }}</td>
                         <td class="text-center">
                             {% if producto.estado %}
                                 <span class="badge bg-custom-success">Activo</span>
