@@ -323,7 +323,7 @@ def lista_pedidos(request):
     Vista para listar los pedidos de producción.
     Se muestran todos los pedidos ordenados por fecha, de modo que los más recientes aparezcan primero.
     """
-    pedidos = PedidoProduccion.objects.all().order_by('-fecha_pedido')[:50]  # Solo consulta 50
+    pedidos = PedidoProduccion.objects.all().order_by('-fecha_pedido')[:100]  # Solo consulta 100
     return render(request, 'ProductoGranel/pedidos/lista_pedidos.html', {'pedidos': pedidos})
 
 
