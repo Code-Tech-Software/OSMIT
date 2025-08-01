@@ -333,7 +333,7 @@ def lista_pedidos_produccion(request):
     Vista para listar los pedidos de producción.
     Se muestran todos los pedidos ordenados por fecha, de modo que los más recientes aparezcan primero.
     """
-    pedidos = PedidoProduccion.objects.all().order_by('-fecha_pedido')[:50]  # Solo consulta 50
+    pedidos = PedidoProduccion.objects.all().order_by('-fecha_pedido')[:100]  # Solo consulta 100
     return render(request, 'Produccion/lista_pedidos.html', {'pedidos': pedidos})
 
 
@@ -963,7 +963,8 @@ def indicadores_dashboard(request):
     productos_sin_stock = productos_activos.filter(stock=0).count()
 
     # Pedidos pendientes
-    pedidos_pendientes = PedidoProduccion.objects.filter(estado='pendiente').count()
+    ultimos_pedidos_ids = PedidoProduccion.objects.order_by('-id').values_list('id', flat=True)[:100]
+    pedidos_pendientes = PedidoProduccion.objects.filter(id__in=ultimos_pedidos_ids, estado='pendiente').count()
 
     # Valor total del stock (stock * costo), solo para productos activos
     productos_con_valor = productos_activos.annotate(
