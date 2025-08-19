@@ -21,7 +21,6 @@ class Usuario(AbstractUser):
     direccion = models.TextField(blank=True, null=True)
     foto = models.ImageField(upload_to='fotos_perfil/', blank=True, null=True)
 
-
     def __str__(self):
         return self.first_name + " " + self.last_name
 
