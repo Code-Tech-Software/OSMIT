@@ -15,7 +15,7 @@
     </div>
 
     <div class="custom-card mt-4">
-        <form method="post">
+        <form id="salidaForm" method="post">
             {% csrf_token %}
 
             <div class="row">
@@ -119,7 +119,7 @@
 
     <script>
         $(document).ready(function () {
-            $('#productosTable').DataTable({
+            window.productosDT = $('#productosTable').DataTable({
                 pageLength: 50,
                 responsive: true,
                 columnDefs: [
@@ -153,25 +153,7 @@
 
 
     <!-- Notificaciones -->
-    <script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
-
-    {% if messages %}
-        <script>
-            const notyf = new Notyf({
-                duration: 9000,
-                position: {x: 'right', y: 'bottom'},
-                dismissible: true,
-            });
-
-            {% for message in messages %}
-                {% if message.tags == 'success' %}
-                    notyf.success("{{ message }}");
-                {% elif message.tags == 'error' %}
-                    notyf.error("{{ message }}");
-                {% endif %}
-            {% endfor %}
-        </script>
-    {% endif %}
+    {% include 'Partials/notificaciones.html' %}
 
 
 
@@ -179,39 +161,41 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        const form = document.querySelector('form');
+        const form = document.getElementById('salidaForm');
         const submitBtn = document.getElementById('submitBtn');
         const confirmSubmit = document.getElementById('confirmSubmit');
         const resumenPedido = document.getElementById('resumenPedido');
         const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
 
         form.addEventListener('submit', function (e) {
-            e.preventDefault();  // Evita el envío inmediato
+            e.preventDefault();
 
+            const dt = window.productosDT;
+            const inputs = dt.$('input[name^="cantidad_"]'); // <- TODAS las páginas
             const rows = [];
-            document.querySelectorAll('input[name^="cantidad_"]').forEach(input => {
-                const cantidad = parseFloat(input.value);
-                if (cantidad > 0) {
-                    const row = input.closest('tr');
-                    const nombre = row.children[0].textContent.trim();
-                    const gramaje = row.children[1].textContent.trim();
-                    const stock = row.children[2].textContent.trim();
+
+            inputs.each(function () {
+                const val = parseFloat(this.value);
+                if (!isNaN(val) && val > 0) {
+                    const tr = this.closest('tr');              // funciona aunque la fila no esté en el documento
+                    const tds = tr ? tr.children : [];
+                    const nombre = tds[0]?.textContent.trim() || '';
+                    const present = tds[1]?.textContent.trim() || '';
+                    const gramaje = tds[2]?.textContent.trim() || '';
+                    const stock = tds[3]?.textContent.trim() || '';
 
                     rows.push(`<tr>
-                        <td>${nombre}</td>
-                        <td>${gramaje}</td>
-                        <td>${stock}</td>
-                        <td>${cantidad}</td>
-                    </tr>`);
+          <td>${nombre}</td>
+          <td>${present}</td>
+          <td>${gramaje}</td>
+          <td>${stock}</td>
+          <td>${val}</td>
+        </tr>`);
                 }
             });
 
             if (rows.length === 0) {
-                const notyf = new Notyf({
-                    duration: 2000,
-                    position: {x: 'right', y: 'bottom'},
-                    dismissible: true
-                });
+                const notyf = new Notyf({duration: 2000, position: {x: 'right', y: 'bottom'}, dismissible: true});
                 notyf.error("Debe ingresar al menos una cantidad mayor a 0.");
                 return;
             }
@@ -221,47 +205,57 @@
             const nota = document.querySelector('[name="nota"]').value || '(Sin nota)';
 
             resumenPedido.innerHTML = `
-    <div class="mb-3 p-3 bg-light rounded">
+      <div class="mb-3 p-3 bg-light rounded">
         <p class="mb-1"><strong>Ruta:</strong> ${ruta}</p>
         <p class="mb-1"><strong>Destino:</strong> ${destino}</p>
         <p class="mb-0"><strong>Nota:</strong> ${nota}</p>
-    </div>
-    <div class="table-responsive">
+      </div>
+      <div class="table-responsive">
         <table class="table table-bordered table-sm">
-            <thead class="table-light">
-                <tr>
-                    <th>Producto</th>
-                    <th>Gramaje</th>
-                    <th>Stock</th>
-                    <th>Cantidad</th>
-                </tr>
-            </thead>
-            <tbody>${rows.join('')}</tbody>
+          <thead class="table-light">
+            <tr>
+              <th>Producto</th>
+              <th>Presentación</th>
+              <th>Gramaje</th>
+              <th>Stock</th>
+              <th>Cantidad</th>
+            </tr>
+          </thead>
+          <tbody>${rows.join('')}</tbody>
         </table>
-    </div>
-`;
+      </div>
+    `;
 
-            confirmModal.show(); // Mostrar modal
+            confirmModal.show();
         });
 
         confirmSubmit.addEventListener('click', function () {
+            const dt = window.productosDT;
+            const formEl = document.getElementById('salidaForm');
 
-            // Spinner en botón de confirmar
+            // Deshabilitar botones + spinner
             confirmSubmit.disabled = true;
             confirmSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando Salida...';
-
-
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando...';
-            form.submit(); // Ahora sí se envía
+
+            // Recorre TODOS los inputs, y si no están en el documento (páginas ocultas), duplícalos como hidden
+            dt.$('input[name^="cantidad_"]').each(function () {
+                if (!document.contains(this) && this.value !== '') {
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = this.name;
+                    hidden.value = this.value;
+                    formEl.appendChild(hidden);
+                }
+            });
+
+            formEl.submit();
         });
-    </script>
 
-    <script>
+        // Evitar Enter dispare submit fuera de textarea
         document.addEventListener('DOMContentLoaded', function () {
-            const form = document.querySelector('form');
-
-            // Previene que se envíe el formulario con Enter en inputs
+            const form = document.getElementById('salidaForm');
             form.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter' && e.target.tagName.toLowerCase() !== 'textarea') {
                     e.preventDefault();
@@ -269,4 +263,6 @@
             });
         });
     </script>
+
+
 {% endblock %}

@@ -5,6 +5,7 @@
     <!-- Estilos personalizados -->
     <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
     <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
 
     <div>
         <span class="fw-bold text-dark">Inventario</span>
@@ -13,7 +14,7 @@
     </div>
 
     <div class="custom-card mt-4">
-        <form method="post">
+        <form id="salidaGranelForm" method="post">
             {% csrf_token %}
 
             <!-- Selector de Destino -->
@@ -24,7 +25,6 @@
 
             <!-- Tabla de Productos -->
             <div class="mt-4">
-
                 <div class="table-responsive mt-3">
                     <table id="productosTable" class="table table-striped table-bordered">
                         <thead>
@@ -46,8 +46,7 @@
                                     {% elif producto.stock <= producto.stock_min %}
                                         <span class="fw-semibold">{{ producto.stock }}</span>
                                         <span class="fw-light"> {{ producto.unidad_medida }}</span>
-                                        <i class="bi bi-exclamation-triangle-fill text-warning ms-2"
-                                           title="Stock bajo"></i>
+                                        <i class="bi bi-exclamation-triangle-fill text-warning ms-2" title="Stock bajo"></i>
                                     {% else %}
                                         <span class="fw-semibold">{{ producto.stock }}</span>
                                         <span class="fw-light"> {{ producto.unidad_medida }}</span>
@@ -71,15 +70,32 @@
             </div>
 
             <!-- Botón -->
-
             <div class="text-end mt-4">
                 <button type="submit" class="btn btn-custom-danger" id="submitBtn">
                     <i class="bi bi-box-arrow-up"></i> Registrar Salida
                 </button>
             </div>
-
-
         </form>
+    </div>
+
+    <!-- Modal de confirmación -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmModalLabel">Confirmar salida de producto a granel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>Resumen de selección:</h6>
+                    <div id="resumenSalida" style="max-height: 400px; overflow-y: auto; word-wrap: break-word;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-custom-danger" id="confirmSubmit">Confirmar y registrar</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- JS: jQuery + DataTables -->
@@ -88,7 +104,7 @@
 
     <script>
         $(document).ready(function () {
-            $('#productosTable').DataTable({
+            window.productosDT = $('#productosTable').DataTable({
                 pageLength: 50,
                 responsive: true,
                 columnDefs: [
@@ -118,22 +134,104 @@
         });
     </script>
 
+ {% include 'Partials/notificaciones.html' %}
 
+
+    <!-- Bootstrap (Modal) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Lógica del modal de confirmación -->
     <script>
-        const form = document.querySelector('form');
+        const form = document.getElementById('salidaGranelForm');
         const submitBtn = document.getElementById('submitBtn');
+        const confirmSubmit = document.getElementById('confirmSubmit');
+        const resumenSalida = document.getElementById('resumenSalida');
+        const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
 
-        form.addEventListener('submit', function () {
+        // Interceptar submit para armar resumen y mostrar modal
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const dt = window.productosDT || $('#productosTable').DataTable();
+            const inputs = dt.$('input[name^="cantidad_"]'); // TODAS las páginas
+            const rows = [];
+
+            inputs.each(function () {
+                const val = parseFloat(this.value);
+                if (!isNaN(val) && val > 0) {
+                    const tr = this.closest('tr');
+                    const tds = tr ? tr.children : [];
+                    const nombre = tds[0]?.textContent.trim() || '';
+                    const stock = tds[1]?.textContent.trim() || '';
+
+                    rows.push(`
+                        <tr>
+                            <td>${nombre}</td>
+                            <td>${stock}</td>
+                            <td>${val}</td>
+                        </tr>
+                    `);
+                }
+            });
+
+            if (rows.length === 0) {
+                const notyf = new Notyf({duration: 2500, position: {x: 'right', y: 'bottom'}, dismissible: true});
+                notyf.error('Debes ingresar al menos una cantidad mayor a 0.');
+                return;
+            }
+
+            const destinoEl = document.querySelector('#id_destino');
+            const destinoTxt = destinoEl?.selectedOptions?.[0]?.text || '(Sin destino)';
+            const nota = document.querySelector('#id_nota')?.value || '(Sin nota)';
+
+            resumenSalida.innerHTML = `
+                <div class="mb-3 p-3 bg-light rounded">
+                    <p class="mb-1"><strong>Destino:</strong> ${destinoTxt}</p>
+                    <p class="mb-0"><strong>Nota:</strong> ${nota}</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th>Stock Disponible</th>
+                                <th>Cantidad a retirar</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows.join('')}</tbody>
+                    </table>
+                </div>
+            `;
+
+            confirmModal.show();
+        });
+
+        // Confirmar y enviar (clona inputs de páginas ocultas)
+        confirmSubmit.addEventListener('click', function () {
+            const dt = window.productosDT || $('#productosTable').DataTable();
+
+            // Deshabilitar botones + spinners
+            confirmSubmit.disabled = true;
+            confirmSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando Salida...';
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando...';
+
+            // Clonar inputs de páginas no visibles
+            dt.$('input[name^="cantidad_"]').each(function () {
+                if (!document.contains(this) && this.value !== '') {
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = this.name;
+                    hidden.value = this.value;
+                    form.appendChild(hidden);
+                }
+            });
+
+            form.submit();
         });
-    </script>
 
-    <script>
+        // Evitar Enter dispare submit fuera de textarea
         document.addEventListener('DOMContentLoaded', function () {
-            const form = document.querySelector('form');
-
-            // Previene que se envíe el formulario con Enter en inputs
             form.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter' && e.target.tagName.toLowerCase() !== 'textarea') {
                     e.preventDefault();
@@ -141,27 +239,4 @@
             });
         });
     </script>
-    
-    
-    <!-- Notificaciones con Notyf -->
-    <script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
-
-    {% if messages %}
-        <script>
-            const notyf = new Notyf({
-                duration: 9000,
-                position: {x: 'right', y: 'bottom'},
-                dismissible: true
-            });
-
-            {% for message in messages %}
-                {% if message.tags == 'success' %}
-                    notyf.success("{{ message }}");
-                {% elif message.tags == 'error' %}
-                    notyf.error("{{ message }}");
-                {% endif %}
-            {% endfor %}
-        </script>
-    {% endif %}
 {% endblock %}

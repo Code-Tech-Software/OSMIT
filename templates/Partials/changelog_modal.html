@@ -1,0 +1,108 @@
+{# Base/partials/changelog_modal.html #}
+{% comment %}
+Incluir así (puedes ajustar la versión y el título):
+{% include 'Base/partials/changelog_modal.html' with changelog_version='1.3.0' changelog_title='Novedades — v1.3.0 (19 Ago 2025)' %}
+
+Reglas:
+- Cambia `changelog_version` en cada release (p. ej. '1.3.0'). Si cambia, el modal vuelve a mostrarse una vez.
+- Edita el contenido de <ul> con tus cambios.
+- Requiere Bootstrap 5 JS cargado en la base.
+{% endcomment %}
+
+<div class="modal fade" id="changelogModal" tabindex="-1" aria-labelledby="changelogLabel" aria-hidden="true"
+     data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <!-- Header -->
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title d-flex align-items-center gap-2" id="changelogLabel">
+                        {{ changelog_title|default:"Novedades de la plataforma" }}
+                        <span class="badge text-white" style="background-color:#1CC88A;">{{ changelog_version|default:"v1.0.0" }}</span>
+                    </h5>
+
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body">
+                <p class="mb-3">Esto es lo más reciente que incorporamos. ¡Gracias por tus comentarios! 🙌</p>
+
+                <!-- Novedades -->
+                <h6 class="mb-2">Novedades</h6>
+                <div class="list-group list-group-flush mb-3">
+                    <div class="list-group-item d-flex align-items-start gap-2">
+                        <span>✅</span>
+                        <div>Modal de confirmación en entradas y salidas que recorre todas las páginas de DataTables.
+                        </div>
+                    </div>
+                    <div class="list-group-item d-flex align-items-start gap-2">
+                        <span>🔔</span>
+                        <div>Notificaciones centralizadas con Notyf mediante <em>include</em> reutilizable.</div>
+                    </div>
+                </div>
+
+                <!-- Mejoras -->
+                <h6 class="mb-2">Mejoras</h6>
+                <div class="list-group list-group-flush mb-3">
+                    <div class="list-group-item d-flex align-items-start gap-2">
+                        <span>🔍</span>
+                        <div>Búsqueda y paginación optimizadas en tablas de inventario.</div>
+                    </div>
+                    <div class="list-group-item d-flex align-items-start gap-2">
+                        <span>⚙️</span>
+                        <div>Validaciones más claras en formularios y manejo de errores.</div>
+                    </div>
+                </div>
+
+                <!-- Correcciones -->
+                <h6 class="mb-2">Correcciones</h6>
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item d-flex align-items-start gap-2">
+                        <span>🔒</span>
+                        <div>Ajustes de seguridad menores y saneamiento de entradas.</div>
+                    </div>
+                </div>
+
+
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" id="changelogLaterBtn">
+                    Ver más tarde
+                </button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="changelogOkBtn">
+                    Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        // Versión actual del changelog (si no pasas variable, usa un default)
+        const VERSION = "{{ changelog_version|default:'1.0.0' }}";
+        const STORAGE_KEY = "osmit_changelog_shown_" + VERSION;
+
+        // Si ya se mostró esta versión, no abrir
+        if (localStorage.getItem(STORAGE_KEY)) return;
+
+        // Requiere Bootstrap 5
+        const modalEl = document.getElementById('changelogModal');
+        if (!modalEl || typeof bootstrap === 'undefined' || !bootstrap.Modal) return;
+
+        const modal = new bootstrap.Modal(modalEl, {backdrop: true, keyboard: true});
+        modal.show();
+
+        // “Entendido” => marcar como visto esta versión (ya no volverá a salir)
+        document.getElementById('changelogOkBtn')?.addEventListener('click', function () {
+            localStorage.setItem(STORAGE_KEY, '1');
+        });
+
+        // “Ver más tarde” => NO guardamos nada; volverá a salir hasta que se presione “Entendido”
+    })();
+</script>

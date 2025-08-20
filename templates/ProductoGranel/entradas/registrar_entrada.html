@@ -2,9 +2,10 @@
 {% load static %}
 
 {% block content %}
-    <!-- Estilos personalizados -->
+    <!-- Estilos -->
     <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
     <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
 
     <div>
         <span class="fw-bold text-dark">Inventario</span>
@@ -13,13 +14,11 @@
     </div>
 
     <div class="custom-card mt-4">
-
-
-        <form method="post">
+        <form id="entradaGranelForm" method="post">
             {% csrf_token %}
 
             <div class="table-responsive">
-                <table id="productosTable" class="table table-striped table-bordered ">
+                <table id="productosTable" class="table table-striped table-bordered">
                     <thead>
                     <tr>
                         <th>Producto</th>
@@ -32,18 +31,14 @@
                         <tr>
                             <td>{{ producto.nombre }}</td>
                             <td style="text-align: left;">
-
-
                                 {% if producto.stock == 0 %}
-                                    <span class="text-danger  fw-semibold">{{ producto.stock }}</span>
+                                    <span class="text-danger fw-semibold">{{ producto.stock }}</span>
                                     <span class="text-danger fw-light"> {{ producto.unidad_medida }}</span>
                                     <i class="bi bi-x-octagon-fill text-danger ms-1" title="Producto agotado"></i>
                                 {% elif producto.stock <= producto.stock_min %}
-
                                     <span class="fw-semibold">{{ producto.stock }}</span>
                                     <span class="fw-light"> {{ producto.unidad_medida }}</span>
-                                    <i class="bi bi-exclamation-triangle-fill text-warning ms-2"
-                                       title="Stock por debajo del mínimo"></i>
+                                    <i class="bi bi-exclamation-triangle-fill text-warning ms-2" title="Stock por debajo del mínimo"></i>
                                 {% else %}
                                     <span class="fw-semibold">{{ producto.stock }}</span>
                                     <span class="fw-light"> {{ producto.unidad_medida }}</span>
@@ -59,10 +54,9 @@
                 </table>
             </div>
 
-            <div>
+            <div class="mt-3">
                 <label for="nota" class="form-label fw-semibold">Nota (opcional):</label>
-                <textarea name="nota" id="nota" class="form-control" rows="3"
-                          placeholder="Detalles adicionales..."></textarea>
+                <textarea name="nota" id="nota" class="form-control" rows="3" placeholder="Detalles adicionales..."></textarea>
             </div>
 
             <div class="text-end mt-3">
@@ -73,20 +67,39 @@
         </form>
     </div>
 
+    <!-- Modal de confirmación -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmModalLabel">Confirmar entrada de producto a granel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>Resumen de productos seleccionados:</h6>
+                    <div id="resumenEntrada" style="max-height: 400px; overflow-y: auto; word-wrap: break-word;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-custom-success" id="confirmSubmit">Confirmar y registrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- JS: jQuery + DataTables -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
 
     <script>
         $(document).ready(function () {
-            $('#productosTable').DataTable({
-                pageLength: 50,          // Paginación por defecto a 50 registros
+            window.productosDT = $('#productosTable').DataTable({
+                pageLength: 50,
                 responsive: true,
                 columnDefs: [
                     {width: "40%", targets: 0},
                     {width: "30%", targets: 1},
                     {width: "30%", targets: 2},
-
                 ],
                 language: {
                     "decimal": "",
@@ -110,54 +123,102 @@
         });
     </script>
 
+    <!-- Notificaciones -->
+    {% include 'Partials/notificaciones.html' %}
 
+    <!-- Bootstrap (Modal) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Lógica del modal de confirmación -->
     <script>
-        const form = document.querySelector('form');
+        const form = document.getElementById('entradaGranelForm');
         const submitBtn = document.getElementById('submitBtn');
+        const confirmSubmit = document.getElementById('confirmSubmit');
+        const resumenEntrada = document.getElementById('resumenEntrada');
+        const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
 
-        form.addEventListener('submit', function () {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando...';
-        });
-    </script>
+        // Interceptar submit para armar el resumen
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
 
+            const dt = window.productosDT;
+            const inputs = dt.$('input[name^="cantidad_"]'); // TODAS las páginas
+            const rows = [];
 
-    <!-- Notificaciones con Notyf -->
-    <script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
+            inputs.each(function () {
+                const val = parseFloat(this.value);
+                if (!isNaN(val) && val > 0) {
+                    const tr = this.closest('tr');
+                    const tds = tr ? tr.children : [];
+                    const nombre = tds[0]?.textContent.trim() || '';
+                    const stock = tds[1]?.textContent.trim() || '';
+                    const cantidad = val;
 
-    {% if messages %}
-        <script>
-            const notyf = new Notyf({
-                duration: 9000,
-                position: {x: 'right', y: 'bottom'},
-                dismissible: true,
-                types: [
-                    {type: 'Success'},
-                    {type: 'Error'}
-                ]
+                    rows.push(`
+                        <tr>
+                            <td>${nombre}</td>
+                            <td>${stock}</td>
+                            <td>${cantidad}</td>
+                        </tr>
+                    `);
+                }
             });
 
-            {% for message in messages %}
-                {% if message.tags == 'success' %}
-                    notyf.success("{{ message }}");
-                {% elif message.tags == 'error' %}
-                    notyf.error("{{ message }}");
-                {% endif %}
-            {% endfor %}
-        </script>
-    {% endif %}
+            if (rows.length === 0) {
+                const notyf = new Notyf({duration: 2500, position: {x: 'right', y: 'bottom'}, dismissible: true});
+                notyf.error('Debes ingresar al menos una cantidad mayor a 0.');
+                return;
+            }
 
+            const nota = document.querySelector('#nota')?.value || '(Sin nota)';
 
+            resumenEntrada.innerHTML = `
+                <div class="mb-3 p-3 bg-light rounded">
+                    <p class="mb-0"><strong>Nota:</strong> ${nota}</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th>Stock Actual</th>
+                                <th>Cantidad a agregar</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows.join('')}</tbody>
+                    </table>
+                </div>
+            `;
 
+            confirmModal.show();
+        });
 
+        // Confirmar y enviar (clona inputs de páginas ocultas)
+        confirmSubmit.addEventListener('click', function () {
+            const dt = window.productosDT;
 
+            // Deshabilitar botones + spinners
+            confirmSubmit.disabled = true;
+            confirmSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando Entrada...';
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando...';
 
+            // Clonar inputs de páginas no visibles
+            dt.$('input[name^="cantidad_"]').each(function () {
+                if (!document.contains(this) && this.value !== '') {
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = this.name;
+                    hidden.value = this.value;
+                    form.appendChild(hidden);
+                }
+            });
 
-    <script>
+            form.submit();
+        });
+
+        // Evitar Enter dispare submit fuera de textarea
         document.addEventListener('DOMContentLoaded', function () {
-            const form = document.querySelector('form');
-            // Previene que se envíe el formulario con Enter en inputs
             form.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter' && e.target.tagName.toLowerCase() !== 'textarea') {
                     e.preventDefault();
@@ -165,5 +226,4 @@
             });
         });
     </script>
-
 {% endblock %}

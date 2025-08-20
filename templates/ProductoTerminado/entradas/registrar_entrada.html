@@ -5,6 +5,7 @@
     <!-- Estilos personalizados -->
     <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
     <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
 
     <div>
         <span class="fw-bold text-dark">Inventario</span>
@@ -13,7 +14,7 @@
     </div>
 
     <div class="custom-card mt-4">
-        <form method="post">
+        <form id="entradaForm" method="post">
             {% csrf_token %}
 
             <div class="table-responsive">
@@ -39,8 +40,7 @@
                                     <i class="bi bi-x-octagon-fill text-danger ms-1" title="Producto agotado"></i>
                                 {% elif producto.stock <= producto.stock_min %}
                                     <span class="fw-semibold">{{ producto.stock }}</span>
-                                    <i class="bi bi-exclamation-triangle-fill text-warning ms-2"
-                                       title="Stock bajo"></i>
+                                    <i class="bi bi-exclamation-triangle-fill text-warning ms-2" title="Stock bajo"></i>
                                 {% else %}
                                     <span class="fw-semibold">{{ producto.stock }}</span>
                                 {% endif %}
@@ -69,13 +69,35 @@
         </form>
     </div>
 
+    <!-- Modal de confirmación -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmModalLabel">Confirmar entrada de productos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>Resumen de productos seleccionados:</h6>
+                    <div id="resumenEntrada" style="max-height: 400px; overflow-y: auto; word-wrap: break-word;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-custom-success" id="confirmSubmit">
+                        Confirmar y registrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- JS: jQuery + DataTables -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
 
     <script>
         $(document).ready(function () {
-            $('#productosTable').DataTable({
+            window.productosDT = $('#productosTable').DataTable({
                 pageLength: 50,
                 responsive: true,
                 columnDefs: [
@@ -84,7 +106,6 @@
                     {width: "20%", targets: 2},
                     {width: "20%", targets: 3},
                     {width: "25%", targets: 4},
-
                 ],
                 language: {
                     "decimal": "",
@@ -106,27 +127,105 @@
                 }
             });
         });
-
-        // Deshabilita botón al enviar
-        const form = document.querySelector('form');
-        const submitBtn = document.getElementById('submitBtn');
-        form.addEventListener('submit', function () {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando...';
-        });
     </script>
 
     <!-- Notificaciones -->
-    <script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
+    {% include 'Partials/notificaciones.html' %}
 
-
-
+    <!-- Modal & Confirmación -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const form = document.querySelector('form');
+        const form = document.getElementById('entradaForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const confirmSubmit = document.getElementById('confirmSubmit');
+        const resumenEntrada = document.getElementById('resumenEntrada');
+        const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
 
-            // Previene que se envíe el formulario con Enter en inputs
+        // 1) Intercepta submit para mostrar el resumen
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const dt = window.productosDT;
+            const inputs = dt.$('input[name^="cantidad_"]'); // TODAS las páginas
+            const rows = [];
+
+            inputs.each(function () {
+                const val = parseFloat(this.value);
+                if (!isNaN(val) && val > 0) {
+                    const tr = this.closest('tr'); // funciona aunque la fila no esté en el DOM visible
+                    const tds = tr ? tr.children : [];
+                    const nombre = tds[0]?.textContent.trim() || '';
+                    const present = tds[1]?.textContent.trim() || '';
+                    const gramaje = tds[2]?.textContent.trim() || '';
+                    const stock = tds[3]?.textContent.trim() || '';
+
+                    rows.push(`<tr>
+                        <td>${nombre}</td>
+                        <td>${present}</td>
+                        <td>${gramaje}</td>
+                        <td>${stock}</td>
+                        <td>${val}</td>
+                    </tr>`);
+                }
+            });
+
+            if (rows.length === 0) {
+                const notyf = new Notyf({duration: 2500, position: {x: 'right', y: 'bottom'}, dismissible: true});
+                notyf.error('Debes ingresar al menos una cantidad mayor a 0.');
+                return;
+            }
+
+            const nota = document.querySelector('#nota')?.value || '(Sin nota)';
+
+            resumenEntrada.innerHTML = `
+                <div class="mb-3 p-3 bg-light rounded">
+                    <p class="mb-0"><strong>Nota:</strong> ${nota}</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th>Presentación</th>
+                                <th>Gramaje</th>
+                                <th>Stock</th>
+                                <th>Cantidad</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows.join('')}</tbody>
+                    </table>
+                </div>
+            `;
+
+            confirmModal.show();
+        });
+
+        // 2) Confirmar y enviar (clona inputs de páginas ocultas)
+        confirmSubmit.addEventListener('click', function () {
+            const dt = window.productosDT;
+
+            // Deshabilitar botones + spinner
+            confirmSubmit.disabled = true;
+            confirmSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando Entrada...';
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando...';
+
+            // Clonar inputs de páginas no visibles
+            dt.$('input[name^="cantidad_"]').each(function () {
+                if (!document.contains(this) && this.value !== '') {
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = this.name;
+                    hidden.value = this.value;
+                    form.appendChild(hidden);
+                }
+            });
+
+            form.submit();
+        });
+
+        // 3) Evitar Enter dispare submit fuera de textarea
+        document.addEventListener('DOMContentLoaded', function () {
             form.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter' && e.target.tagName.toLowerCase() !== 'textarea') {
                     e.preventDefault();
@@ -134,23 +233,4 @@
             });
         });
     </script>
-
-
-    {% if messages %}
-        <script>
-            const notyf = new Notyf({
-                duration: 9000,
-                position: {x: 'right', y: 'bottom'},
-                dismissible: true,
-            });
-
-            {% for message in messages %}
-                {% if message.tags == 'success' %}
-                    notyf.success("{{ message }}");
-                {% elif message.tags == 'error' %}
-                    notyf.error("{{ message }}");
-                {% endif %}
-            {% endfor %}
-        </script>
-    {% endif %}
 {% endblock %}

@@ -1,0 +1,39 @@
+<script>
+(function () {
+  if (typeof Notyf === 'undefined') return;
+
+  // Permite configurar desde el include (con defaults)
+  const duration = {{ duration|default:9000 }};
+  const posx = "{{ posx|default:'right' }}";
+  const posy = "{{ posy|default:'bottom' }}";
+
+  // Tipos extra (warning / info)
+  const notyf = new Notyf({
+    duration: duration,
+    position: { x: posx, y: posy },
+    dismissible: true,
+    types: [
+      { type: 'warning', background: '#f59e0b', icon: false },
+      { type: 'info',    background: '#3b82f6', icon: false }
+    ]
+  });
+
+  {% if messages %}
+    {% for message in messages %}
+      {% with tags=message.tags %}
+        {% if 'success' in tags %}
+          notyf.success("{{ message|escapejs }}");
+        {% elif 'error' in tags %}
+          notyf.error("{{ message|escapejs }}");
+        {% elif 'warning' in tags %}
+          notyf.open({ type: 'warning', message: "{{ message|escapejs }}" });
+        {% elif 'info' in tags %}
+          notyf.open({ type: 'info', message: "{{ message|escapejs }}" });
+        {% else %}
+          notyf.open({ message: "{{ message|escapejs }}" });
+        {% endif %}
+      {% endwith %}
+    {% endfor %}
+  {% endif %}
+})();
+</script>
