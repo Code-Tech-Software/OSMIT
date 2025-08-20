@@ -2,9 +2,10 @@
 {% load static %}
 
 {% block content %}
-    <!-- Estilos personalizados -->
+    <!-- Estilos -->
     <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
     <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
 
     <div>
         <span class="fw-bold text-dark">Producción</span>
@@ -13,12 +14,11 @@
     </div>
 
     <div class="custom-card mt-4">
-        <form method="post">
+        <form id="pedidoForm" method="post">
             {% csrf_token %}
 
             <!-- Tabla de productos -->
             <div class="table-responsive">
-            
                 <table id="productosTable" class="table table-striped table-bordered">
                     <thead>
                     <tr>
@@ -37,10 +37,9 @@
                                     <span class="text-danger fw-light"> {{ producto.unidad_medida }}</span>
                                     <i class="bi bi-x-octagon-fill text-danger ms-1" title="Producto agotado"></i>
                                 {% elif producto.stock <= producto.stock_min %}
-                                    <span class="fw-semibold ">{{ producto.stock }}</span>
+                                    <span class="fw-semibold">{{ producto.stock }}</span>
                                     <span class="fw-light"> {{ producto.unidad_medida }}</span>
-                                    <i class="bi bi-exclamation-triangle-fill text-warning ms-2"
-                                       title="Stock por debajo del mínimo"></i>
+                                    <i class="bi bi-exclamation-triangle-fill text-warning ms-2" title="Stock por debajo del mínimo"></i>
                                 {% else %}
                                     <span class="fw-semibold">{{ producto.stock }}</span>
                                     <span class="fw-light"> {{ producto.unidad_medida }}</span>
@@ -55,8 +54,8 @@
                     </tbody>
                 </table>
             </div>
-        
-             <!-- Campo de Nota -->
+
+            <!-- Campo de Nota -->
             <div class="mt-4">
                 <label for="id_nota" class="form-label fw-semibold">Nota (opcional):</label>
                 {{ pedido_form.nota }}
@@ -71,13 +70,36 @@
         </form>
     </div>
 
+    <!-- Modal de confirmación -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmModalLabel">Confirmar pedido de producción</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>Resumen de productos solicitados:</h6>
+                    <div id="resumenPedido" style="max-height: 400px; overflow-y: auto; word-wrap: break-word;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-custom-success" id="confirmSubmit">
+                        Confirmar y registrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- JS: jQuery + DataTables -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
 
     <script>
         $(document).ready(function () {
-            $('#productosTable').DataTable({
+            // Guarda la instancia en window para poder usar DT.$ y recorrer TODAS las páginas
+            window.productosDT = $('#productosTable').DataTable({
                 pageLength: 25,
                 responsive: true,
                 columnDefs: [
@@ -106,36 +128,110 @@
         });
     </script>
 
+    <!-- Notificaciones -->
+    {% include 'Partials/notificaciones.html' %}
+
+    <!-- Bootstrap (Modal) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Lógica del modal, clon de inputs paginados y UX -->
     <script>
-        const form = document.querySelector('form');
+        const form = document.getElementById('pedidoForm');
         const submitBtn = document.getElementById('submitBtn');
+        const confirmSubmit = document.getElementById('confirmSubmit');
+        const resumenPedido = document.getElementById('resumenPedido');
+        const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
 
-        form.addEventListener('submit', function () {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Realizando...';
-        });
-    </script>
+        // Intercepta el submit para armar el resumen (NO envía todavía)
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
 
-    <!-- Notificaciones con Notyf -->
-    <script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
+            const notyf = new Notyf({duration: 2500, position: {x: 'right', y: 'bottom'}, dismissible: true});
+            const dt = window.productosDT;
+            const inputs = dt.$('input[name^="cantidad_"]'); // Recolecta inputs de TODAS las páginas
+            const rows = [];
 
-    {% if messages %}
-        <script>
-            const notyf = new Notyf({
-                duration: 9000,
-                position: {x: 'right', y: 'bottom'},
-                dismissible: true
+            inputs.each(function () {
+                const val = parseFloat(this.value);
+                if (!isNaN(val) && val > 0) {
+                    const tr = this.closest('tr');
+                    const tds = tr ? tr.children : [];
+                    const nombre = tds[0]?.textContent.trim() || '';
+                    const stock = tds[1]?.textContent.trim() || '';
+                    rows.push(`
+                        <tr>
+                            <td>${nombre}</td>
+                            <td>${stock}</td>
+                            <td>${val}</td>
+                        </tr>
+                    `);
+                }
             });
 
-            {% for message in messages %}
-                {% if message.tags == 'success' %}
-                    notyf.success("{{ message }}");
-                {% elif message.tags == 'error' %}
-                    notyf.error("{{ message }}");
-                {% endif %}
-            {% endfor %}
-        </script>
-    {% endif %}
+            if (rows.length === 0) {
+                notyf.error('Debes ingresar al menos una cantidad mayor a 0.');
+                return;
+            }
 
+            const notaEl = document.getElementById('id_nota');
+            const nota = (notaEl && notaEl.value) ? notaEl.value : '(Sin nota)';
+
+            resumenPedido.innerHTML = `
+                <div class="mb-3 p-3 bg-light rounded">
+                    <p class="mb-0"><strong>Nota:</strong> ${nota}</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th>Stock Actual</th>
+                                <th>Cantidad solicitada</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows.join('')}</tbody>
+                    </table>
+                </div>
+            `;
+
+            confirmModal.show();
+        });
+
+        // Confirmar y enviar: clona inputs de páginas no visibles para que SÍ se guarden
+        confirmSubmit.addEventListener('click', function () {
+            const dt = window.productosDT;
+
+            // Deshabilita botones + spinners
+            confirmSubmit.disabled = true;
+            confirmSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando...';
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Enviando...';
+
+            // Clona inputs de todas las páginas (solo los que tienen valor)
+            dt.$('input[name^="cantidad_"]').each(function () {
+                const val = this.value;
+                if (val !== '') {
+                    // Si el input NO está en el DOM visible (otra página), lo clonamos como hidden
+                    if (!document.contains(this)) {
+                        const hidden = document.createElement('input');
+                        hidden.type = 'hidden';
+                        hidden.name = this.name;
+                        hidden.value = val;
+                        form.appendChild(hidden);
+                    }
+                }
+            });
+
+            form.submit();
+        });
+
+        // Evita submit con Enter fuera de textareas
+        document.addEventListener('DOMContentLoaded', function () {
+            form.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && e.target.tagName.toLowerCase() !== 'textarea') {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
 {% endblock %}

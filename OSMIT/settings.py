@@ -32,7 +32,7 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = [
     "https://osmit.up.railway.app",
-    "https://7623-2806-261-5480-10e3-94f4-f3dc-81cf-2e8c.ngrok-free.app"
+    "https://1a2b73bf2a61.ngrok-free.app"
 ]
 
 # Application definition
