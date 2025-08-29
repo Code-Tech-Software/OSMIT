@@ -1,0 +1,317 @@
+{% extends "Base/Sidebar.html" %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+<link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
+
+<div>
+    <span class="fw-bold text-dark">Inventario</span>
+    <span class="mx-2 text-dark">|</span>
+    <span class="text-secondary">Registrar Salida de Productos (Vista matriz)</span>
+</div>
+
+<div class="custom-card mt-4">
+    <form id="salidaForm" method="post">
+        {% csrf_token %}
+
+        <div class="row">
+            <div class="col-md-6">
+                {{ salida_form.ruta.label_tag }}
+                {{ salida_form.ruta }}
+                {% for error in salida_form.ruta.errors %}
+                <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="col-md-6">
+                {{ salida_form.destino.label_tag }}
+                {{ salida_form.destino }}
+                {% for error in salida_form.destino.errors %}
+                <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="mt-3">
+            {{ salida_form.nota.label_tag }}
+            {{ salida_form.nota }}
+            {% for error in salida_form.nota.errors %}
+            <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <!-- 🔍 Buscador -->
+        <div class="mt-4 mb-2">
+            <input type="text" id="searchInput" class="form-control" placeholder="Buscar producto...">
+        </div>
+
+        <!-- Tabla -->
+        <div class="mt-2">
+            <div class="table-responsive" style="max-height:70vh; overflow:auto;">
+                <table id="matrixTable" class="table table-bordered table-sm" style="min-width:800px;">
+                    <!-- header y body se construyen en JS -->
+                </table>
+            </div>
+            <div class="form-text mt-2">Ingresa cantidades en las celdas correspondientes.</div>
+        </div>
+
+        <div class="text-end mt-3">
+            <button type="button" class="btn btn-custom-danger" id="previewBtn">
+                <i class="bi bi-box-arrow-up"></i> Registrar Salida
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Modal confirmación -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar salida de productos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6>Resumen de productos seleccionados:</h6>
+                <div id="resumenPedido" style="max-height: 50vh; overflow-y: auto;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-custom-danger" id="confirmSubmit">Confirmar y registrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden raw data -->
+<table id="rawProductos" style="display:none;">
+    <tbody>
+    {% for producto in productos %}
+    <tr
+            data-id="{{ producto.id }}"
+            data-nombre="{{ producto.nombre|escapejs }}"
+            data-presentacion="{{ producto.presentacion_producto_terminado|escapejs }}"
+            data-gramaje="{{ producto.gramaje_producto_terminado.nombre|default_if_none:''|escapejs }}"
+            data-stock="{{ producto.stock|default:0 }}"
+    ></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<style>
+    /* 🧩 Sticky header */
+    #matrixTable thead th {
+        position: sticky;
+        top: 0;
+        background: #f8f9fa;
+        z-index: 4;
+    }
+
+
+</style>
+
+<script>
+    (function () {
+        const rawRows = Array.from(document.querySelectorAll('#rawProductos tbody tr'));
+
+        const presentacionesSet = new Set();
+        const productosMap = new Map();
+
+        rawRows.forEach(tr => {
+            const {id, nombre, presentacion, gramaje, stock} = tr.dataset;
+            presentacionesSet.add(presentacion);
+            if (!productosMap.has(nombre)) productosMap.set(nombre, []);
+            productosMap.get(nombre).push({id, presentacion, gramaje, stock});
+        });
+
+        const ordenPresentaciones = ['Chico', 'Mediano', 'Grande', 'Cuarto', 'Medio', 'Kilo', 'Mini'];
+        const normalize = s => (s || '').toString().trim().toLowerCase();
+
+        let presentaciones = Array.from(presentacionesSet);
+        presentaciones.sort((a, b) => {
+            const ia = ordenPresentaciones.findIndex(x => normalize(x) === normalize(a));
+            const ib = ordenPresentaciones.findIndex(x => normalize(x) === normalize(b));
+            const va = ia === -1 ? 999 : ia;
+            const vb = ib === -1 ? 999 : ib;
+            if (va !== vb) return va - vb;
+            return normalize(a).localeCompare(normalize(b));
+        });
+
+        const ordenProductos = [ 'Pistache', 'Enchilado', 'Japones', 'Japones Fuego', 'Macho', 'Horneado', 'Cascarita', 'Surtido', 'Haba Pelada', 'Haba Con Cascara', 'Garbanza', 'Garapiñado', 'Gomita', 'Luneta', 'Huevito', 'Galleta Marina', 'Ciruela Pasa', 'Uva Pasa', 'Semilla De Calabaza', 'Semilla De Girasol', 'Nuez', 'Almendra', 'Granola', 'Chile De Arbol', 'Chile Pulla', 'Chile Cascabel', 'Camaron', 'Camaron En Polvo', 'Charal Natural', 'Charal Adobado', 'Cecina Natural', 'Cecina Adobada', 'Cecina Limon', 'Cecina Chiltepil', 'Cecina Chipotle', 'Cecina Habanero', 'Cecina Artesanal', 'Papa Frita', 'Churro De Masa', 'Churro Delgado', 'Chicharron', 'Chicharron Crack', 'Platano', 'Tostada', 'Miel', 'Tira De Dulce', 'Mix Verde', 'Mix Rojo', 'Palomitas Naturales', 'Palomitas Caramelo', 'Gomitas Chamoy' ];
+
+        let productosNombres = Array.from(productosMap.keys());
+        productosNombres.sort((a, b) => {
+            const ia = ordenProductos.findIndex(x => normalize(x) === normalize(a));
+            const ib = ordenProductos.findIndex(x => normalize(x) === normalize(b));
+            const va = ia === -1 ? 999 : ia;
+            const vb = ib === -1 ? 999 : ib;
+            if (va !== vb) return va - vb;
+            return normalize(a).localeCompare(normalize(b));
+        });
+
+        const matrix = document.getElementById('matrixTable');
+
+        // MAP para guardar valores entre rerenders: key = input.name (ej: cantidad_123)
+        // value = { value, nombre, presentacion, stock }
+        const valuesMap = new Map();
+
+        function renderTable(filterText = '') {
+            matrix.innerHTML = '';
+            const thead = document.createElement('thead');
+            const headRow = document.createElement('tr');
+            headRow.innerHTML = '<th style="min-width:220px; left:0; background:white; z-index:3;">Producto</th>';
+            presentaciones.forEach(p => {
+                const th = document.createElement('th');
+                th.textContent = p;
+                headRow.appendChild(th);
+            });
+            thead.appendChild(headRow);
+            matrix.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            productosNombres.forEach(nombre => {
+                if (filterText && !nombre.toLowerCase().includes(filterText.toLowerCase())) return;
+
+                const tr = document.createElement('tr');
+                const tdProd = document.createElement('td');
+                tdProd.style.position = 'sticky';
+                tdProd.style.left = '0';
+                tdProd.style.background = 'white';
+                tdProd.innerHTML = `<div class="fw-semibold">${nombre}</div>`;
+                tr.appendChild(tdProd);
+
+                const skus = productosMap.get(nombre);
+                presentaciones.forEach(p => {
+                    const td = document.createElement('td');
+                    td.style.minWidth = '140px';
+                    const match = skus.find(s => s.presentacion === p);
+                    if (match) {
+                        const input = document.createElement('input');
+                        input.type = 'number'; input.min = '0'; input.step = 'any';
+                        input.className = 'form-control cell-input';
+                        input.name = `cantidad_${match.id}`;
+                        // setear dataset para poder reconstruir selección aunque se filtre
+                        input.dataset.nombre = nombre;
+                        input.dataset.presentacion = p;
+                        input.dataset.stock = match.stock;
+
+                        // Restaurar valor si existe en valuesMap
+                        const stored = valuesMap.get(input.name);
+                        if (stored) input.value = stored.value;
+
+                        // actualizar valuesMap cada vez que cambie el input
+                        input.addEventListener('input', (e) => {
+                            valuesMap.set(input.name, {
+                                value: e.target.value,
+                                nombre: e.target.dataset.nombre,
+                                presentacion: e.target.dataset.presentacion,
+                                stock: e.target.dataset.stock
+                            });
+                        });
+
+                        td.appendChild(input);
+
+                        const stockDiv = document.createElement('div');
+                        stockDiv.className = 'small mt-1';
+                        stockDiv.style.color = '#A3A3A3';
+                        stockDiv.textContent = `Stock: ${match.stock}`;
+                        td.appendChild(stockDiv);
+                    } else {
+                        td.innerHTML = '';
+                    }
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            matrix.appendChild(tbody);
+        }
+        renderTable();
+
+        // buscador
+        document.getElementById('searchInput').addEventListener('input', e => {
+            renderTable(e.target.value);
+        });
+
+        // confirmación + notificaciones
+        const previewBtn = document.getElementById('previewBtn');
+        const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
+        const resumenPedido = document.getElementById('resumenPedido');
+        const confirmSubmit = document.getElementById('confirmSubmit');
+        const formEl = document.getElementById('salidaForm');
+        const notyf = new Notyf({duration: 3000, position: {x:'right', y:'bottom'}});
+
+        previewBtn.addEventListener('click', function () {
+            // Tomar valores desde DOM
+            const inputs = Array.from(document.querySelectorAll('.cell-input'));
+            const seleccion = [];
+            const seenNames = new Set();
+
+            inputs.forEach(i => {
+                if (i.value && parseFloat(i.value) > 0) {
+                    seleccion.push({nombre: i.dataset.nombre, presentacion: i.dataset.presentacion, stock: i.dataset.stock, value: i.value});
+                    seenNames.add(i.name);
+                }
+            });
+
+            // Agregar valores guardados que no estén actualmente en el DOM (por estar filtrados)
+            for (const [name, obj] of valuesMap.entries()) {
+                if (!seenNames.has(name) && obj.value && parseFloat(obj.value) > 0) {
+                    seleccion.push({nombre: obj.nombre, presentacion: obj.presentacion, stock: obj.stock, value: obj.value});
+                }
+            }
+
+            if (!seleccion.length) { notyf.error("Debe ingresar al menos una cantidad > 0."); return; }
+
+            let html = `<table class="table table-bordered"><thead><tr>
+                <th>Producto</th><th>Presentación</th><th>Stock</th><th>Cantidad</th></tr></thead><tbody>`;
+            seleccion.forEach(i => {
+                html += `<tr><td>${i.nombre}</td><td>${i.presentacion}</td>
+                         <td>${i.stock}</td><td>${i.value}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            resumenPedido.innerHTML = html;
+            confirmModal.show();
+        });
+
+        confirmSubmit.addEventListener('click', () => {
+            // Antes de submit: añadir como inputs ocultos al formulario los valores guardados que no están en el DOM
+            // (primero eliminamos antiguos hidden que hayamos añadido para evitar duplicados)
+            formEl.querySelectorAll('.restored-hidden').forEach(n => n.remove());
+
+            for (const [name, obj] of valuesMap.entries()) {
+                if (obj.value && parseFloat(obj.value) > 0) {
+                    // si ya existe un input con ese name en el DOM, no lo duplicamos
+                    if (!document.querySelector(`[name="${name}"]`)) {
+                        const hidden = document.createElement('input');
+                        hidden.type = 'hidden';
+                        hidden.name = name;
+                        hidden.value = obj.value;
+                        hidden.className = 'restored-hidden';
+                        formEl.appendChild(hidden);
+                    }
+                }
+            }
+
+            // spinner en botones
+            confirmSubmit.disabled = true;
+            confirmSubmit.innerHTML =
+              '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando Salida...';
+
+            previewBtn.disabled = true;
+            previewBtn.innerHTML =
+              '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando...';
+
+            formEl.submit();
+        });
+    })();
+</script>
+
+
+{% include 'Partials/notificaciones.html' %}
+{% endblock %}

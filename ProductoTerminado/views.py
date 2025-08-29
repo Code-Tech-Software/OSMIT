@@ -681,3 +681,61 @@ def indicadores_de_produccion(request):
         'pedidos_en_produccion': pedidos_en_produccion,
 
     })
+
+
+
+@login_required
+def registrar_salida_beta(request):
+    productos = ProductoTerminado.objects.filter(estado=True)
+    detalles_validos = []
+
+    if request.method == 'POST':
+        salida_form = SalidaForm(request.POST)
+        if salida_form.is_valid():
+            for producto in productos:
+                campo = f'cantidad_{producto.id}'
+                cantidad_input = request.POST.get(campo)
+                try:
+                    cantidad = Decimal(cantidad_input)
+                except (TypeError, ValueError, InvalidOperation):
+                    cantidad = Decimal('0')
+
+                if cantidad > 0:
+                    if producto.stock >= cantidad:
+                        detalles_validos.append((producto, cantidad))
+                    else:
+                        messages.error(request, f"El producto '{producto.nombre}' no tiene stock suficiente.")
+
+            if not detalles_validos and not get_messages(request):
+                messages.error(request, "Debe ingresar al menos una cantidad mayor a 0.")
+            # Si hubo errores, simplemente renderizamos el template sin redireccionar
+            if messages.get_messages(request):
+                return render(request, 'ProductoTerminado/salidas/registrar_salida_beta.html', {
+                    'salida_form': salida_form,
+                    'productos': productos,
+                })
+
+            # Guardamos la salida si todo es válido
+            salida = salida_form.save(commit=False)
+            salida.fecha_salida = timezone.now()
+            salida.usuario = request.user
+            salida.save()
+
+            for producto, cantidad in detalles_validos:
+                DetalleSalidaPTerminado.objects.create(
+                    salida_p_terminado=salida,
+                    producto_terminado=producto,
+                    cantidad=cantidad
+                )
+                producto.stock -= cantidad
+                producto.save()
+
+            messages.success(request, "Salida registrada exitosamente.")
+            return redirect('registrar_salidaPT_beta')
+    else:
+        salida_form = SalidaForm()
+
+    return render(request, 'ProductoTerminado/salidas/registrar_salida_beta.html', {
+        'salida_form': salida_form,
+        'productos': productos,
+    })
