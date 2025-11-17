@@ -12,9 +12,9 @@
     <link rel="stylesheet" href="{% static 'css/base/sidebar.css' %}">
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-       <!-- Notificaciones con Notyf -->
+    <!-- Notificaciones con Notyf -->
     <script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
-    
+
 
 </head>
 <style>
@@ -49,9 +49,15 @@
 <body>
 
 
-
 <header class="navbar bg-light border-bottom position-fixed top-0 w-100 shadow-sm px-3 d-flex justify-content-end align-items-center gap-3"
         style="height: 65px;z-index: 1;">
+
+    <div class="menu-btn sidebar-btn mt-2" id="sidebar-btn">
+        <i class='bx bx-menu'></i>
+        <i class='bx bx-x'></i>
+    </div>
+
+
     <!-- Icono pantalla completa -->
     <i id="fullscreenToggle"
        class="bi bi-arrows-fullscreen fs-5 icon-hover"
@@ -64,8 +70,8 @@
        id="reloadIcon"></i>
 
 
-<!-- Icono campana -->
-<i id="notificationToggle" class="bi fs-5 position-relative icon-hover bi-bell-fill" style="cursor: pointer;"></i>
+    <!-- Icono campana -->
+    <i id="notificationToggle" class="bi fs-5 position-relative icon-hover bi-bell-fill" style="cursor: pointer;"></i>
 
     <!-- Usuario con menú -->
     <div class="position-relative user-menu me-5">
@@ -97,11 +103,6 @@
 
 </header>
 
-
-<div class="menu-btn sidebar-btn" id="sidebar-btn" style="z-index: 1;">
-    <i class='bx bx-menu'></i>
-    <i class='bx bx-x'></i>
-</div>
 
 <div class="dark-mode-btn" id="dark-mode-btn">
 </div>
@@ -189,7 +190,8 @@
                     <ul class="sub-menu">
                         <li><a href="{% url 'registrar_entradaPT' %}" class="sub-menu-link">Registrar Entrada</a></li>
                         <li><a href="{% url 'registrar_salidaPT' %}" class="sub-menu-link">Registrar Salida</a></li>
-                        <li><a href="{% url 'registrar_salidaPT_beta' %}" class="sub-menu-link">Registrar Salida (beta)</a></li>
+                        <li><a href="{% url 'registrar_salidaPT_beta' %}" class="sub-menu-link">Registrar Salida
+                            (beta)</a></li>
                         <li><a href="{% url 'ventas_por_dia' %}" class="sub-menu-link">Pedidos</a></li>
                         <li><a href="{% url 'lista_cortes_producto_terminado' %}" class="sub-menu-link">Cortes</a></li>
                         <li><a href="{% url 'lista_salidas_termindo' %}" class="sub-menu-link">Salidas</a></li>
@@ -346,108 +348,109 @@
 
 
 {% if user|has_role:"Administrador,Producto a Granel" %}
-  
-<!-- Librerías -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-<script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-<script>
-    const notificationSound = new Audio('/static/sounds/notify.mp3');
-    notificationSound.load();
+    <!-- Librerías -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    let notificationsEnabled = JSON.parse(localStorage.getItem('notificationsEnabled')) ?? true;
-    let soundEnabled = JSON.parse(localStorage.getItem('soundEnabled')) ?? true;
+    <script>
+        const notificationSound = new Audio('/static/sounds/notify.mp3');
+        notificationSound.load();
 
-    const icon = document.getElementById('notificationToggle');
+        let notificationsEnabled = JSON.parse(localStorage.getItem('notificationsEnabled')) ?? true;
+        let soundEnabled = JSON.parse(localStorage.getItem('soundEnabled')) ?? true;
 
-    function updateIcon() {
-        if (notificationsEnabled && soundEnabled) {
-            icon.className = 'bi fs-5 position-relative icon-hover bi-bell-fill';
-        } else {
-            icon.className = 'bi fs-5 position-relative icon-hover bi-bell-slash-fill text-muted';
+        const icon = document.getElementById('notificationToggle');
+
+        function updateIcon() {
+            if (notificationsEnabled && soundEnabled) {
+                icon.className = 'bi fs-5 position-relative icon-hover bi-bell-fill';
+            } else {
+                icon.className = 'bi fs-5 position-relative icon-hover bi-bell-slash-fill text-muted';
+            }
         }
-    }
 
-    icon.addEventListener('click', () => {
-        // Alternar el estado
-        const turningOn = !(notificationsEnabled && soundEnabled);
-        notificationsEnabled = turningOn;
-        soundEnabled = turningOn;
+        icon.addEventListener('click', () => {
+            // Alternar el estado
+            const turningOn = !(notificationsEnabled && soundEnabled);
+            notificationsEnabled = turningOn;
+            soundEnabled = turningOn;
 
-        // Guardar en localStorage
-        localStorage.setItem('notificationsEnabled', notificationsEnabled);
-        localStorage.setItem('soundEnabled', soundEnabled);
-        updateIcon();
+            // Guardar en localStorage
+            localStorage.setItem('notificationsEnabled', notificationsEnabled);
+            localStorage.setItem('soundEnabled', soundEnabled);
+            updateIcon();
 
-        // Si se está activando, pedir permiso de audio
-        if (turningOn) {
-            notificationSound.play().catch(e => {
-                console.warn("Sonido bloqueado, mostrando alerta:", e);
-                Swal.fire({
-                    title: '🔊 Activa el sonido',
-                    text: 'Haz clic en este mensaje para permitir notificaciones con audio.',
-                    icon: 'info',
-                    confirmButtonText: 'Activar sonido',
-                    background: '#f0f9ff'
-                }).then(() => {
-                    notificationSound.play().catch(err => console.log("Error persistente:", err));
+            // Si se está activando, pedir permiso de audio
+            if (turningOn) {
+                notificationSound.play().catch(e => {
+                    console.warn("Sonido bloqueado, mostrando alerta:", e);
+                    Swal.fire({
+                        title: '🔊 Activa el sonido',
+                        text: 'Haz clic en este mensaje para permitir notificaciones con audio.',
+                        icon: 'info',
+                        confirmButtonText: 'Activar sonido',
+                        background: '#f0f9ff'
+                    }).then(() => {
+                        notificationSound.play().catch(err => console.log("Error persistente:", err));
+                    });
                 });
-            });
-        }
-    });
-
-    updateIcon();
-
-    // Pusher
-    const pusher = new Pusher('f15154bb7979deba25ba', {
-        cluster: 'us2',
-        encrypted: true
-    });
-
-    const channel = pusher.subscribe('pedidos-channel');
-    channel.bind('nuevo-pedido', function (data) {
-        if (!notificationsEnabled) return;
-
-        const mensaje = `🛒 Nuevo pedido de <strong>${data.usuario}</strong> (ID: ${data.pedido_id})`;
-
-        // Notificación
-        Swal.fire({
-            title: '¡Nuevo pedido!',
-            html: mensaje,
-            icon: 'success',
-            position: 'bottom-end',
-            background: '#343a40',
-            color: '#fff',
-            showConfirmButton: false,
-            timer: 9000,
-            toast: true
+            }
         });
 
-        // Sonido
-        if (soundEnabled) {
-            notificationSound.play().catch(e => {
-                Swal.fire({
-                    title: '🔔 Activa el sonido',
-                    text: 'Haz clic para permitir notificaciones con audio.',
-                    icon: 'info',
-                    confirmButtonText: 'Entendido'
-                }).then(() => {
-                    notificationSound.play().catch(err => console.log("Error persistente:", err));
-                });
-            });
-        }
-    });
-</script>
+        updateIcon();
 
-<style>
-    .icon-hover:hover {
-        color: #078bcf;
-    }
-    .bi-bell-slash-fill.text-muted {
-        opacity: 0.6;
-    }
-</style>
+        // Pusher
+        const pusher = new Pusher('f15154bb7979deba25ba', {
+            cluster: 'us2',
+            encrypted: true
+        });
+
+        const channel = pusher.subscribe('pedidos-channel');
+        channel.bind('nuevo-pedido', function (data) {
+            if (!notificationsEnabled) return;
+
+            const mensaje = `🛒 Nuevo pedido de <strong>${data.usuario}</strong> (ID: ${data.pedido_id})`;
+
+            // Notificación
+            Swal.fire({
+                title: '¡Nuevo pedido!',
+                html: mensaje,
+                icon: 'success',
+                position: 'bottom-end',
+                background: '#343a40',
+                color: '#fff',
+                showConfirmButton: false,
+                timer: 9000,
+                toast: true
+            });
+
+            // Sonido
+            if (soundEnabled) {
+                notificationSound.play().catch(e => {
+                    Swal.fire({
+                        title: '🔔 Activa el sonido',
+                        text: 'Haz clic para permitir notificaciones con audio.',
+                        icon: 'info',
+                        confirmButtonText: 'Entendido'
+                    }).then(() => {
+                        notificationSound.play().catch(err => console.log("Error persistente:", err));
+                    });
+                });
+            }
+        });
+    </script>
+
+    <style>
+        .icon-hover:hover {
+            color: #078bcf;
+        }
+
+        .bi-bell-slash-fill.text-muted {
+            opacity: 0.6;
+        }
+    </style>
 {% endif %}
 
 </html>

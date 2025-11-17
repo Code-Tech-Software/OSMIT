@@ -62,6 +62,13 @@
                 <button type="submit" class="btn btn-custom-info btn-sm px-4" id="filtrarBtn">
                     <i class="bi bi-filter"></i> Filtrar
                 </button>
+            
+             <!-- Botón concentrado: inicialmente deshabilitado -->
+    <button type="button" class="btn btn-outline-success btn-sm px-4 ms-2" id="concentradoBtn" disabled
+            title="Seleccione un día (único) para habilitar">
+        <i class="bi bi-file-earmark-spreadsheet"></i> Concentrado
+    </button>
+
 
                 {% if request.GET.ruta or request.GET.usuario or request.GET.destino or request.GET.fecha_inicio or request.GET.fecha_fin or request.GET.dia %}
                     <a href="{% url 'lista_salidas_termindo' %}" class="btn btn-secondary btn-sm px-4 " id="limpiarBtn">
@@ -99,17 +106,7 @@
                         <td>{{ salida.nota }}</td>
                         <td class="text-center">
                             <button class="btn btn-sm btn-custom-secondary ver-detalles-btn"
-                                    data-id="{{ salida.id }}"
-                                    data-fecha="{{ salida.fecha_salida }}"
-                                    data-usuario="{{ salida.usuario }}"
-                                    data-ruta="{{ salida.ruta }}"
-                                    data-destino="{{ salida.get_destino_display }}"
-                                    data-total="{{ salida.total_dinero|floatformat:2 }}"
-                                    data-detalles='[
-                {% for detalle in salida.detallesalidapterminado_set.all %}
-                    {"producto": "{{ detalle.producto_terminado }}", "gramaje": "{{ detalle.producto_terminado.gramaje_producto_terminado }}", "cantidad": "{{ detalle.cantidad }}" }{% if not forloop.last %},{% endif %}
-                {% endfor %}
-            ]'>
+                                    data-id="{{ salida.id }}">
                                 <i class="bi bi-eye"></i>
                             </button>
                         </td>
@@ -176,8 +173,13 @@
                 </div>
 
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="eliminarSalidaBtn" disabled>
+                        Eliminar salida
+                    </button>
+
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                 </div>
+
 
             </div>
         </div>
@@ -204,11 +206,11 @@
                 // Espera un pequeño tiempo antes de redirigir (para que se vea el spinner)
                 setTimeout(() => {
                     window.location.href = limpiarBtn.href;
-                }, 100); // puedes subir a 300ms si quieres que se note más
+                }, 100);
             });
         });
     </script>
-    
+
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -261,32 +263,181 @@
         document.addEventListener('DOMContentLoaded', function () {
             const modal = new bootstrap.Modal(document.getElementById('detalleModal'));
             const tabla = document.getElementById('modalDetallesTabla');
+            const btnEliminar = document.getElementById('eliminarSalidaBtn');
+            let salidaActualId = null;
 
-            document.querySelectorAll('.ver-detalles-btn').forEach(button => {
-                button.addEventListener('click', function () {
-                    document.getElementById('modalFecha').textContent = this.dataset.fecha;
-                    document.getElementById('modalUsuario').textContent = this.dataset.usuario;
-                    document.getElementById('modalRuta').textContent = this.dataset.ruta;
-                    document.getElementById('modalDestino').textContent = this.dataset.destino;
-                    document.getElementById('modalTotal').textContent = this.dataset.total;
+            // Mostrar detalles
+            document.querySelectorAll('.ver-detalles-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const id = this.dataset.id;
+                    salidaActualId = id;
 
-                    const detalles = JSON.parse(this.dataset.detalles.replace(/&quot;/g, '"'));
-                    tabla.innerHTML = ''; // Limpiar
+                    // DESHABILITAR BOTÓN MIENTRAS CARGA
+                    btnEliminar.disabled = true;
 
-                    detalles.forEach(det => {
-                        const row = `<tr>
-                        <td>${det.producto}</td>
-                        <td>${det.gramaje}</td>
-                        <td>${det.cantidad}</td>
-                    </tr>`;
-                        tabla.insertAdjacentHTML('beforeend', row);
-                    });
+                    tabla.innerHTML = `
+                <tr><td colspan="3" class="text-center">
+                    <div class="spinner-border" role="status"></div>
+                </td></tr>
+            `;
 
                     modal.show();
+
+                    fetch(`/terminado/salidas/detalles/${id}/`)
+                        .then(res => res.json())
+                        .then(data => {
+
+                            document.getElementById('modalFecha').textContent = data.fecha;
+                            document.getElementById('modalUsuario').textContent = data.usuario;
+                            document.getElementById('modalRuta').textContent = data.ruta;
+                            document.getElementById('modalDestino').textContent = data.destino;
+                            document.getElementById('modalTotal').textContent = data.total.toFixed(2);
+
+                            tabla.innerHTML = '';
+
+                            data.detalles.forEach(det => {
+                                tabla.insertAdjacentHTML('beforeend', `
+                            <tr>
+                                <td>${det.producto}</td>
+                                <td>${det.gramaje}</td>
+                                <td>${det.cantidad}</td>
+                            </tr>
+                        `);
+                            });
+
+                            // HABILITAR EL BOTÓN SOLO CUANDO TODO TERMINA DE CARGAR
+                            btnEliminar.disabled = false;
+                        })
+                        .catch(() => {
+                            tabla.innerHTML = `<tr><td colspan="3" class="text-center text-danger">Error al cargar detalles</td></tr>`;
+                        });
                 });
             });
+
+            // ELIMINAR SALIDA con SweetAlert2
+            btnEliminar.addEventListener('click', function () {
+                if (!salidaActualId) return;
+
+                Swal.fire({
+                    title: "¿Eliminar esta salida?",
+                    text: "El stock será restaurado automáticamente.",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Sí, eliminar",
+                    cancelButtonText: "Cancelar",
+                    reverseButtons: true,
+                    confirmButtonColor: "#d33",
+                }).then((result) => {
+                    if (result.isConfirmed) {
+
+                        // 🔥 DESACTIVAR botón y mostrar spinner
+                        btnEliminar.disabled = true;
+                        btnEliminar.innerHTML = `
+        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+        Eliminando...
+    `;
+
+                        fetch(`/terminado/salidas/eliminar/${salidaActualId}/`, {
+                            method: "POST",
+                            headers: {
+                                "X-CSRFToken": "{{ csrf_token }}",
+                            }
+                        })
+                            .then(res => res.json())
+                            .then(data => {
+
+                                if (data.ok) {
+                                    Swal.fire({
+                                        title: "Eliminado",
+                                        text: "La salida fue eliminada correctamente y el stock regresó a su origen.",
+                                        icon: "success",
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    });
+
+                                    setTimeout(() => {
+                                        location.reload();
+                                    }, 1500);
+
+                                } else {
+                                    Swal.fire("Error", data.error, "error");
+
+                                    // 🔥 Revertir botón si hubo error
+                                    btnEliminar.disabled = false;
+                                    btnEliminar.innerHTML = "Eliminar salida";
+                                }
+                            })
+                            .catch(() => {
+                                Swal.fire("Error", "Ocurrió un problema al eliminar.", "error");
+
+                                btnEliminar.disabled = false;
+                                btnEliminar.innerHTML = "Eliminar salida";
+                            });
+                    }
+
+                });
+            });
+
         });
+
+
     </script>
+    
+    
+    
+    <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const concentradoBtn = document.getElementById('concentradoBtn');
+
+    // inputs que condicionan el estado
+    const inputDia = document.querySelector('input[name="dia"]');
+    const inputFechaInicio = document.querySelector('input[name="fecha_inicio"]');
+    const inputFechaFin = document.querySelector('input[name="fecha_fin"]');
+    const selectRuta = document.querySelector('select[name="ruta"]');
+    const selectUsuario = document.querySelector('select[name="usuario"]');
+    const selectDestino = document.querySelector('select[name="destino"]');
+
+    function actualizarEstadoConcentrado() {
+        const diaVal = inputDia.value && inputDia.value.trim() !== '';
+        const otrasFiltrosOcupados = (
+            (inputFechaInicio.value && inputFechaInicio.value.trim() !== '') ||
+            (inputFechaFin.value && inputFechaFin.value.trim() !== '') ||
+            (selectRuta.value && selectRuta.value.trim() !== '') ||
+            (selectUsuario.value && selectUsuario.value.trim() !== '') ||
+            (selectDestino.value && selectDestino.value.trim() !== '')
+        );
+
+        if (diaVal && !otrasFiltrosOcupados) {
+            concentradoBtn.disabled = false;
+            concentradoBtn.title = "Descargar concentrado del día seleccionado";
+        } else {
+            concentradoBtn.disabled = true;
+            concentradoBtn.title = "Seleccione únicamente un día para habilitar";
+        }
+    }
+
+    // actualizar al cargar (por si hay query params ya)
+    actualizarEstadoConcentrado();
+
+    // escuchar cambios en todos los inputs relevantes
+    [inputDia, inputFechaInicio, inputFechaFin, selectRuta, selectUsuario, selectDestino].forEach(el => {
+        if (!el) return;
+        el.addEventListener('change', actualizarEstadoConcentrado);
+        el.addEventListener('input', actualizarEstadoConcentrado);
+    });
+
+    // cuando hacen click en el botón, redirigimos a la vista de concentrado con ?dia=...
+    concentradoBtn.addEventListener('click', function () {
+        if (concentradoBtn.disabled) return;
+        const dia = inputDia.value;
+        if (!dia) return;
+        // Construir URL y redirigir (GET)
+        const url = `{% url 'concentrado_salidas_terminado' %}?dia=` + encodeURIComponent(dia);
+        window.location.href = url;
+    });
+});
+</script>
+
 
 
 

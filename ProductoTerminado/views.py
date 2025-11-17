@@ -19,7 +19,14 @@ from .forms import SalidaForm
 from .models import ProductoTerminado, SalidaPTerminado, DetalleSalidaPTerminado
 from decimal import Decimal, InvalidOperation
 from django.contrib.messages import get_messages
-
+from django.db.models import Sum, F, DecimalField, ExpressionWrapper
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+import csv
+import datetime
+from django.http import HttpResponse, HttpResponseBadRequest
+from django.db.models import Sum
+from .models import DetalleSalidaPTerminado, ProductoTerminado
 
 @login_required
 def agregar_producto(request):
@@ -97,55 +104,67 @@ def registrar_entrada(request):
         'productos': productos
     })
 
-
 @login_required
 def registrar_salida(request):
     productos = ProductoTerminado.objects.filter(estado=True)
-    detalles_validos = []
 
     if request.method == 'POST':
         salida_form = SalidaForm(request.POST)
+        detalles_validos = []
+        errores = False
+
         if salida_form.is_valid():
+
+            # Validación de cantidades
             for producto in productos:
                 campo = f'cantidad_{producto.id}'
                 cantidad_input = request.POST.get(campo)
-                try:
-                    cantidad = Decimal(cantidad_input)
-                except (TypeError, ValueError, InvalidOperation):
-                    cantidad = Decimal('0')
+                cantidad = Decimal(cantidad_input or 0)
 
                 if cantidad > 0:
                     if producto.stock >= cantidad:
                         detalles_validos.append((producto, cantidad))
                     else:
-                        messages.error(request, f"El producto '{producto.nombre}' no tiene stock suficiente.")
+                        mensajes = f"El producto '{producto.nombre}' no tiene stock suficiente."
+                        messages.error(request, mensajes)
+                        errores = True
 
-            if not detalles_validos and not get_messages(request):
+            # No se ingresó ninguna cantidad mayor a 0
+            if not detalles_validos and not errores:
                 messages.error(request, "Debe ingresar al menos una cantidad mayor a 0.")
-            # Si hubo errores, simplemente renderizamos el template sin redireccionar
-            if messages.get_messages(request):
+                errores = True
+
+            if errores:
                 return render(request, 'ProductoTerminado/salidas/registrar_salida.html', {
                     'salida_form': salida_form,
                     'productos': productos,
                 })
 
-            # Guardamos la salida si todo es válido
-            salida = salida_form.save(commit=False)
-            salida.fecha_salida = timezone.now()
-            salida.usuario = request.user
-            salida.save()
+            # Si todo es válido: guardamos
+            with transaction.atomic():
+                salida = salida_form.save(commit=False)
+                salida.fecha_salida = timezone.now()
+                salida.usuario = request.user
+                salida.save()
 
-            for producto, cantidad in detalles_validos:
-                DetalleSalidaPTerminado.objects.create(
-                    salida_p_terminado=salida,
-                    producto_terminado=producto,
-                    cantidad=cantidad
-                )
-                producto.stock -= cantidad
-                producto.save()
+                for producto, cantidad in detalles_validos:
+                    DetalleSalidaPTerminado.objects.create(
+                        salida_p_terminado=salida,
+                        producto_terminado=producto,
+                        cantidad=cantidad
+                    )
+
+                    # Bloqueo de fila para evitar race condition
+                    producto = ProductoTerminado.objects.select_for_update().get(pk=producto.pk)
+                    producto.stock -= cantidad
+                    producto.save()
 
             messages.success(request, "Salida registrada exitosamente.")
             return redirect('registrar_salidaPT')
+
+        else:
+            messages.error(request, "El formulario contiene errores.")
+
     else:
         salida_form = SalidaForm()
 
@@ -153,7 +172,6 @@ def registrar_salida(request):
         'salida_form': salida_form,
         'productos': productos,
     })
-
 
 ###==========================================
 
@@ -579,6 +597,160 @@ class SalidaPTerminadoListView(ListView):
         context['usuarios'] = User.objects.all()
         context['DESTINO_CHOICES'] = dict(SalidaPTerminado.DESTINO_CHOICES)
         return context
+
+
+
+
+def detalles_salida_terminado(request, pk):
+    salida = (
+        SalidaPTerminado.objects
+        .annotate(
+            total_dinero=Sum(
+                ExpressionWrapper(
+                    F('detallesalidapterminado__cantidad') *
+                    F('detallesalidapterminado__producto_terminado__precio'),
+                    output_field=DecimalField()
+                )
+            )
+        )
+        .get(pk=pk)
+    )
+
+    detalles = []
+    for d in salida.detallesalidapterminado_set.all():
+        detalles.append({
+            "producto": str(d.producto_terminado),
+            "gramaje": str(d.producto_terminado.gramaje_producto_terminado),  # ← FIX
+            "cantidad": d.cantidad,
+        })
+
+    data = {
+        "fecha": salida.fecha_salida.strftime("%Y-%m-%d %H:%M"),
+        "usuario": str(salida.usuario),
+        "ruta": str(salida.ruta),
+        "destino": salida.get_destino_display(),
+        "total": float(salida.total_dinero or 0),
+        "detalles": detalles
+    }
+
+    return JsonResponse(data)
+
+
+
+
+from django.views.decorators.http import require_POST
+from django.db import transaction
+from django.http import JsonResponse
+
+@require_POST
+def eliminar_salida_terminado(request, pk):
+    try:
+        with transaction.atomic():
+            salida = SalidaPTerminado.objects.get(pk=pk)
+
+            # Restaurar el stock
+            for d in salida.detallesalidapterminado_set.all():
+                producto = d.producto_terminado
+                producto.stock += d.cantidad  # SE RESTAURAN LAS UNIDADES
+                producto.save()
+
+            # Eliminar la salida completa
+            salida.delete()
+
+        return JsonResponse({"ok": True})
+
+    except SalidaPTerminado.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "Salida no encontrada"}, status=404)
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": str(e)}, status=500)
+
+def concentrado_salidas_terminado(request):
+    import csv
+    import datetime
+    from django.http import HttpResponse, HttpResponseBadRequest
+    from django.db.models import Sum
+    from .models import DetalleSalidaPTerminado, ProductoTerminado
+
+    dia = request.GET.get('dia')
+    ruta = request.GET.get('ruta')
+    usuario = request.GET.get('usuario')
+    destino = request.GET.get('destino')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+
+    if not dia or ruta or usuario or destino or fecha_inicio or fecha_fin:
+        return HttpResponseBadRequest(
+            "El concentrado sólo está disponible seleccionando únicamente un día específico."
+        )
+
+    try:
+        fecha = datetime.date.fromisoformat(dia)
+    except ValueError:
+        return HttpResponseBadRequest("Formato de fecha inválido. Use YYYY-MM-DD.")
+
+    # Agrupado por producto, pero SIN ordenar aquí
+    agrupado = (
+        DetalleSalidaPTerminado.objects
+        .filter(salida_p_terminado__fecha_salida__date=fecha)
+        .values('producto_terminado')
+        .annotate(cantidad_total=Sum('cantidad'))
+    )
+
+    # Ordenar ALFABÉTICAMENTE por nombre del producto
+    agrupado = sorted(
+        agrupado,
+        key=lambda x: ProductoTerminado.objects.get(pk=x['producto_terminado']).nombre.lower()
+    )
+
+    filename = f"concentrado_salidas_{fecha.isoformat()}.csv"
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+
+    writer.writerow([
+        'Producto',
+        'Presentación',
+        'Gramaje',
+        'Cantidad Total',
+        'Precio Unitario',
+        'Valor Total'
+    ])
+
+    for item in agrupado:
+        prod_id = item['producto_terminado']
+        cantidad = item['cantidad_total'] or 0
+
+        try:
+            producto = ProductoTerminado.objects.select_related(
+                'presentacion_producto_terminado',
+                'gramaje_producto_terminado'
+            ).get(pk=prod_id)
+
+            nombre = producto.nombre
+            presentacion = str(producto.presentacion_producto_terminado)
+            gramaje = str(producto.gramaje_producto_terminado)
+            precio_u = float(producto.precio)
+            total_valor = float(cantidad) * precio_u
+
+        except ProductoTerminado.DoesNotExist:
+            nombre = f"Producto #{prod_id}"
+            presentacion = ""
+            gramaje = ""
+            precio_u = 0
+            total_valor = 0
+
+        writer.writerow([
+            nombre,
+            presentacion,
+            gramaje,
+            float(cantidad),
+            precio_u,
+            total_valor
+        ])
+
+    return response
+
 
 
 from django.shortcuts import render

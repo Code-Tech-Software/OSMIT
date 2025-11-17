@@ -1,7 +1,8 @@
 from django.urls import path
 
 from ProductoTerminado import views
-from ProductoTerminado.views import indicadores_producto_terminado, SalidaPTerminadoListView, indicadores_de_produccion
+from ProductoTerminado.views import indicadores_producto_terminado, SalidaPTerminadoListView, indicadores_de_produccion, \
+    detalles_salida_terminado, eliminar_salida_terminado
 
 urlpatterns = [
     path('agregar-producto/', views.agregar_producto, name='agregar_productoPT'),
@@ -58,4 +59,11 @@ urlpatterns = [
     path('api/top-productos-salidas/PT/', views.top_productos_mas_utilizados_terminado, name='top_productos_salidasPT'),
 
     path('api/indicadoresProduccion/', indicadores_de_produccion, name='api_indicadoresProduccion'),
+
+    path('salidas/detalles/<int:pk>/', detalles_salida_terminado, name='detalles_salida_terminado'),
+
+    path("salidas/eliminar/<int:pk>/", eliminar_salida_terminado, name="eliminar_salida_terminado"),
+
+    path('terminado/salidas/concentrado/', views.concentrado_salidas_terminado, name='concentrado_salidas_terminado'),
+
 ]
