@@ -585,7 +585,7 @@ class SalidaPTerminadoListView(ListView):
         elif dia:
             queryset = queryset.filter(fecha_salida__date=dia)
 
-        return queryset.order_by('-fecha_salida')
+        return queryset.order_by('-id')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -911,3 +911,85 @@ def registrar_salida_beta(request):
         'salida_form': salida_form,
         'productos': productos,
     })
+
+
+
+
+
+
+
+
+# views.py (añadir al final o en la sección correspondiente)
+from django.views.generic import ListView
+from django.http import JsonResponse
+from django.db.models import Sum, DecimalField
+from .models import EntradaPTerminado, DetalleEntradaPTerminado, ProductoTerminado
+
+class EntradaPTerminadoListView(ListView):
+    model = EntradaPTerminado
+    template_name = 'ProductoTerminado/entradas/lista_entradas.html'
+    context_object_name = 'entradas'
+    paginate_by = 50
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('usuario').prefetch_related(
+            'detalleentradapterminado_set__producto_terminado'
+        )
+
+        # Total de unidades por entrada (suma de cantidades de los detalles)
+        qs = qs.annotate(
+            total_unidades=Sum('detalleentradapterminado__cantidad', output_field=DecimalField())
+        )
+
+        usuario_id = self.request.GET.get('usuario')
+        fecha_inicio = self.request.GET.get('fecha_inicio')
+        fecha_fin = self.request.GET.get('fecha_fin')
+        dia = self.request.GET.get('dia')
+
+        if usuario_id:
+            qs = qs.filter(usuario_id=usuario_id)
+
+        if fecha_inicio and fecha_fin:
+            qs = qs.filter(fecha_entrada__date__range=(fecha_inicio, fecha_fin))
+        elif dia:
+            qs = qs.filter(fecha_entrada__date=dia)
+
+        return qs.order_by('-id')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['usuarios'] = User.objects.all()
+        return context
+
+
+def detalles_entrada_terminado(request, pk):
+    """
+    Devuelve JSON con los datos de la entrada y sus detalles
+    (para usar en modal con fetch).
+    """
+    entrada = (
+        EntradaPTerminado.objects
+        .prefetch_related('detalleentradapterminado_set__producto_terminado')
+        .annotate(
+            total_unidades=Sum('detalleentradapterminado__cantidad', output_field=DecimalField())
+        )
+        .get(pk=pk)
+    )
+
+    detalles = []
+    for d in entrada.detalleentradapterminado_set.all():
+        detalles.append({
+            "producto": str(d.producto_terminado),
+            "gramaje": str(getattr(d.producto_terminado, 'gramaje_producto_terminado', '')),
+            "cantidad": float(d.cantidad),
+        })
+
+    data = {
+        "fecha": entrada.fecha_entrada.strftime("%Y-%m-%d %H:%M"),
+        "usuario": str(entrada.usuario),
+        "nota": entrada.nota or "",
+        "total": float(entrada.total_unidades or 0),
+        "detalles": detalles
+    }
+
+    return JsonResponse(data)

@@ -62,12 +62,12 @@
                 <button type="submit" class="btn btn-custom-info btn-sm px-4" id="filtrarBtn">
                     <i class="bi bi-filter"></i> Filtrar
                 </button>
-            
-             <!-- Botón concentrado: inicialmente deshabilitado -->
-    <button type="button" class="btn btn-outline-success btn-sm px-4 ms-2" id="concentradoBtn" disabled
-            title="Seleccione un día (único) para habilitar">
-        <i class="bi bi-file-earmark-spreadsheet"></i> Concentrado
-    </button>
+
+                <!-- Botón concentrado: inicialmente deshabilitado -->
+                <button type="button" class="btn btn-outline-success btn-sm px-4 ms-2" id="concentradoBtn" disabled
+                        title="Seleccione un día (único) para habilitar">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> Concentrado
+                </button>
 
 
                 {% if request.GET.ruta or request.GET.usuario or request.GET.destino or request.GET.fecha_inicio or request.GET.fecha_fin or request.GET.dia %}
@@ -231,7 +231,7 @@
     <script>
         $(document).ready(function () {
             $('#salidasTable').DataTable({
-                order: [[1, 'desc']],
+                order: [[0, 'desc']],
                 language: {
                     decimal: "",
                     emptyTable: "No hay datos disponibles",
@@ -255,8 +255,8 @@
         });
 
     </script>
-
-    <!-- Bootstrap modal (asegúrate de tener Bootstrap 5) -->
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
@@ -382,61 +382,61 @@
 
 
     </script>
-    
-    
-    
+
+
+
     <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const concentradoBtn = document.getElementById('concentradoBtn');
+        document.addEventListener('DOMContentLoaded', function () {
+            const concentradoBtn = document.getElementById('concentradoBtn');
 
-    // inputs que condicionan el estado
-    const inputDia = document.querySelector('input[name="dia"]');
-    const inputFechaInicio = document.querySelector('input[name="fecha_inicio"]');
-    const inputFechaFin = document.querySelector('input[name="fecha_fin"]');
-    const selectRuta = document.querySelector('select[name="ruta"]');
-    const selectUsuario = document.querySelector('select[name="usuario"]');
-    const selectDestino = document.querySelector('select[name="destino"]');
+            // inputs que condicionan el estado
+            const inputDia = document.querySelector('input[name="dia"]');
+            const inputFechaInicio = document.querySelector('input[name="fecha_inicio"]');
+            const inputFechaFin = document.querySelector('input[name="fecha_fin"]');
+            const selectRuta = document.querySelector('select[name="ruta"]');
+            const selectUsuario = document.querySelector('select[name="usuario"]');
+            const selectDestino = document.querySelector('select[name="destino"]');
 
-    function actualizarEstadoConcentrado() {
-        const diaVal = inputDia.value && inputDia.value.trim() !== '';
-        const otrasFiltrosOcupados = (
-            (inputFechaInicio.value && inputFechaInicio.value.trim() !== '') ||
-            (inputFechaFin.value && inputFechaFin.value.trim() !== '') ||
-            (selectRuta.value && selectRuta.value.trim() !== '') ||
-            (selectUsuario.value && selectUsuario.value.trim() !== '') ||
-            (selectDestino.value && selectDestino.value.trim() !== '')
-        );
+            function actualizarEstadoConcentrado() {
+                const diaVal = inputDia.value && inputDia.value.trim() !== '';
+                const otrasFiltrosOcupados = (
+                    (inputFechaInicio.value && inputFechaInicio.value.trim() !== '') ||
+                    (inputFechaFin.value && inputFechaFin.value.trim() !== '') ||
+                    (selectRuta.value && selectRuta.value.trim() !== '') ||
+                    (selectUsuario.value && selectUsuario.value.trim() !== '') ||
+                    (selectDestino.value && selectDestino.value.trim() !== '')
+                );
 
-        if (diaVal && !otrasFiltrosOcupados) {
-            concentradoBtn.disabled = false;
-            concentradoBtn.title = "Descargar concentrado del día seleccionado";
-        } else {
-            concentradoBtn.disabled = true;
-            concentradoBtn.title = "Seleccione únicamente un día para habilitar";
-        }
-    }
+                if (diaVal && !otrasFiltrosOcupados) {
+                    concentradoBtn.disabled = false;
+                    concentradoBtn.title = "Descargar concentrado del día seleccionado";
+                } else {
+                    concentradoBtn.disabled = true;
+                    concentradoBtn.title = "Seleccione únicamente un día para habilitar";
+                }
+            }
 
-    // actualizar al cargar (por si hay query params ya)
-    actualizarEstadoConcentrado();
+            // actualizar al cargar (por si hay query params ya)
+            actualizarEstadoConcentrado();
 
-    // escuchar cambios en todos los inputs relevantes
-    [inputDia, inputFechaInicio, inputFechaFin, selectRuta, selectUsuario, selectDestino].forEach(el => {
-        if (!el) return;
-        el.addEventListener('change', actualizarEstadoConcentrado);
-        el.addEventListener('input', actualizarEstadoConcentrado);
-    });
+            // escuchar cambios en todos los inputs relevantes
+            [inputDia, inputFechaInicio, inputFechaFin, selectRuta, selectUsuario, selectDestino].forEach(el => {
+                if (!el) return;
+                el.addEventListener('change', actualizarEstadoConcentrado);
+                el.addEventListener('input', actualizarEstadoConcentrado);
+            });
 
-    // cuando hacen click en el botón, redirigimos a la vista de concentrado con ?dia=...
-    concentradoBtn.addEventListener('click', function () {
-        if (concentradoBtn.disabled) return;
-        const dia = inputDia.value;
-        if (!dia) return;
-        // Construir URL y redirigir (GET)
-        const url = `{% url 'concentrado_salidas_terminado' %}?dia=` + encodeURIComponent(dia);
-        window.location.href = url;
-    });
-});
-</script>
+            // cuando hacen click en el botón, redirigimos a la vista de concentrado con ?dia=...
+            concentradoBtn.addEventListener('click', function () {
+                if (concentradoBtn.disabled) return;
+                const dia = inputDia.value;
+                if (!dia) return;
+                // Construir URL y redirigir (GET)
+                const url = `{% url 'concentrado_salidas_terminado' %}?dia=` + encodeURIComponent(dia);
+                window.location.href = url;
+            });
+        });
+    </script>
 
 
 

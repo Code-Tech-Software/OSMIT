@@ -181,7 +181,7 @@
 
             <!-- TERMINADO -->
             {% if user|has_role:"Administrador,Producto Terminado" %}
-                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'registrar_entradaPT' or request.resolver_match.url_name == 'registrar_salidaPT'   or request.resolver_match.url_name == 'lista_cortes_producto_terminado' or request.resolver_match.url_name == 'ventas_por_dia' or request.resolver_match.url_name == 'lista_salidas_termindo' %}active{% endif %}">
+                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'registrar_entradaPT' or request.resolver_match.url_name == 'registrar_salidaPT'   or request.resolver_match.url_name == 'lista_cortes_producto_terminado' or request.resolver_match.url_name == 'ventas_por_dia' or request.resolver_match.url_name == 'lista_salidas_termindo' or request.resolver_match.url_name == 'lista_entradas_terminado' %}active{% endif %}">
                     <a href="#" class="menu-link">
                         <i class='bx bx-box'></i>
                         <span>Terminado</span>
@@ -195,7 +195,7 @@
                         <li><a href="{% url 'ventas_por_dia' %}" class="sub-menu-link">Pedidos</a></li>
                         <li><a href="{% url 'lista_cortes_producto_terminado' %}" class="sub-menu-link">Cortes</a></li>
                         <li><a href="{% url 'lista_salidas_termindo' %}" class="sub-menu-link">Salidas</a></li>
-
+                        <li><a href="{% url 'lista_entradas_terminado' %}" class="sub-menu-link">Entradas</a></li>
                     </ul>
                 </li>
             {% endif %}
