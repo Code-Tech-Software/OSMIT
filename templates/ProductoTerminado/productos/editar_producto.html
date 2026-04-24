@@ -1,18 +1,21 @@
 {% extends "Base/Sidebar.html" %}
 {% load static %}
 
+
 {% block content %}
     <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
-
+    {% include "Base/includes/_notificaciones.html" %}
     <div class="section-title">
         <span class="fw-bold text-dark">Gestión de Productos</span>
         <span class="mx-2 text-dark">|</span>
-        <span class="text-secondary">Editar Producto Terminado</span>
+        <span class="text-secondary">Editar Producto y Variaciones</span>
     </div>
 
     <div class="custom-card mt-4">
-        <form method="post" enctype="multipart/form-data">
+        <form method="post" enctype="multipart/form-data" id="producto-form">
             {% csrf_token %}
+
+            <h5 class="fw-bold mb-3">Datos del Producto</h5>
             <div class="row">
                 {% for field in form %}
                     <div class="col-md-6 mb-3">
@@ -26,14 +29,120 @@
                     </div>
                 {% endfor %}
             </div>
+
+            <hr class="my-4">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0">Variaciones del Producto</h5>
+                <button type="button" id="btn-add-variacion" class="btn btn-sm btn-custom-primary">
+                    <i class="bi bi-plus-circle me-1"></i> Agregar Variación
+                </button>
+            </div>
+
+            {{ formset.management_form }}
+
+            {% if formset.non_form_errors %}
+                <div class="alert alert-danger p-2 mb-3">
+                    
+                        {% for error in formset.non_form_errors %}
+                            <strong>Error en variaciones:</strong> {{ error }}
+                        {% endfor %}
+                  
+                </div>
+            {% endif %}
+
+            <div id="variaciones-container">
+                {% for formset_form in formset %}
+                    <div class="variacion-item border p-3 mb-3 rounded bg-light position-relative">
+                        {% for hidden in formset_form.hidden_fields %}
+                            {{ hidden }}
+                        {% endfor %}
+
+                        <div class="row align-items-end">
+                            {% for field in formset_form.visible_fields %}
+                                {% if field.name == 'DELETE' %}
+                                    <div class="col-md-2 mb-3 form-check ms-3">
+                                        {{ field }}
+                                        <label class="form-check-label text-danger fw-bold"
+                                               for="{{ field.id_for_label }}">
+                                            Eliminar Variación
+                                        </label>
+                                    </div>
+                                {% else %}
+                                    <div class="col-md-2 mb-3">
+                                        <label class="form-label small">{{ field.label }}</label>
+                                        {{ field }}
+                                        {% if field.errors %}
+                                            <div class="text-danger small">{{ field.errors|striptags }}</div>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
             <div class="mt-4 d-flex flex-column flex-sm-row gap-2">
                 <button type="submit" class="btn btn-custom-success btn-sm">
                     <i class="bi bi-save me-1"></i>Guardar Cambios
                 </button>
                 <a href="{% url 'listar_productosPT' %}" class="btn btn-custom-secondary btn-sm">
-                    <i class="bi bi-arrow-return-left me-1"></i>Volver a la lista de productos
+                    <i class="bi bi-arrow-return-left me-1"></i>Volver a la lista
                 </a>
             </div>
         </form>
     </div>
+
+    <div id="empty-form-template" style="display: none;">
+        <div class="variacion-item border p-3 mb-3 rounded bg-light position-relative">
+            {% for hidden in formset.empty_form.hidden_fields %}
+                {{ hidden }}
+            {% endfor %}
+            <div class="row align-items-end">
+                {% for field in formset.empty_form.visible_fields %}
+                    {% if field.name == 'DELETE' %}
+                        <div class="col-md-2 mb-3 form-check ms-3">
+                            {{ field }}
+                            <label class="form-check-label text-danger fw-bold" for="{{ field.id_for_label }}">
+                                Eliminar Variación
+                            </label>
+                        </div>
+                    {% else %}
+                        <div class="col-md-2 mb-3">
+                            <label class="form-label small">{{ field.label }}</label>
+                            {{ field }}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const btnAdd = document.getElementById("btn-add-variacion");
+            const container = document.getElementById("variaciones-container");
+            const template = document.getElementById("empty-form-template").innerHTML;
+
+            // Django usa el prefijo del formset (por tu related_name 'variaciones')
+            // para identificar el input que guarda el número total de forms
+            const totalFormsInput = document.getElementById("id_variaciones-TOTAL_FORMS");
+
+            btnAdd.addEventListener("click", function (e) {
+                e.preventDefault();
+                // Obtener el número actual de formularios
+                let currentFormCount = parseInt(totalFormsInput.value);
+
+                // Reemplazar __prefix__ en el html vacío por el índice actual
+                let newFormHtml = template.replace(/__prefix__/g, currentFormCount);
+
+                // Insertar el nuevo formulario en el contenedor
+                container.insertAdjacentHTML('beforeend', newFormHtml);
+
+                // Incrementar el contador de Django
+                totalFormsInput.value = currentFormCount + 1;
+            });
+        });
+    </script>
 {% endblock %}

@@ -1,6 +1,6 @@
 from django import forms
 
-from ProductoTerminado.models import Vehiculo, Ruta, Cliente, ClienteDiasVisita, VentaCliente, DetalleVentaCliente
+from ProductoTerminado.models import Vehiculo, Ruta, Cliente, ClienteDiasVisita
 
 
 class VehiculoForm(forms.ModelForm):

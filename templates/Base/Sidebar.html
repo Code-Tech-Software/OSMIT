@@ -190,20 +190,13 @@
                     <ul class="sub-menu">
                         <li><a href="{% url 'registrar_entradaPT' %}" class="sub-menu-link">Registrar Entrada</a></li>
                         <li><a href="{% url 'registrar_salidaPT' %}" class="sub-menu-link">Registrar Salida</a></li>
-                        <li><a href="{% url 'registrar_salidaPT_beta' %}" class="sub-menu-link">Registrar Salida
-                            (beta)</a></li>
-                        <li><a href="{% url 'ventas_por_dia' %}" class="sub-menu-link">Pedidos</a></li>
-                        <li><a href="{% url 'lista_cortes_producto_terminado' %}" class="sub-menu-link">Cortes</a></li>
-                        <li><a href="{% url 'lista_salidas_termindo' %}" class="sub-menu-link">Salidas</a></li>
-                        <li><a href="{% url 'lista_entradas_terminado' %}" class="sub-menu-link">Entradas</a></li>
                     </ul>
                 </li>
             {% endif %}
 
 
 
-
-
+        
 
             <!-- RUTAS -->
             {% if user|has_role:"Administrador,Producto a Granel" %}
@@ -242,7 +235,6 @@
 
                         <li><a href="{% url 'lista_proveedores' %}" class="sub-menu-link">Proveedores</a></li>
                         <li><a href="{% url 'lista_categorias' %}" class="sub-menu-link">Categorías P</a></li>
-                        <li><a href="{% url 'lista_gramajes' %}" class="sub-menu-link">Gramajes PT</a></li>
                         <li><a href="{% url 'lista_presentaciones' %}" class="sub-menu-link">Presentación PT</a></li>
 
                     </ul>

@@ -49,10 +49,11 @@ INSTALLED_APPS = [
     'ProductoTerminado',  # APLICACION
     'ProductoGranel',  # APLICACION
     'VehiculosRutas',  # APLICACION
+    'appMovil',
     'VentasPWA',
     'rest_framework',
-    'cloudinary', #cloudinary
-    'cloudinary_storage', #cloudinary
+    'cloudinary',  # cloudinary
+    'cloudinary_storage',  # cloudinary
 ]
 
 MIDDLEWARE = [
@@ -95,8 +96,16 @@ WSGI_APPLICATION = 'OSMIT.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.config(default=os.getenv("DATABASE_URL"))
+   'default': dj_database_url.config(default=os.getenv("DATABASE_URL"))
 }
+
+
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.sqlite3',
+#        'NAME': BASE_DIR / 'db.sqlite3',
+#    }
+#}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -137,7 +146,7 @@ LOGOUT_REDIRECT_URL = 'login'
 
 MEDIA_URL = '/media/'  # URL base para los archivos multimedia
 
-#MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Ruta en el sistema de archivos donde se guardarán los archivos
+# MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Ruta en el sistema de archivos donde se guardarán los archivos
 # ---------
 
 
@@ -148,7 +157,6 @@ STATICFILES_DIRS = [
     # BASE_DIR / "VentasPWA" / "static",
 ]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # recolecta todo lo estatic
-
 
 STORAGES = {
     "default": {

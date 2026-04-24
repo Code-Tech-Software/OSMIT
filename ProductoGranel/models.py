@@ -7,6 +7,7 @@ class CategoriaProducto(models.Model):
     descripcion = models.TextField(blank=True, null=True)
     imagen = models.ImageField(upload_to='fotos_categoriaProductos/', blank=True, null=True)
     estado = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.nombre

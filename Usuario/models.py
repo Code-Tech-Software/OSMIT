@@ -5,13 +5,11 @@ class Rol(models.Model):
     nombre = models.CharField(max_length=50, unique=True)
     descripcion = models.TextField(blank=True, null=True)
     estado = models.BooleanField(default=True)  # Eliminación lógica
-
+    updated_at = models.DateTimeField(auto_now=True)
     def __str__(self):
         return self.nombre
-
     @staticmethod
     def activos():
-        """ Devuelve solo los roles activos. """
         return Rol.objects.filter(estado=True)
 
 
@@ -20,7 +18,7 @@ class Usuario(AbstractUser):
     rol = models.ForeignKey(Rol, on_delete=models.SET_NULL, null=True, blank=True)
     direccion = models.TextField(blank=True, null=True)
     foto = models.ImageField(upload_to='fotos_perfil/', blank=True, null=True)
-
+    updated_at = models.DateTimeField(auto_now=True)
     def __str__(self):
         return self.first_name + " " + self.last_name
 

@@ -15,17 +15,7 @@ urlpatterns = [
     path('editarRutas/<int:pk>/', views.editar_ruta, name='editar_ruta'),
     path('eliminarRutas/<int:pk>/', views.eliminar_ruta, name='eliminar_ruta'),
 
-    # VENTAS
-    path('venta/', views.lista_ventas_cliente, name='ventas_lista'),  # lista principal
-    path('venta/<int:venta_id>/', views.venta_cliente_detalle, name='venta_cliente_detalle'),
-    path('por-dia/', views.ventas_por_dia, name='ventas_por_dia'),
-    path('por-dia/<str:fecha>/<int:user_id>/', views.detalle_ventas_dia, name='detalle_ventas_dia'),
-    # tu ruta existente
 
-    # nueva ruta para procesar
-    path('detalle-ventas/<fecha>/<int:user_id>/procesar/',
-         views.procesar_ventas_dia,
-         name='procesar_ventas_dia'),
 
     # CLIENTES
 

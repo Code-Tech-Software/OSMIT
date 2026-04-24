@@ -2,88 +2,90 @@
 {% load static %}
 
 {% block content %}
-    <!-- Estilos personalizados -->
     <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
     <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
     <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
 
-
     <div>
         <span class="fw-bold text-dark">Inventario</span>
         <span class="mx-2 text-dark">|</span>
-        <span class="text-secondary">Registrar Salida de Productos</span>
+        <span class="text-secondary">Registrar Salida de Productos </span>
     </div>
 
     <div class="custom-card mt-4">
         <form id="salidaForm" method="post">
             {% csrf_token %}
 
-            <div class="row">
+            <div class="row mb-4">
                 <div class="col-md-6">
-                    {{ salida_form.ruta.label_tag }}
-                    {{ salida_form.ruta }}
-                    {% for error in salida_form.ruta.errors %}
+                    {{ form.ruta.label_tag }}
+                    {{ form.ruta }}
+                    {% for error in form.ruta.errors %}
                         <div class="text-danger small">{{ error }}</div>
                     {% endfor %}
                 </div>
 
                 <div class="col-md-6">
-                    {{ salida_form.destino.label_tag }}
-                    {{ salida_form.destino }}
-                    {% for error in salida_form.destino.errors %}
+                    {{ form.destino.label_tag }}
+                    {{ form.destino }}
+                    {% for error in form.destino.errors %}
                         <div class="text-danger small">{{ error }}</div>
                     {% endfor %}
                 </div>
-            </div>
-
-            <div class="mt-3">
-                {{ salida_form.nota.label_tag }}
-                {{ salida_form.nota }}
-                {% for error in salida_form.nota.errors %}
-                    <div class="text-danger small">{{ error }}</div>
-                {% endfor %}
             </div>
 
             <div class="table-responsive">
-                <table id="productosTable" class="table table-striped table-bordered">
-                    <thead>
+                <table id="productosTable" class="table table-striped table-bordered align-middle text-center">
+                    <thead class="table-light">
                     <tr>
-                        <th>Producto</th>
-                        <th style="text-align: left;">Presentación</th>
-                        <th style="text-align: left;">Gramaje</th>
-                        <th style="text-align: left;">Stock Disponible</th>
-                        <th>Cantidad a salir</th>
+                        <th class="text-start">Producto</th>
+                        {% for pres in presentaciones %}
+                            <th>{{ pres }}</th>
+                        {% endfor %}
                     </tr>
                     </thead>
                     <tbody>
-                    {% for producto in productos %}
+                    {% for fila in productos_matriz %}
                         <tr>
-                            <td>{{ producto.nombre }}</td>
-                            <td>{{ producto.presentacion_producto_terminado }}</td>
-                            <td style="text-align: left;">{{ producto.gramaje_producto_terminado.nombre }}</td>
-                            <td style="text-align: left;">
-                                {% if producto.stock == 0 %}
-                                    <span class="text-danger fw-semibold">{{ producto.stock }}</span>
-                                    <i class="bi bi-x-octagon-fill text-danger ms-1" title="Producto agotado"></i>
-                                {% elif producto.stock <= producto.stock_min %}
-                                    <span class="fw-semibold">{{ producto.stock }}</span>
-                                    <i class="bi bi-exclamation-triangle-fill text-warning ms-1"
-                                       title="Stock bajo mínimo"></i>
-                                {% else %}
-                                    <span class="fw-semibold">{{ producto.stock }}</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <input type="number" step="any" min="0" name="cantidad_{{ producto.id }}"
-                                       class="form-control" placeholder="0.0">
-                            </td>
+                            <td class="text-start fw-bold">{{ fila.producto.nombre }}</td>
+
+                            {% for celda in fila.celdas %}
+                                <td>
+                                    {% if celda.existe %}
+                                        <input type="number" step="any" min="0" max="{{ celda.stock }}"
+                                               name="cantidad_{{ celda.variacion_id }}"
+                                               data-prod="{{ fila.producto.nombre }}"
+                                               data-pres="{{ celda.nombre_presentacion }}"
+                                               data-stock="{{ celda.stock }}"
+                                               class="form-control w-100 cantidad-input"
+                                               placeholder="0.0">
+
+                                        <div class="mb-1" style="font-size: 0.8rem; opacity:0.6;">
+                                            <span class="text-muted">Stock:</span>
+                                            <span class="{% if celda.stock == 0 %}text-danger fw-bold{% elif celda.stock <= celda.stock_min %}text-warning fw-bold{% else %}text-muted{% endif %}">
+                                                {{ celda.stock }}
+                                            </span>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted" style="font-size: 0.85rem;">---</span>
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
                         </tr>
                     {% endfor %}
                     </tbody>
                 </table>
             </div>
 
-            <div class="text-end mt-3">
+            <div class="mt-3">
+                <label for="{{ form.nota.id_for_label }}" class="form-label fw-semibold">Nota (opcional):</label>
+                {{ form.nota }}
+                {% for error in form.nota.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="text-end mt-4">
                 <button type="submit" class="btn btn-custom-danger" id="submitBtn">
                     <i class="bi bi-box-arrow-up"></i> Registrar Salida
                 </button>
@@ -91,7 +93,6 @@
         </form>
     </div>
 
-    <!-- Modal de confirmación -->
     <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -101,19 +102,18 @@
                 </div>
                 <div class="modal-body">
                     <h6>Resumen de productos seleccionados:</h6>
-                    <div id="resumenPedido" style="max-height: 400px; overflow-y: auto; word-wrap: break-word;"></div>
-
+                    <div id="resumenSalida" style="max-height: 400px; overflow-y: auto;"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-custom-danger" id="confirmSubmit">Confirmar y registrar
+                    <button type="button" class="btn btn-custom-danger" id="confirmSubmit">
+                        Confirmar y registrar
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- JS: jQuery + DataTables -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
 
@@ -122,13 +122,6 @@
             window.productosDT = $('#productosTable').DataTable({
                 pageLength: 50,
                 responsive: true,
-                columnDefs: [
-                    {width: "20%", targets: 0},
-                    {width: "15%", targets: 1},
-                    {width: "20%", targets: 2},
-                    {width: "20%", targets: 3},
-                    {width: "25%", targets: 4},
-                ],
                 language: {
                     "decimal": "",
                     "emptyTable": "No hay productos disponibles",
@@ -151,115 +144,126 @@
         });
     </script>
 
-
-    <!-- Notificaciones -->
     {% include 'Partials/notificaciones.html' %}
-
-
-
-    <!-- Modal & Confirmación -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
+    
     <script>
         const form = document.getElementById('salidaForm');
         const submitBtn = document.getElementById('submitBtn');
         const confirmSubmit = document.getElementById('confirmSubmit');
-        const resumenPedido = document.getElementById('resumenPedido');
+        const resumenSalida = document.getElementById('resumenSalida');
         const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
-
+        const notyf = new Notyf({duration: 3000, position: {x: 'right', y: 'bottom'}, dismissible: true});
+        
         form.addEventListener('submit', function (e) {
             e.preventDefault();
 
             const dt = window.productosDT;
-            const inputs = dt.$('input[name^="cantidad_"]'); // <- TODAS las páginas
+            const inputs = dt.$('input[name^="cantidad_"]');
             const rows = [];
+            let errorStock = false;
 
             inputs.each(function () {
                 const val = parseFloat(this.value);
-                if (!isNaN(val) && val > 0) {
-                    const tr = this.closest('tr');              // funciona aunque la fila no esté en el documento
-                    const tds = tr ? tr.children : [];
-                    const nombre = tds[0]?.textContent.trim() || '';
-                    const present = tds[1]?.textContent.trim() || '';
-                    const gramaje = tds[2]?.textContent.trim() || '';
-                    const stock = tds[3]?.textContent.trim() || '';
+                const maxStock = parseFloat(this.getAttribute('data-stock'));
 
-                    rows.push(`<tr>
-          <td>${nombre}</td>
-          <td>${present}</td>
-          <td>${gramaje}</td>
-          <td>${stock}</td>
-          <td>${val}</td>
-        </tr>`);
+                if (!isNaN(val) && val > 0) {
+                    if (val > maxStock) {
+                        errorStock = true;
+                        this.classList.add('is-invalid');
+                    } else {
+                        this.classList.remove('is-invalid');
+                        const nombre = this.getAttribute('data-prod');
+                        const present = this.getAttribute('data-pres');
+                        const stock = this.getAttribute('data-stock');
+
+                        rows.push(`<tr>
+                            <td class="text-start">${nombre}</td>
+                            <td class="text-start">${present}</td>
+                            <td class="text-center">${stock}</td>
+                            <td class="text-center fw-bold text-danger">-${val}</td>
+                        </tr>`);
+                    }
                 }
             });
 
-            if (rows.length === 0) {
-                const notyf = new Notyf({duration: 2000, position: {x: 'right', y: 'bottom'}, dismissible: true});
-                notyf.error("Debe ingresar al menos una cantidad mayor a 0.");
+            if (errorStock) {
+                notyf.error('Estás intentando sacar más productos del stock disponible.');
                 return;
             }
 
-            const ruta = document.querySelector('[name="ruta"]').selectedOptions[0]?.text || '';
-            const destino = document.querySelector('[name="destino"]').selectedOptions[0]?.text || '';
+            if (rows.length === 0) {
+                notyf.error('Debes ingresar al menos una cantidad mayor a 0.');
+                return;
+            }
+
+            // Recuperar datos para el resumen
+            const ruta = document.querySelector('[name="ruta"]').selectedOptions ? document.querySelector('[name="ruta"]').selectedOptions[0]?.text : document.querySelector('[name="ruta"]').value;
+            const destino = document.querySelector('[name="destino"]').selectedOptions ? document.querySelector('[name="destino"]').selectedOptions[0]?.text : document.querySelector('[name="destino"]').value;
             const nota = document.querySelector('[name="nota"]').value || '(Sin nota)';
 
-            resumenPedido.innerHTML = `
-      <div class="mb-3 p-3 bg-light rounded">
-        <p class="mb-1"><strong>Ruta:</strong> ${ruta}</p>
-        <p class="mb-1"><strong>Destino:</strong> ${destino}</p>
-        <p class="mb-0"><strong>Nota:</strong> ${nota}</p>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-bordered table-sm">
-          <thead class="table-light">
-            <tr>
-              <th>Producto</th>
-              <th>Presentación</th>
-              <th>Gramaje</th>
-              <th>Stock</th>
-              <th>Cantidad</th>
-            </tr>
-          </thead>
-          <tbody>${rows.join('')}</tbody>
-        </table>
-      </div>
-    `;
-
+            resumenSalida.innerHTML = `
+                <div class="mb-3 p-3 bg-light rounded border border-danger-subtle">
+                    <div class="row">
+                        <div class="col-md-6"><p class="mb-1"><strong>Ruta:</strong> ${ruta}</p></div>
+                        <div class="col-md-6"><p class="mb-1"><strong>Destino:</strong> ${destino}</p></div>
+                    </div>
+                    <p class="mb-0 mt-2"><strong>Nota:</strong> ${nota}</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th class="text-start">Producto</th>
+                                <th class="text-start">Presentación</th>
+                                <th>Stock Actual</th>
+                                <th>Cantidad a Salir</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows.join('')}</tbody>
+                    </table>
+                </div>
+            `;
             confirmModal.show();
         });
-
+        
         confirmSubmit.addEventListener('click', function () {
             const dt = window.productosDT;
-            const formEl = document.getElementById('salidaForm');
 
-            // Deshabilitar botones + spinner
             confirmSubmit.disabled = true;
-            confirmSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando Salida...';
+            confirmSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando...';
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando...';
-
-            // Recorre TODOS los inputs, y si no están en el documento (páginas ocultas), duplícalos como hidden
+            
+            // Pasar inputs de DataTable al DOM real del Form
             dt.$('input[name^="cantidad_"]').each(function () {
-                if (!document.contains(this) && this.value !== '') {
-                    const hidden = document.createElement('input');
-                    hidden.type = 'hidden';
-                    hidden.name = this.name;
-                    hidden.value = this.value;
-                    formEl.appendChild(hidden);
+                const v = this.value;
+                if (v === '' || isNaN(parseFloat(v)) || parseFloat(v) <= 0) {
+                    this.removeAttribute('name');
+                } else {
+                    if (!document.contains(this)) {
+                        const hidden = document.createElement('input');
+                        hidden.type = 'hidden';
+                        hidden.name = this.name;
+                        hidden.value = this.value;
+                        form.appendChild(hidden);
+                    }
                 }
             });
-
-            formEl.submit();
+            form.submit();
         });
-
-        // Evitar Enter dispare submit fuera de textarea
+        
         document.addEventListener('DOMContentLoaded', function () {
-            const form = document.getElementById('salidaForm');
             form.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter' && e.target.tagName.toLowerCase() !== 'textarea') {
                     e.preventDefault();
                 }
+            });
+
+            // Evitar teclear valores negativos
+            const dtInputs = window.productosDT ? window.productosDT.$('input[name^="cantidad_"]') : $('input[name^="cantidad_"]');
+            dtInputs.on('input', function() {
+                if (this.value < 0) this.value = 0;
             });
         });
     </script>

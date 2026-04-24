@@ -1,0 +1,35 @@
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+<script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
+
+<script>
+    // Configuración global de Notyf
+    const notyf = new Notyf({
+        duration: 4000,
+        position: {x: 'right', y: 'bottom'},
+        dismissible: true,
+        types: [
+            {
+                type: 'info',
+                background: '#0dcaf0',
+                icon: false
+            }
+        ]
+    });
+
+    // Procesar mensajes de Django
+    document.addEventListener("DOMContentLoaded", function() {
+        {% if messages %}
+            {% for message in messages %}
+                {% if "success" in message.tags %}
+                    notyf.success("{{ message|escapejs }}");
+                {% elif "error" in message.tags or "danger" in message.tags %}
+                    notyf.error("{{ message|escapejs }}");
+                {% elif "warning" in message.tags %}
+                    notyf.open({type: 'warning', message: "{{ message|escapejs }}", background: 'orange'});
+                {% else %}
+                    notyf.open({type: 'info', message: "{{ message|escapejs }}"});
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+    });
+</script>

@@ -16,9 +16,10 @@ urlpatterns = [
     path('vehiculosRutas/', include('VehiculosRutas.urls')),
 
     path('', dashboard, name='dashboard'),
-    # Redirigir la raíz al dashboard # IMPORTANTE ES DONDE EMPIEZA LA APLICACION#
 
     path('ventasPWA/', include('VentasPWA.urls')),
+
+    path('movil/', include('appMovil.urls')),
 
 ]
 # Para servir archivos multimedia en desarrollo
