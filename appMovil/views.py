@@ -14,9 +14,26 @@ from appMovil.serializers import *
 class BaseSyncViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = self.queryset
+        updated_after = self.request.query_params.get('updated_after')
+
+        if updated_after:
+            fecha = parse_datetime(updated_after)
+
+            # 🔥 Caso: viene solo fecha (YYYY-MM-DD)
+            if fecha is None:
+                fecha_date = parse_date(updated_after)
+                if fecha_date:
+                    fecha = datetime.combine(fecha_date, datetime.min.time())
+
+            # 🔥 Convertir a timezone aware si es naive
+            if fecha and is_naive(fecha):
+                fecha = make_aware(fecha)
+
+            # 🔥 Solo filtrar si el modelo tiene updated_at
+            if fecha and hasattr(queryset.model, 'updated_at'):
+                queryset = queryset.filter(updated_at__gt=fecha)
+
         return queryset
-
-
 
 class RolViewSet(BaseSyncViewSet):
     queryset = Rol.objects.all()

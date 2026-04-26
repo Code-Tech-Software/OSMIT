@@ -51,6 +51,7 @@ class Cliente(models.Model):
     colonia = models.CharField(max_length=255,null=True, blank=True)
     telefono = models.CharField(max_length=50,null=True, blank=True)
     credito = models.DecimalField(max_digits=10, decimal_places=2,null=True, blank=True)
+    porcentaje_descuento = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     imagen = models.ImageField(upload_to='fotos_cliente/', blank=True, null=True)
     observaciones = models.TextField(null=True, blank=True)
     ruta = models.ForeignKey(Ruta, on_delete=models.SET_NULL, null=True, blank=True)
