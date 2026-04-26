@@ -1,3 +1,6 @@
 from django.contrib import admin
 
-# Register your models here.
+from appMovil.models import *
+
+admin.site.register(MiniBodega)
+admin.site.register(MiniBodegaDetalle)

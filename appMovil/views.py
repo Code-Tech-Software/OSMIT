@@ -6,40 +6,16 @@ from django.utils.timezone import make_aware, is_naive
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from ProductoGranel.models import CategoriaProducto
-from ProductoTerminado.models import PresentacionProductoTerminado, ProductoTerminado, ProductoVariacion, Vehiculo, \
-    Ruta, Cliente
-from Usuario.models import Rol, Usuario
+from ProductoTerminado.models import SalidaPTerminado, DetalleSalidaPTerminado
 from appMovil.serializers import *
 
-
 # Create your views here.
-
-
 
 class BaseSyncViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = self.queryset
-        updated_after = self.request.query_params.get('updated_after')
-
-        if updated_after:
-            fecha = parse_datetime(updated_after)
-
-            # 🔥 Caso: viene solo fecha (YYYY-MM-DD)
-            if fecha is None:
-                fecha_date = parse_date(updated_after)
-                if fecha_date:
-                    fecha = datetime.combine(fecha_date, datetime.min.time())
-
-            # 🔥 Convertir a timezone aware si es naive
-            if fecha and is_naive(fecha):
-                fecha = make_aware(fecha)
-
-            # 🔥 Solo filtrar si el modelo tiene updated_at
-            if fecha and hasattr(queryset.model, 'updated_at'):
-                queryset = queryset.filter(updated_at__gt=fecha)
-
         return queryset
+
 
 
 class RolViewSet(BaseSyncViewSet):
@@ -300,3 +276,106 @@ def sincronizar_reabastecimiento(request):
     return Response({
         "message": "Stock actualizado y minibodega reactivada"
     })
+
+
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
+from django.db import transaction
+from django.utils import timezone
+from .models import (
+    PedidoReabastecimiento,
+    MiniBodega,
+    MiniBodegaDetalle,
+)
+
+
+# 1. Ver lista de pedidos pendientes
+def lista_pedidos(request):
+    # Filtramos solo los pedidos activos (pendientes)
+    pedidos = PedidoReabastecimiento.objects.filter(estado=True).order_by('-fecha')
+    return render(request, 'appMovil/reabastecimiento/lista_pedidos.html', {'pedidos': pedidos})
+
+
+# 2. Ver detalles del pedido
+def detalle_pedido(request, pedido_id):
+    pedido = get_object_or_404(PedidoReabastecimiento, id=pedido_id)
+    detalles = pedido.pedidoreabastecimientodetalle_set.all()
+    return render(request, 'appMovil/reabastecimiento/detalle_pedido.html', {'pedido': pedido, 'detalles': detalles})
+
+
+# 3. Procesar el Reabastecimiento
+def procesar_reabastecimiento(request, pedido_id):
+    if request.method == 'POST':
+        pedido = get_object_or_404(PedidoReabastecimiento, id=pedido_id, estado=True)
+        detalles = pedido.pedidoreabastecimientodetalle_set.all()
+
+        # Buscar la MiniBodega activa para esta ruta
+        minibodega = MiniBodega.objects.filter(ruta=pedido.ruta, estado=True).last()
+
+        if not minibodega:
+            messages.error(request, f"No se encontró una MiniBodega activa para la ruta {pedido.ruta.nombre}.")
+            return redirect('detalle_pedido', pedido_id=pedido.id)
+
+        try:
+            with transaction.atomic():  # Transacción atómica: Todo o nada
+                # 1. Crear el registro de Salida
+                salida = SalidaPTerminado.objects.create(
+                    fecha_salida=timezone.now(),
+                    usuario=request.user,
+                    ruta=pedido.ruta,
+                    destino='opcion1',  # Asumiendo que opcion1 es 'Ruta'
+                    nota=f"Salida generada por reabastecimiento. Pedido #{pedido.id}"
+                )
+
+                for item in detalles:
+                    variacion = item.producto_variacion
+                    cantidad_pedida = item.cantidad
+
+                    # 1.1 Verificar si hay stock suficiente en la bodega principal
+                    if variacion.stock < cantidad_pedida:
+                        raise ValueError(
+                            f"Stock insuficiente para {variacion}. Stock actual: {variacion.stock}, Pedido: {cantidad_pedida}")
+
+                    # 2. Descontar del stock principal
+                    variacion.stock -= cantidad_pedida
+                    variacion.save()
+
+                    # 3. Crear Detalle de Salida
+                    DetalleSalidaPTerminado.objects.create(
+                        salida_p_terminado=salida,
+                        producto_variacion=variacion,
+                        cantidad=cantidad_pedida
+                    )
+
+                    # 4. Ingresar a la MiniBodega del repartidor
+                    # Obtenemos el detalle si el producto ya está en la minibodega, si no, lo creamos
+                    mb_detalle, created = MiniBodegaDetalle.objects.get_or_create(
+                        mini_bodega=minibodega,
+                        producto_variacion=variacion,
+                        defaults={
+                            'cantidad_inicial': 0,  # O la cantidad pedida si es la primera vez
+                            'cantidad_actual': 0
+                        }
+                    )
+
+                    # Sumamos la cantidad al stock actual de su camioneta/minibodega
+                    mb_detalle.cantidad_actual += cantidad_pedida
+                    mb_detalle.save()
+
+                # 5. Marcar el pedido como procesado (inactivo)
+                pedido.estado = False
+                pedido.save()
+
+            messages.success(request, f"Pedido #{pedido.id} reabastecido con éxito. Stock actualizado.")
+            return redirect('lista_pedidos')
+
+        except ValueError as e:
+            # Capturamos el error de falta de stock
+            messages.error(request, str(e))
+            return redirect('detalle_pedido', pedido_id=pedido.id)
+        except Exception as e:
+            # Capturamos cualquier otro error inesperado
+            messages.error(request, f"Ocurrió un error al procesar: {str(e)}")
+            return redirect('detalle_pedido', pedido_id=pedido.id)
+
+    return redirect('lista_pedidos')

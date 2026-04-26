@@ -1,0 +1,53 @@
+{% extends 'Base/Sidebar.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Detalles del Pedido #{{ pedido.id }}</h2>
+    <p><strong>Ruta:</strong> {{ pedido.ruta.nombre }}</p>
+    <p><strong>Fecha:</strong> {{ pedido.fecha }}</p>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-danger">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <table class="table table-bordered mt-3">
+        <thead class="thead-dark">
+            <tr>
+                <th>Producto</th>
+                <th>Presentación</th>
+                <th>Stock Actual (Bodega)</th>
+                <th>Cantidad Pedida</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for detalle in detalles %}
+            <tr>
+                <td>{{ detalle.producto_variacion.producto.nombre }}</td>
+                <td>{{ detalle.producto_variacion.presentacion }}</td>
+                <td>
+                    {% if detalle.producto_variacion.stock < detalle.cantidad %}
+                        <span class="text-danger font-weight-bold">{{ detalle.producto_variacion.stock }}</span>
+                    {% else %}
+                        {{ detalle.producto_variacion.stock }}
+                    {% endif %}
+                </td>
+                <td>{{ detalle.cantidad }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="mt-4">
+        <a href="{% url 'lista_pedidos' %}" class="btn btn-secondary">Volver atrás</a>
+        
+        <form action="{% url 'procesar_reabastecimiento' pedido.id %}" method="POST" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success" onclick="return confirm('¿Estás seguro de procesar este reabastecimiento? Se descontará del stock y se creará la salida.');">
+                Aprobar y Procesar Reabastecimiento
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -5,10 +5,6 @@ from Usuario.models import Usuario
 
 
 
-# Hubo unos cambios en ventas, en la app despues cambiar aqui
-# Si en un futuro se mete ventas a la app, tendre que agregar updated_at = models.DateTimeField(auto_now=True)
-
-
 class MiniBodega(models.Model):
     ruta = models.ForeignKey(Ruta, on_delete=models.CASCADE)
     fecha = models.DateField()

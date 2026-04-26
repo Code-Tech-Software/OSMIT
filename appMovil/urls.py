@@ -32,4 +32,8 @@ urlpatterns = [
     path('mini-bodega/cerrar/', cerrar_mini_bodega),
     path('reabastecimiento/crear/', crear_reabastecimiento),
     path('reabastecimiento/sincronizar/', sincronizar_reabastecimiento),
+
+    path('pedidos/', views.lista_pedidos, name='lista_pedidos'),
+    path('pedidos/<int:pedido_id>/', views.detalle_pedido, name='detalle_pedido'),
+    path('pedidos/<int:pedido_id>/procesar/', views.procesar_reabastecimiento, name='procesar_reabastecimiento'),
 ]
