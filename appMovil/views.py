@@ -12,9 +12,11 @@ from appMovil.serializers import *
 # Create your views here.
 
 class BaseSyncViewSet(viewsets.ModelViewSet):
-    def get_queryset(self):
-        #print("🔥 Sync FULL: enviando TODOS los registros")
-        return self.queryset
+   def get_queryset(self):
+        queryset = super().get_queryset().all()  # 🔥 ESTO ES LA CLAVE
+
+        return queryset
+   
 
 class RolViewSet(BaseSyncViewSet):
     queryset = Rol.objects.all()
