@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.shortcuts import render
 from rest_framework import viewsets
 from django.utils.dateparse import parse_datetime, parse_date
@@ -31,7 +31,8 @@ class BaseSyncViewSet(viewsets.ModelViewSet):
 
             # 🔥 Solo filtrar si el modelo tiene updated_at
             if fecha and hasattr(queryset.model, 'updated_at'):
-                queryset = queryset.filter(updated_at__gt=fecha)
+                fecha_segura = fecha - timedelta(days=1)  # 🔥 AQUÍ ESTÁ LA MAGIA
+                queryset = queryset.filter(updated_at__gt=fecha_segura)
 
         return queryset
 
