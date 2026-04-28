@@ -31,8 +31,8 @@ class BaseSyncViewSet(viewsets.ModelViewSet):
 
             # 🔥 Solo filtrar si el modelo tiene updated_at
             if fecha and hasattr(queryset.model, 'updated_at'):
-                fecha_segura = fecha - timedelta(days=1)  # 🔥 AQUÍ ESTÁ LA MAGIA
-                queryset = queryset.filter(updated_at__gt=fecha_segura)
+                fecha_segura = fecha - timedelta(seconds=1)
+                queryset = queryset.filter(updated_at__gte=fecha_segura)
 
         return queryset
 
