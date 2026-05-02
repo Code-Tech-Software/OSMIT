@@ -9,6 +9,17 @@ from rest_framework.response import Response
 from ProductoTerminado.models import SalidaPTerminado, DetalleSalidaPTerminado
 from appMovil.serializers import *
 
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
+from django.db import transaction
+from django.utils import timezone
+from .models import (
+    PedidoReabastecimiento,
+    MiniBodega,
+    MiniBodegaDetalle,
+)
+
+
 # Create your views here.
 
 class BaseSyncViewSet(viewsets.ModelViewSet):
@@ -278,21 +289,11 @@ def sincronizar_reabastecimiento(request):
     })
 
 
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
-from django.db import transaction
-from django.utils import timezone
-from .models import (
-    PedidoReabastecimiento,
-    MiniBodega,
-    MiniBodegaDetalle,
-)
-
 
 # 1. Ver lista de pedidos pendientes
 def lista_pedidos(request):
-    # Filtramos solo los pedidos activos (pendientes)
-    pedidos = PedidoReabastecimiento.objects.filter(estado=True).order_by('-fecha')
+    # Filtramos solo los pedidos activos (pendientes) y ordenamos por ID descendente
+    pedidos = PedidoReabastecimiento.objects.filter(estado=True).order_by('-id')
     return render(request, 'appMovil/reabastecimiento/lista_pedidos.html', {'pedidos': pedidos})
 
 
@@ -309,15 +310,21 @@ def procesar_reabastecimiento(request, pedido_id):
         pedido = get_object_or_404(PedidoReabastecimiento, id=pedido_id, estado=True)
         detalles = pedido.pedidoreabastecimientodetalle_set.all()
 
-        # Buscar la MiniBodega activa para esta ruta
-        minibodega = MiniBodega.objects.filter(ruta=pedido.ruta, estado=True).last()
+        # Buscar la MiniBodega para esta ruta
+        # (Se quitó estado=True por si la minibodega estaba inactiva desde el corte anterior)
+        minibodega = MiniBodega.objects.filter(ruta=pedido.ruta).last()
 
         if not minibodega:
-            messages.error(request, f"No se encontró una MiniBodega activa para la ruta {pedido.ruta.nombre}.")
-            return redirect('detalle_pedido', pedido_id=pedido.id)
+            messages.error(request, f"No se encontró una MiniBodega para la ruta {pedido.ruta.nombre}.")
+            return redirect('detalle_pedido_reparto', pedido_id=pedido.id)
 
         try:
             with transaction.atomic():  # Transacción atómica: Todo o nada
+
+                # 🔥 REACTIVAR PARA EL NUEVO DÍA
+                minibodega.estado = True
+                minibodega.save()
+
                 # 1. Crear el registro de Salida
                 salida = SalidaPTerminado.objects.create(
                     fecha_salida=timezone.now(),
@@ -348,34 +355,65 @@ def procesar_reabastecimiento(request, pedido_id):
                     )
 
                     # 4. Ingresar a la MiniBodega del repartidor
-                    # Obtenemos el detalle si el producto ya está en la minibodega, si no, lo creamos
                     mb_detalle, created = MiniBodegaDetalle.objects.get_or_create(
                         mini_bodega=minibodega,
                         producto_variacion=variacion,
                         defaults={
-                            'cantidad_inicial': 0,  # O la cantidad pedida si es la primera vez
-                            'cantidad_actual': 0
+                            'cantidad_inicial': cantidad_pedida,
+                            'cantidad_actual': cantidad_pedida
                         }
                     )
 
-                    # Sumamos la cantidad al stock actual de su camioneta/minibodega
-                    mb_detalle.cantidad_actual += cantidad_pedida
-                    mb_detalle.save()
+                    if not created:
+                        # SUMAR AL STOCK ACTUAL (Lo que sobró en la camioneta + la nueva carga)
+                        mb_detalle.cantidad_actual += cantidad_pedida
+                        # REINICIAR STOCK INICIAL (NUEVO DÍA)
+                        mb_detalle.cantidad_inicial = mb_detalle.cantidad_actual
+                        mb_detalle.save()
 
                 # 5. Marcar el pedido como procesado (inactivo)
                 pedido.estado = False
                 pedido.save()
 
-            messages.success(request, f"Pedido #{pedido.id} reabastecido con éxito. Stock actualizado.")
-            return redirect('lista_pedidos')
+            messages.success(request,
+                             f"Pedido #{pedido.id} reabastecido con éxito. Stock actualizado y minibodega reactivada.")
+            return redirect('lista_pedidos_reparto')
 
         except ValueError as e:
             # Capturamos el error de falta de stock
             messages.error(request, str(e))
-            return redirect('detalle_pedido', pedido_id=pedido.id)
+            return redirect('detalle_pedido_reparto', pedido_id=pedido.id)
         except Exception as e:
             # Capturamos cualquier otro error inesperado
             messages.error(request, f"Ocurrió un error al procesar: {str(e)}")
-            return redirect('detalle_pedido', pedido_id=pedido.id)
+            return redirect('detalle_pedido_reparto', pedido_id=pedido.id)
 
-    return redirect('lista_pedidos')
+    return redirect('lista_pedidos_reparto')
+
+
+from django.shortcuts import render, get_object_or_404
+from .models import MiniBodega
+
+
+# Vista para el listado
+def minibodega_list(request):
+    # Traemos todas las mini bodegas, ordenadas de la más reciente a la más vieja
+    minibodegas = MiniBodega.objects.all().order_by('-fecha', '-id')
+
+    # Mandamos el contexto al template
+    context = {
+        'minibodegas': minibodegas
+    }
+    return render(request, 'appMovil/miniBodegas/minibodega_list.html', context)
+
+
+# Vista para el detalle
+def minibodega_detail(request, pk):
+    # Buscamos la mini bodega por su ID (Primary Key). Si no existe, lanza un 404.
+    minibodega = get_object_or_404(MiniBodega, pk=pk)
+
+    # Mandamos el objeto al template
+    context = {
+        'minibodega': minibodega
+    }
+    return render(request, 'appMovil/miniBodegas/minibodega_detail.html', context)

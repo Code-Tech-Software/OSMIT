@@ -266,6 +266,26 @@
                     </ul>
                 </li>
             {% endif %}
+        
+        
+        
+        
+                    <!-- REPARTO -->
+            {% if user|has_role:"Administrador,Producto Terminado,Recursos Humanos" %}
+                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'lista_pedidos_reparto' or request.resolver_match.url_name == 'minibodega_lista'  or request.resolver_match.url_name == 'detalle_pedido_reparto'  or request.resolver_match.url_name == 'minibodega_detalle'%}active{% endif %}">
+                    <a href="#" class="menu-link">
+                        <i class='bx bxs-truck'></i>
+                        <span>Reparto</span>
+                        <i class='bx bx-chevron-down'></i>
+                    </a>
+                    <ul class="sub-menu">
+                            <li><a href="{% url 'lista_pedidos_reparto' %}" class="sub-menu-link">Pedidos Rutas</a>
+                            </li>
+                            <li><a href="{% url 'minibodega_lista' %}" class="sub-menu-link">Bodegas de Rutas</a>
+                            </li>
+                    </ul>
+                </li>
+            {% endif %}
 
 
         </ul>

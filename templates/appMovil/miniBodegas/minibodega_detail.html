@@ -1,0 +1,132 @@
+{% extends 'Base/Sidebar.html' %}
+{% load static %}
+
+{% block content %}
+    <!-- Estilos personalizados y DataTables -->
+    <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Encabezado (Breadcrumb) y Botón de Acción -->
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <span class="fw-bold text-dark">Mini Bodegas</span>
+            <span class="mx-2 text-dark">|</span>
+            <span class="text-secondary">Detalle #{{ minibodega.id }}</span>
+        </div>
+        <a href="{% url 'minibodega_lista' %}" class="btn btn-secondary btn-sm">
+            <i class="bi bi-arrow-return-left"></i> Volver al Listado
+        </a>
+    </div>
+
+    <!-- Contenedor Principal estilo Custom -->
+    <div class="custom-card mt-4">
+        
+        <!-- Bloque de Información General -->
+        <h5 class="fw-bold mb-3 text-dark"><i class="bi bi-info-square me-2"></i>Información General</h5>
+        <div class="row mb-4 bg-light p-3 rounded border">
+            <div class="col-md-3 mb-3 mb-md-0">
+                <span class="fw-semibold d-block text-secondary">Ruta</span>
+                <span class="fw-medium">{{ minibodega.ruta.nombre }}</span>
+            </div>
+            <div class="col-md-3 mb-3 mb-md-0">
+                <span class="fw-semibold d-block text-secondary">Fecha</span>
+                <span class="fw-medium">{{ minibodega.fecha|date:"d/m/Y" }}</span>
+            </div>
+            <div class="col-md-3 mb-3 mb-md-0">
+                <span class="fw-semibold d-block text-secondary">Usuario</span>
+                <span class="fw-medium">{{ minibodega.usuario }}</span>
+            </div>
+            <div class="col-md-3 mb-3 mb-md-0">
+                <span class="fw-semibold d-block text-secondary">Vehículo</span>
+                <span class="fw-medium">{{ minibodega.vehiculo }}</span>
+            </div>
+            
+            <div class="col-md-3 mt-md-3">
+                <span class="fw-semibold d-block text-secondary mb-1">Estado</span>
+                {% if minibodega.estado %} 
+                    <span class="badge bg-success px-2 py-1">Abierta</span>
+                {% else %} 
+                    <span class="badge bg-secondary px-2 py-1">Cerrada</span>
+                {% endif %}
+            </div>
+            <div class="col-md-9 mt-md-3">
+                <span class="fw-semibold d-block text-secondary">Última actualización general</span>
+                <span class="fw-medium">{{ minibodega.updated_at|date:"d/m/Y H:i" }}</span>
+            </div>
+        </div>
+
+        <hr class="my-4 text-muted">
+
+        <!-- Tabla de Detalles (Productos) -->
+        <h5 class="fw-bold mb-3 text-dark"><i class="bi bi-box-seam me-2"></i>Productos en esta Mini Bodega</h5>
+        <div class="table-responsive mt-3">
+            <table id="detalleTable" class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Producto / Variación</th>
+                        <th>Cantidad Inicial</th>
+                        <th>Cantidad Actual</th>
+                        <th>Última Actualización</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for detalle in minibodega.minibodegadetalle_set.all %}
+                    <tr>
+                        <td>{{ detalle.producto_variacion }}</td>
+                        <td>
+                            <span class="fw-semibold">{{ detalle.cantidad_inicial }}</span>
+                        </td>
+                        <td>
+                            {% if detalle.cantidad_actual == 0 %}
+                                <span class="text-danger fw-semibold">{{ detalle.cantidad_actual }}</span>
+                                <i class="bi bi-x-octagon-fill text-danger ms-1" title="Producto agotado"></i>
+                            {% else %}
+                                <span class="fw-semibold">{{ detalle.cantidad_actual }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ detalle.updated_at|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- JS: jQuery + DataTables -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            $('#detalleTable').DataTable({
+                pageLength: 25,
+                responsive: true,
+                columnDefs: [
+                    {width: "40%", targets: 0},
+                    {width: "20%", targets: 1, className: "text-center"},
+                    {width: "20%", targets: 2, className: "text-center"},
+                    {width: "20%", targets: 3, className: "text-center"},
+                ],
+                language: {
+                    "decimal": "",
+                    "emptyTable": "No hay productos registrados en esta mini bodega.",
+                    "info": "Mostrando _START_ a _END_ de _TOTAL_ productos",
+                    "infoEmpty": "Mostrando 0 a 0 de 0 productos",
+                    "infoFiltered": "(filtrado de _MAX_ productos en total)",
+                    "lengthMenu": "Mostrar _MENU_ productos",
+                    "loadingRecords": "Cargando...",
+                    "processing": "Procesando...",
+                    "search": "Buscar:",
+                    "zeroRecords": "No se encontraron productos coincidentes",
+                    "paginate": {
+                        "first": '<i class="bi bi-rewind-fill"></i>',
+                        "last": '<i class="bi bi-fast-forward-fill"></i>',
+                        "next": '<i class="bi bi-caret-right-fill"></i>',
+                        "previous": '<i class="bi bi-caret-left-fill"></i>'
+                    }
+                }
+            });
+        });
+    </script>
+{% endblock %}
