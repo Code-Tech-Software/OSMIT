@@ -40,6 +40,8 @@ urlpatterns = [
     path('minibodegas/', views.minibodega_list,name='minibodega_lista'),
 
     # Ruta para el detalle (Llama a la función minibodega_detail pasando el pk)
-    path('minibodegas/<int:pk>/',views.minibodega_detail,name='minibodega_detalle'
-    ),
+    path('minibodegas/<int:pk>/',views.minibodega_detail,name='minibodega_detalle'),
+
+    path('minibodegas/agregar/', views.agregar_minibodega, name='agregar_minibodega'),
+
 ]

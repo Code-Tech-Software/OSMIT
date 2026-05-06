@@ -426,3 +426,26 @@ def minibodega_detail(request, pk):
         'minibodega': minibodega
     }
     return render(request, 'appMovil/miniBodegas/minibodega_detail.html', context)
+
+# views.py
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from .forms import MiniBodegaForm
+
+def agregar_minibodega(request):
+    if request.method == 'POST':
+        form = MiniBodegaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            # Esto activará la notificación Notyf que ya tienes en tu HTML base
+            messages.success(request, 'Mini Bodega agregada exitosamente.')
+            return redirect('minibodega_lista')
+        else:
+            messages.error(request, 'Error al guardar. Revisa los datos del formulario.')
+    else:
+        form = MiniBodegaForm()
+
+    context = {
+        'form': form
+    }
+    return render(request, 'appMovil/miniBodegas/minibodega_form.html', context)
