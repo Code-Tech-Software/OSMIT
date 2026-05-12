@@ -73,3 +73,28 @@ class PedidoReabastecimientoDetalle(models.Model):
 
     def __str__(self):
         return f"Detalle - {self.pedido} - {self.producto_variacion}"
+    
+
+class Devolucion(models.Model):
+    tipo = models.CharField(max_length=50)
+    cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True)
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    mini_bodega = models.ForeignKey(MiniBodega, on_delete=models.CASCADE)
+    fecha = models.DateTimeField()
+    descripcion = models.TextField()
+    sincronizado = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class DevolucionDetalle(models.Model):
+    devolucion = models.ForeignKey(Devolucion, on_delete=models.CASCADE)
+    producto_variacion = models.ForeignKey(ProductoVariacion, on_delete=models.CASCADE)
+    cantidad = models.DecimalField(max_digits=10, decimal_places=2)
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+
+class MiniBodegaDetalleMerma(models.Model):
+    mini_bodega = models.ForeignKey(MiniBodega, on_delete=models.CASCADE)
+    producto_variacion = models.ForeignKey(ProductoVariacion, on_delete=models.CASCADE)
+    cantidad = models.DecimalField(max_digits=10, decimal_places=2)
+    devolucion = models.ForeignKey('Devolucion', on_delete=models.CASCADE, null=True, blank=True)
