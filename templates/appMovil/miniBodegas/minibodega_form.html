@@ -1,0 +1,61 @@
+<!-- minibodega_form.html -->
+{% extends "Base/Sidebar.html" %}
+{% load static %}
+
+{% block content %}
+    <!-- Hoja de estilos personalizada -->
+    <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+
+    <!-- Breadcrumb Header -->
+    <div class="section-title">
+        <span class="fw-bold text-dark">Gestión de Mini Bodegas</span>
+        <span class="mx-2 text-dark">|</span>
+        <span class="text-secondary">Agregar Mini Bodega</span>
+    </div>
+
+    <div class="custom-card mt-4">
+        <form method="POST" action="{% url 'agregar_minibodega' %}">
+            {% csrf_token %}
+            
+            <div class="row">
+                {% for field in form %}
+                    {% if field.name == 'estado' %}
+                        <!-- Renderizado especial para el switch de Estado -->
+                        <div class="col-md-12 mb-3">
+                            <div class="form-check form-switch mt-4">
+                                {{ field }}
+                                <label class="form-check-label" for="{{ field.id_for_label }}">Mini Bodega Abierta (Estado)</label>
+                            </div>
+                            {% if field.errors %}
+                                <div class="text-danger small">
+                                    {{ field.errors|striptags }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <!-- Renderizado estándar a dos columnas para el resto de los campos -->
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.errors %}
+                                <div class="text-danger small">
+                                    {{ field.errors|striptags }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="mt-4 d-flex flex-column flex-sm-row gap-2">
+                <button type="submit" class="btn btn-custom-success btn-sm">
+                    <i class="bi bi-save me-1"></i>Guardar Mini Bodega
+                </button>
+                <a href="{% url 'minibodega_lista' %}" class="btn btn-custom-secondary btn-sm">
+                    <i class="bi bi-arrow-return-left me-1"></i>Volver al listado
+                </a>
+            </div>
+        </form>
+    </div>
+{% endblock %}

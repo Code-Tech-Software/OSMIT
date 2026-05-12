@@ -19,6 +19,12 @@ from .models import (
     MiniBodegaDetalle,
 )
 
+from django.db import transaction
+from django.db.models import F
+from django.utils import timezone
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+
 
 # Create your views here.
 
@@ -311,7 +317,6 @@ def procesar_reabastecimiento(request, pedido_id):
         detalles = pedido.pedidoreabastecimientodetalle_set.all()
 
         # Buscar la MiniBodega para esta ruta
-        # (Se quitó estado=True por si la minibodega estaba inactiva desde el corte anterior)
         minibodega = MiniBodega.objects.filter(ruta=pedido.ruta).last()
 
         if not minibodega:
@@ -324,6 +329,13 @@ def procesar_reabastecimiento(request, pedido_id):
                 # 🔥 REACTIVAR PARA EL NUEVO DÍA
                 minibodega.estado = True
                 minibodega.save()
+
+                # ✅ NUEVO: Actualizar TODO el inventario de la minibodega antes de agregar lo nuevo.
+                # Esto iguala la cantidad_inicial a la cantidad_actual para los productos
+                # que sobraron ayer, aunque hoy no se hayan pedido.
+                MiniBodegaDetalle.objects.filter(mini_bodega=minibodega).update(
+                    cantidad_inicial=F('cantidad_actual')
+                )
 
                 # 1. Crear el registro de Salida
                 salida = SalidaPTerminado.objects.create(
@@ -365,9 +377,10 @@ def procesar_reabastecimiento(request, pedido_id):
                     )
 
                     if not created:
-                        # SUMAR AL STOCK ACTUAL (Lo que sobró en la camioneta + la nueva carga)
+                        # ✅ MODIFICADO: Sumar la nueva carga a ambas cantidades
+                        # Como ya igualamos inicial = actual antes del bucle,
+                        # ahora solo sumamos la cantidad de reabastecimiento a ambas.
                         mb_detalle.cantidad_actual += cantidad_pedida
-                        # REINICIAR STOCK INICIAL (NUEVO DÍA)
                         mb_detalle.cantidad_inicial = mb_detalle.cantidad_actual
                         mb_detalle.save()
 
@@ -380,17 +393,13 @@ def procesar_reabastecimiento(request, pedido_id):
             return redirect('lista_pedidos_reparto')
 
         except ValueError as e:
-            # Capturamos el error de falta de stock
             messages.error(request, str(e))
             return redirect('detalle_pedido_reparto', pedido_id=pedido.id)
         except Exception as e:
-            # Capturamos cualquier otro error inesperado
             messages.error(request, f"Ocurrió un error al procesar: {str(e)}")
             return redirect('detalle_pedido_reparto', pedido_id=pedido.id)
 
     return redirect('lista_pedidos_reparto')
-
-
 from django.shortcuts import render, get_object_or_404
 from .models import MiniBodega
 
@@ -417,3 +426,26 @@ def minibodega_detail(request, pk):
         'minibodega': minibodega
     }
     return render(request, 'appMovil/miniBodegas/minibodega_detail.html', context)
+
+# views.py
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from .forms import MiniBodegaForm
+
+def agregar_minibodega(request):
+    if request.method == 'POST':
+        form = MiniBodegaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            # Esto activará la notificación Notyf que ya tienes en tu HTML base
+            messages.success(request, 'Mini Bodega agregada exitosamente.')
+            return redirect('minibodega_lista')
+        else:
+            messages.error(request, 'Error al guardar. Revisa los datos del formulario.')
+    else:
+        form = MiniBodegaForm()
+
+    context = {
+        'form': form
+    }
+    return render(request, 'appMovil/miniBodegas/minibodega_form.html', context)
