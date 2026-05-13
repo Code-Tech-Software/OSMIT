@@ -105,6 +105,10 @@ class VentaDetalleViewSet(BaseSyncViewSet):
     serializer_class = VentaDetalleSerializer
 
 
+class AbonoViewSet(BaseSyncViewSet):
+    queryset = Abono.objects.all()
+    serializer_class = AbonoSerializer
+
 class PedidoReabastecimientoViewSet(BaseSyncViewSet):
     queryset = PedidoReabastecimiento.objects.all()
     serializer_class = PedidoReabastecimientoSerializer

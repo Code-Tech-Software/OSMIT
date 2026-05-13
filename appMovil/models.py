@@ -43,7 +43,7 @@ class Venta(models.Model):
     ]
 
     cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True)
-    #Aqui falta el usuario
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, null=True)#null de momento
     fecha = models.DateTimeField(auto_now_add=True)
     total = models.DecimalField(max_digits=10, decimal_places=2)
 
@@ -75,7 +75,7 @@ class Abono(models.Model):
 class VentaDetalle(models.Model):
     venta = models.ForeignKey(Venta, on_delete=models.CASCADE)
     producto_variacion = models.ForeignKey(ProductoVariacion, on_delete=models.CASCADE)
-    # aqui falta el puto campo de nombre producto
+    nombre_producto = models.CharField(max_length=255, null=True, blank=True,default="Producto")  #de momento null y blank y default para que me deje migrar esta cosa
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
 

@@ -87,6 +87,11 @@ class VentaDetalleSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class AbonoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Abono
+        fields = '__all__'
+
 class PedidoReabastecimientoSerializer(serializers.ModelSerializer):
     class Meta:
         model = PedidoReabastecimiento

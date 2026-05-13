@@ -19,6 +19,7 @@ router.register(r'cliente-dias', ClienteDiasVisitaViewSet)
 
 router.register(r'mini-bodegas', MiniBodegaViewSet)
 router.register(r'mini-bodega-detalles', MiniBodegaDetalleViewSet)
+router.register(r'abonos', AbonoViewSet)
 
 router.register(r'ventas', VentaViewSet)
 router.register(r'venta-detalles', VentaDetalleViewSet)
