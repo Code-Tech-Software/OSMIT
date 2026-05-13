@@ -31,9 +31,28 @@ class MiniBodegaDetalle(models.Model):
 
 
 class Venta(models.Model):
+    TIPO_VENTA_CHOICES = [
+        ('CONTADO', 'Contado'),
+        ('CREDITO', 'Crédito'),
+    ]
+
+    ESTADO_PAGO_CHOICES = [
+        ('PAGADO', 'Pagado'),
+        ('PENDIENTE', 'Pendiente'),
+        ('PARCIAL', 'Pago Parcial'),
+    ]
+
     cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True)
+    #Aqui falta el usuario
     fecha = models.DateTimeField(auto_now_add=True)
     total = models.DecimalField(max_digits=10, decimal_places=2)
+
+    # Nuevos campos para crédito:
+    tipo_venta = models.CharField(max_length=10, choices=TIPO_VENTA_CHOICES, default='CONTADO')
+    estado_pago = models.CharField(max_length=10, choices=ESTADO_PAGO_CHOICES, default='PAGADO')
+    saldo_pendiente = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    fecha_vencimiento = models.DateField(null=True, blank=True)  # Cuándo debe pagar esta nota
+
 
     sincronizado = models.BooleanField(default=False)
 
@@ -42,10 +61,21 @@ class Venta(models.Model):
         return f"Venta - {cliente_nombre} - {self.fecha}"
 
 
+class Abono(models.Model):
+    venta = models.ForeignKey(Venta, on_delete=models.CASCADE, related_name='abonos')
+    usuario = models.ForeignKey(Usuario, on_delete=models.PROTECT, help_text="Quién cobró el abono")
+    monto = models.DecimalField(max_digits=10, decimal_places=2)
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Abono de ${self.monto} a Venta {self.venta.id} por {self.usuario}"
+
+
+
 class VentaDetalle(models.Model):
     venta = models.ForeignKey(Venta, on_delete=models.CASCADE)
     producto_variacion = models.ForeignKey(ProductoVariacion, on_delete=models.CASCADE)
-
+    # aqui falta el puto campo de nombre producto
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
 

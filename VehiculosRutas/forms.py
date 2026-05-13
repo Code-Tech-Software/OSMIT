@@ -53,7 +53,7 @@ class ClienteForm(forms.ModelForm):
         model = Cliente
         fields = [
             'nombre', 'nombre_negocio', 'giro', 'tipo_exhibidor', 'direccion',
-            'localidad', 'colonia', 'telefono', 'credito', 'imagen',
+            'localidad', 'colonia', 'telefono', 'limite_credito','saldo_adeudo', 'imagen',
             'observaciones', 'ruta', 'estado'
         ]
         widgets = {
@@ -65,7 +65,8 @@ class ClienteForm(forms.ModelForm):
             'localidad': forms.TextInput(attrs={'class': 'form-control'}),
             'colonia': forms.TextInput(attrs={'class': 'form-control'}),
             'telefono': forms.TextInput(attrs={'class': 'form-control'}),
-            'credito': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.5', 'min': 0}),
+            'limite_credito': forms.NumberInput(attrs={ 'class': 'form-control','step': '0.1','min': '0','placeholder': '0.00'}),
+            'saldo_adeudo': forms.NumberInput(attrs={'class': 'form-control','step': '0.1','min': '0','placeholder': '0.00'}),
             'imagen': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'ruta': forms.Select(attrs={'class': 'form-control'}),

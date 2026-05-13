@@ -50,7 +50,10 @@ class Cliente(models.Model):
     localidad = models.CharField(max_length=255,null=True, blank=True)
     colonia = models.CharField(max_length=255,null=True, blank=True)
     telefono = models.CharField(max_length=50,null=True, blank=True)
-    credito = models.DecimalField(max_digits=10, decimal_places=2,null=True, blank=True)
+
+    limite_credito = models.DecimalField(max_digits=10, decimal_places=2, default=0.00,help_text="Monto máximo que se le puede fiar")
+    saldo_adeudo = models.DecimalField(max_digits=10, decimal_places=2, default=0.00,help_text="Cuánto debe el cliente actualmente")
+
     porcentaje_descuento = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     imagen = models.ImageField(upload_to='fotos_cliente/', blank=True, null=True)
     observaciones = models.TextField(null=True, blank=True)
@@ -155,6 +158,9 @@ class InventarioRuta(models.Model):
 
     def __str__(self):
         return f"Inventario Ruta {self.ruta.nombre} - {self.producto_variacion}"
+
+
+
 
 
 
