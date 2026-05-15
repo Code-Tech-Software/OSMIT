@@ -2,6 +2,7 @@ from django.db import models
 
 from ProductoTerminado.models import Ruta, Vehiculo, ProductoVariacion, Cliente
 from Usuario.models import Usuario
+import uuid
 
 
 
@@ -31,6 +32,7 @@ class MiniBodegaDetalle(models.Model):
 
 
 class Venta(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False)#, unique=True ponerlo despues
     TIPO_VENTA_CHOICES = [
         ('CONTADO', 'Contado'),
         ('CREDITO', 'Crédito'),
@@ -62,7 +64,9 @@ class Venta(models.Model):
 
 
 class Abono(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False)#, unique=True ponerlo despues
     venta = models.ForeignKey(Venta, on_delete=models.CASCADE, related_name='abonos')
+    venta_uuid = models.UUIDField(null=True, blank=True)# Despues quitar null=True, blank=True
     usuario = models.ForeignKey(Usuario, on_delete=models.PROTECT, help_text="Quién cobró el abono")
     monto = models.DecimalField(max_digits=10, decimal_places=2)
     fecha = models.DateTimeField(auto_now_add=True)
@@ -73,7 +77,9 @@ class Abono(models.Model):
 
 
 class VentaDetalle(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False)#, unique=True ponerlo despues
     venta = models.ForeignKey(Venta, on_delete=models.CASCADE)
+    venta_uuid = models.UUIDField(null=True, blank=True)# Despues quitar null=True, blank=True
     producto_variacion = models.ForeignKey(ProductoVariacion, on_delete=models.CASCADE)
     nombre_producto = models.CharField(max_length=255, null=True, blank=True,default="Producto")  #de momento null y blank y default para que me deje migrar esta cosa
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
@@ -84,6 +90,7 @@ class VentaDetalle(models.Model):
 
 
 class PedidoReabastecimiento(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False)#, unique=True ponerlo despues
     ruta = models.ForeignKey(Ruta, on_delete=models.CASCADE)
     fecha = models.DateField(auto_now_add=True)
     estado = models.BooleanField(default=True)
@@ -95,7 +102,9 @@ class PedidoReabastecimiento(models.Model):
 
 
 class PedidoReabastecimientoDetalle(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False)#, unique=True ponerlo despues
     pedido = models.ForeignKey(PedidoReabastecimiento, on_delete=models.CASCADE)
+    pedido_uuid = models.UUIDField(null=True, blank=True)# Despues quitar null=True, blank=True
     producto_variacion = models.ForeignKey(ProductoVariacion, on_delete=models.CASCADE)
 
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
@@ -106,6 +115,7 @@ class PedidoReabastecimientoDetalle(models.Model):
     
 
 class Devolucion(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False)#, unique=True ponerlo despues
     tipo = models.CharField(max_length=50)
     cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
@@ -117,14 +127,18 @@ class Devolucion(models.Model):
 
 
 class DevolucionDetalle(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False)#, unique=True ponerlo despues
     devolucion = models.ForeignKey(Devolucion, on_delete=models.CASCADE)
+    devolucion_uuid = models.UUIDField(null=True, blank=True)# Despues quitar null=True, blank=True
     producto_variacion = models.ForeignKey(ProductoVariacion, on_delete=models.CASCADE)
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
 
 class MiniBodegaDetalleMerma(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False) #, unique=True ponerlo despues
     mini_bodega = models.ForeignKey(MiniBodega, on_delete=models.CASCADE)
     producto_variacion = models.ForeignKey(ProductoVariacion, on_delete=models.CASCADE)
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     devolucion = models.ForeignKey('Devolucion', on_delete=models.CASCADE, null=True, blank=True)
+    devolucion_uuid = models.UUIDField(null=True, blank=True)# Despues quitar null=True, blank=True

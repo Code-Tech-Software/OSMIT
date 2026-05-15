@@ -94,7 +94,7 @@ class MiniBodegaDetalleViewSet(BaseSyncViewSet):
     queryset = MiniBodegaDetalle.objects.all()
     serializer_class = MiniBodegaDetalleSerializer
 
-
+## Esto no se usa como tal nomas esta por que si
 class VentaViewSet(BaseSyncViewSet):
     queryset = Venta.objects.all()
     serializer_class = VentaSerializer
