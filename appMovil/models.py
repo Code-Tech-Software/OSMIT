@@ -46,7 +46,7 @@ class Venta(models.Model):
 
     cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, null=True)#null de momento
-    fecha = models.DateTimeField(auto_now_add=True)
+    fecha = models.DateTimeField()
     total = models.DecimalField(max_digits=10, decimal_places=2)
 
     # Nuevos campos para crédito:
@@ -69,7 +69,7 @@ class Abono(models.Model):
     venta_uuid = models.UUIDField(null=True, blank=True)# Despues quitar null=True, blank=True
     usuario = models.ForeignKey(Usuario, on_delete=models.PROTECT, help_text="Quién cobró el abono")
     monto = models.DecimalField(max_digits=10, decimal_places=2)
-    fecha = models.DateTimeField(auto_now_add=True)
+    fecha = models.DateTimeField()
 
     def __str__(self):
         return f"Abono de ${self.monto} a Venta {self.venta.id} por {self.usuario}"

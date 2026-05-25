@@ -44,5 +44,10 @@ urlpatterns = [
     path('minibodegas/<int:pk>/',views.minibodega_detail,name='minibodega_detalle'),
 
     path('minibodegas/agregar/', views.agregar_minibodega, name='agregar_minibodega'),
-
+    path('sync/ventas/', sync_ventas),
+    path('sync/abonos/', sync_abonos),
+    path('sync/devoluciones/', sync_devoluciones),
+    path('movil/ventas/', get_ventas),
+    path('movil/abonos/', get_abonos),
+    path('movil/devoluciones/', get_devoluciones),
 ]

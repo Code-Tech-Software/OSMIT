@@ -5,6 +5,8 @@ from django.utils.dateparse import parse_datetime, parse_date
 from django.utils.timezone import make_aware, is_naive
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from decimal import Decimal
+
 
 from ProductoTerminado.models import SalidaPTerminado, DetalleSalidaPTerminado
 from appMovil.serializers import *
@@ -134,8 +136,6 @@ class PedidoReabastecimientoDetalleViewSet(BaseSyncViewSet):
   ]
 }
 """
-
-
 @api_view(['POST'])
 def cerrar_mini_bodega(request):
     serializer = CerrarMiniBodegaSerializer2(data=request.data)
@@ -185,8 +185,8 @@ def cerrar_mini_bodega(request):
     return Response({"message": "Cierre realizado correctamente"})
 
 
-"""
 {
+  "uuid": "550e8400-e29b-41d4-a716-446655440000",
   "ruta_id": 1,
   "productos": [
     {
@@ -199,47 +199,62 @@ def cerrar_mini_bodega(request):
     }
   ]
 }
-"""
-
-
 @api_view(['POST'])
 def crear_reabastecimiento(request):
-    serializer = CrearPedidoReabastecimientoSerializer(data=request.data)
+    data = request.data
 
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=400)
+    ruta_id = data.get('ruta_id')
+    productos = data.get('productos')
+    pedido_uuid = data.get('uuid')  # 🔥 UUID del pedido
 
-    data = serializer.validated_data
-    ruta_id = data['ruta_id']
-    productos = data['productos']
+    if not ruta_id:
+        return Response({"error": "ruta_id es requerido"}, status=400)
 
     if not productos:
         return Response({"error": "Debe enviar productos"}, status=400)
+
+    if not pedido_uuid:
+        return Response({"error": "uuid es requerido"}, status=400)
 
     try:
         ruta = Ruta.objects.get(id=ruta_id)
     except Ruta.DoesNotExist:
         return Response({"error": "Ruta no encontrada"}, status=404)
 
-    # 🔥 AQUÍ SACAS EL USUARIO
     usuario = ruta.usuario
 
+    if not usuario:
+        return Response({"error": "La ruta no tiene usuario asignado"}, status=400)
+
+    # 🔥 Evitar duplicados
+    if PedidoReabastecimiento.objects.filter(uuid=pedido_uuid).exists():
+        return Response({
+            "message": "Este pedido ya fue registrado",
+            "pedido_uuid": pedido_uuid
+        }, status=200)
+
+    # 🔥 Crear pedido
     pedido = PedidoReabastecimiento.objects.create(
+        uuid=pedido_uuid,
         ruta=ruta,
         usuario=usuario
     )
 
+    # 🔥 Crear detalles
     for item in productos:
         PedidoReabastecimientoDetalle.objects.create(
             pedido=pedido,
+            pedido_uuid=pedido_uuid,
             producto_variacion_id=item['producto_variacion_id'],
             cantidad=item['cantidad']
         )
 
     return Response({
         "message": "Pedido creado correctamente",
-        "pedido_id": pedido.id
-    })
+        "pedido_uuid": pedido.uuid
+    }, status=201)
+
+
 
 
 """
@@ -247,8 +262,6 @@ def crear_reabastecimiento(request):
   "pedido_id": 1
 }
 """
-
-
 @api_view(['POST'])
 def sincronizar_reabastecimiento(request):
     pedido_id = request.data.get("pedido_id")
@@ -453,3 +466,473 @@ def agregar_minibodega(request):
         'form': form
     }
     return render(request, 'appMovil/miniBodegas/minibodega_form.html', context)
+
+
+##Nuevas apis 
+
+"""
+{
+  "ventas": [
+    {
+      "uuid": "11111111-1111-1111-1111-111111111111",
+      "usuario_id": 2,
+      "cliente_id": 10,
+      "total": 150.00,
+      "tipo_venta": "CREDITO",
+      "fecha": "2026-05-19T10:02:10"
+    },
+    {
+      "uuid": "22222222-2222-2222-2222-222222222222",
+      "usuario_id": 2,
+      "cliente_id": null,
+      "total": 80.00,
+      "tipo_venta": "CONTADO",
+      "fecha": "2026-05-19T11:15:00"
+    }
+  ],
+  "detalles": [
+    {
+      "uuid": "aaaaaaa1-aaaa-aaaa-aaaa-aaaaaaaaaaa1",
+      "venta_uuid": "11111111-1111-1111-1111-111111111111",
+      "producto_variacion_id": 5,
+      "cantidad": 2,
+      "precio_unitario": 50.00,
+      "nombre_producto": "Coca 600ml"
+    }
+  ]
+}
+"""
+@api_view(['POST'])
+def sync_ventas(request):
+    data = request.data
+
+    ventas = data.get('ventas', [])
+    detalles = data.get('detalles', [])
+
+    ventas_cache = {}
+
+    with transaction.atomic():
+
+        # =========================
+        # 🔥 VENTAS
+        # =========================
+        for v in ventas:
+
+            if Venta.objects.filter(uuid=v.get('uuid')).exists():
+                continue
+
+            usuario = Usuario.objects.filter(id=v.get('usuario_id')).first()
+            if not usuario:
+                continue
+
+            cliente = None
+            if v.get('cliente_id'):
+                cliente = Cliente.objects.filter(id=v.get('cliente_id')).first()
+
+            total = Decimal(str(v.get('total', 0)))
+            tipo = v.get('tipo_venta', 'CONTADO')
+
+            if total <= 0:
+                continue
+
+            # 🔥 lógica de pago
+            if tipo == "CONTADO":
+                estado = "PAGADO"
+                saldo = 0
+            else:
+                estado = "PENDIENTE"
+                saldo = total
+
+            # 🔥 FECHA (OBLIGATORIA)
+            fecha_str = v.get('fecha')
+
+            if fecha_str:
+                try:
+                    fecha = datetime.fromisoformat(fecha_str)
+
+                 # 🔥 convertir a timezone si viene sin zona
+                    if timezone.is_naive(fecha):
+                        fecha = timezone.make_aware(fecha, timezone.get_current_timezone())
+
+                except:
+                    fecha = timezone.now()
+            else:
+                fecha = timezone.now()
+
+            venta = Venta.objects.create(
+                uuid=v.get('uuid'),
+                cliente=cliente,
+                usuario=usuario,
+                total=total,
+                tipo_venta=tipo,
+                estado_pago=estado,
+                saldo_pendiente=saldo,
+                fecha=fecha
+            )
+
+            # 🔥 actualizar cliente si es crédito
+            if tipo == "CREDITO" and cliente:
+                cliente.saldo_adeudo += Decimal(str(total))
+                cliente.save()
+
+            ventas_cache[str(v.get('uuid'))] = venta
+
+        # =========================
+        # 🔥 DETALLES
+        # =========================
+        for d in detalles:
+
+            if VentaDetalle.objects.filter(uuid=d.get('uuid')).exists():
+                continue
+
+            venta = ventas_cache.get(d.get('venta_uuid')) \
+                or Venta.objects.filter(uuid=d.get('venta_uuid')).first()
+
+            if not venta:
+                raise Exception(f"Venta no encontrada para detalle {d.get('uuid')}")
+
+            VentaDetalle.objects.create(
+                uuid=d.get('uuid'),
+                venta=venta,
+                producto_variacion_id=d.get('producto_variacion_id'),
+                cantidad=d.get('cantidad'),
+                precio_unitario=d.get('precio_unitario'),
+                nombre_producto=d.get('nombre_producto', 'Producto')
+            )
+
+    return Response({
+        "message": "Ventas sincronizadas correctamente"
+    })
+
+
+"""
+{
+  "abonos": [
+    {
+      "uuid": "33333333-3333-3333-3333-333333333333",
+      "venta_uuid": "11111111-1111-1111-1111-111111111111",
+      "usuario_id": 5,
+      "monto": 50.00,
+      "fecha": "2026-05-19T10:02:10"
+    },
+    {
+      "uuid": "44444444-4444-4444-4444-444444444444",
+      "venta_uuid": "11111111-1111-1111-1111-111111111111",
+      "usuario_id": 5,
+      "monto": 100.00,
+      "fecha": "2026-05-19T11:15:00"
+    }
+  ]
+}
+"""
+@api_view(['POST'])
+def sync_abonos(request):
+    data = request.data
+    abonos = data.get('abonos', [])
+
+    with transaction.atomic():
+
+        for a in abonos:
+
+            # 🔒 evitar duplicados
+            if Abono.objects.filter(uuid=a.get('uuid')).exists():
+                continue
+
+            # 🔒 venta segura
+            venta = Venta.objects.filter(uuid=a.get('venta_uuid')).first()
+            if not venta:
+                continue
+                #raise Exception(f"Venta no encontrada para abono {a.get('uuid')}")
+
+            # 🔒 usuario seguro
+            usuario = Usuario.objects.filter(id=a.get('usuario_id')).first()
+            if not usuario:
+                continue
+
+            monto = Decimal(str(a.get('monto', 0)))
+
+            if monto <= 0:
+                raise Exception(f"Monto inválido en abono {a.get('uuid')}")
+
+            # 🔥 fecha desde Android
+            fecha_str = a.get('fecha')
+
+            if fecha_str:
+                try:
+                    fecha = datetime.fromisoformat(fecha_str)
+
+                 # 🔥 convertir a timezone si viene sin zona
+                    if timezone.is_naive(fecha):
+                        fecha = timezone.make_aware(fecha, timezone.get_current_timezone())
+
+                except:
+                    fecha = timezone.now()
+            else:
+                fecha = timezone.now()
+
+            # 🔥 crear abono
+            Abono.objects.create(
+                uuid=a.get('uuid'),
+                venta=venta,
+                venta_uuid=a.get('venta_uuid'),
+                usuario=usuario,
+                monto=monto,
+                fecha=fecha
+            )
+
+            # =========================
+            # 🔥 ACTUALIZAR VENTA
+            # =========================
+            venta.saldo_pendiente -= monto
+
+            if venta.saldo_pendiente <= 0:
+                venta.saldo_pendiente = 0
+                venta.estado_pago = "PAGADO"
+
+            elif venta.saldo_pendiente < venta.total:
+                venta.estado_pago = "PARCIAL"
+
+            else:
+                venta.estado_pago = "PENDIENTE"
+
+            venta.save()
+
+            # =========================
+            # 🔥 ACTUALIZAR CLIENTE
+            # =========================
+            if venta.cliente:
+                cliente = venta.cliente
+
+                cliente.saldo_adeudo -= monto
+
+                if cliente.saldo_adeudo < 0:
+                    cliente.saldo_adeudo = 0
+
+                cliente.save()
+
+    return Response({
+        "message": "Abonos sincronizados correctamente"
+    })
+
+
+
+
+
+"""
+{
+  "devoluciones": [
+    {
+      "uuid": "11111111-1111-1111-1111-111111111111",
+      "tipo": "DEVOLUCION_VENTA",
+      "cliente_id": 10,
+
+      "usuario_id": 3,
+      "mini_bodega_id": 1,
+
+      "fecha": "2026-05-21T14:30:00",
+      "descripcion": "Producto en mal estado"
+    }
+  ],
+  "detalles": [
+    {
+      "uuid": "22222222-2222-2222-2222-222222222222",
+      "devolucion_uuid": "11111111-1111-1111-1111-111111111111",
+      "producto_variacion_id": 5,
+      "cantidad": 2,
+      "precio_unitario": 15.50
+    }
+  ],
+  "mermas": [
+    {
+      "uuid": "33333333-3333-3333-3333-333333333333",
+      "mini_bodega_id": 1,
+      "producto_variacion_id": 5,
+      "cantidad": 2,
+      "devolucion_uuid": "11111111-1111-1111-1111-111111111111"
+    }
+  ]
+}
+"""
+@api_view(['POST'])
+def sync_devoluciones(request):
+    data = request.data
+
+    devoluciones = data.get('devoluciones', [])
+    detalles = data.get('detalles', [])
+    mermas = data.get('mermas', [])
+
+    with transaction.atomic():
+
+        # 🔹 1. DEVOLUCIONES
+        for d in devoluciones:
+
+            if Devolucion.objects.filter(uuid=d['uuid']).exists():
+                continue  # evitar duplicados
+
+            if not Usuario.objects.filter(id=d['usuario_id']).exists():
+                continue
+
+            if not MiniBodega.objects.filter(id=d['mini_bodega_id']).exists():
+                continue
+
+            fecha_str = d.get('fecha')
+
+            if fecha_str:
+                try:
+                    fecha = datetime.fromisoformat(fecha_str)
+
+                 # 🔥 convertir a timezone si viene sin zona
+                    if timezone.is_naive(fecha):
+                        fecha = timezone.make_aware(fecha, timezone.get_current_timezone())
+
+                except:
+                    fecha = timezone.now()
+            else:
+                fecha = timezone.now()
+
+            Devolucion.objects.create(
+                uuid=d['uuid'],
+                tipo=d['tipo'],
+                cliente_id=d.get('cliente_id'),
+
+                # 🔥 ahora vienen directo de la app
+                usuario_id=d['usuario_id'],
+                mini_bodega_id=d['mini_bodega_id'],
+
+                fecha=fecha,
+                descripcion=d.get('descripcion', ''),
+                sincronizado=True
+    )
+
+        # 🔹 2. DETALLES
+        for det in detalles:
+
+            if DevolucionDetalle.objects.filter(uuid=det['uuid']).exists():
+                continue
+
+            devolucion = Devolucion.objects.get(uuid=det['devolucion_uuid'])
+
+            DevolucionDetalle.objects.create(
+                uuid=det['uuid'],
+                devolucion=devolucion,
+                devolucion_uuid=det['devolucion_uuid'],
+                producto_variacion_id=det['producto_variacion_id'],
+                cantidad=det['cantidad'],
+                precio_unitario=det.get('precio_unitario', 0)
+            )
+
+        # 🔹 3. MERMAS
+        for m in mermas:
+
+            if MiniBodegaDetalleMerma.objects.filter(uuid=m['uuid']).exists():
+                continue
+
+            devolucion = None
+            if m.get('devolucion_uuid'):
+                devolucion = Devolucion.objects.get(uuid=m['devolucion_uuid'])
+
+            MiniBodegaDetalleMerma.objects.create(
+                uuid=m['uuid'],
+                mini_bodega_id=m['mini_bodega_id'],
+                producto_variacion_id=m['producto_variacion_id'],
+                cantidad=m['cantidad'],
+                devolucion=devolucion,
+                devolucion_uuid=m.get('devolucion_uuid')
+            )
+
+    return Response({
+        "message": "Sincronización completada correctamente"
+    })
+
+
+##Solo para revisar
+@api_view(['GET'])
+def get_ventas(request):
+
+    ventas = Venta.objects.all().order_by('-fecha')
+
+    data = []
+
+    for v in ventas:
+        detalles = VentaDetalle.objects.filter(venta=v)
+
+        data.append({
+            "uuid": str(v.uuid),
+            "cliente": v.cliente.nombre if v.cliente else None,
+            "usuario_id": v.usuario.id if v.usuario else None,
+            "fecha": v.fecha,
+            "total": float(v.total),
+            "tipo_venta": v.tipo_venta,
+            "estado_pago": v.estado_pago,
+            "saldo_pendiente": float(v.saldo_pendiente),
+
+            "detalles": [
+                {
+                    "producto": d.nombre_producto,
+                    "cantidad": float(d.cantidad),
+                    "precio_unitario": float(d.precio_unitario)
+                }
+                for d in detalles
+            ]
+        })
+
+    return Response(data)
+
+@api_view(['GET'])
+def get_abonos(request):
+
+    abonos = Abono.objects.all().order_by('-fecha')
+
+    data = []
+
+    for a in abonos:
+        data.append({
+            "uuid": str(a.uuid),
+            "venta_uuid": str(a.venta.uuid),
+            "usuario_id": a.usuario.id,
+            "monto": float(a.monto),
+            "fecha": a.fecha
+        })
+
+    return Response(data)
+
+@api_view(['GET'])
+def get_devoluciones(request):
+
+    devoluciones = Devolucion.objects.all().order_by('-fecha')
+
+    data = []
+
+    for d in devoluciones:
+
+        detalles = DevolucionDetalle.objects.filter(devolucion=d)
+        mermas = MiniBodegaDetalleMerma.objects.filter(devolucion=d)
+
+        data.append({
+            "uuid": str(d.uuid),
+            "tipo": d.tipo,
+            "cliente": d.cliente.nombre if d.cliente else None,
+            "usuario_id": d.usuario.id,
+            "mini_bodega_id": d.mini_bodega.id,
+            "fecha": d.fecha,
+            "descripcion": d.descripcion,
+
+            "detalles": [
+                {
+                    "producto_variacion_id": det.producto_variacion.id,
+                    "cantidad": float(det.cantidad),
+                    "precio_unitario": float(det.precio_unitario)
+                }
+                for det in detalles
+            ],
+
+            "mermas": [
+                {
+                    "producto_variacion_id": m.producto_variacion.id,
+                    "cantidad": float(m.cantidad)
+                }
+                for m in mermas
+            ]
+        })
+
+    return Response(data)
