@@ -85,6 +85,10 @@ class VentaDetalle(models.Model):
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
 
+    @property
+    def subtotal(self):
+        return self.cantidad * self.precio_unitario
+
     def __str__(self):
         return f"Detalle - {self.venta} - {self.producto_variacion}"
 
@@ -133,6 +137,10 @@ class DevolucionDetalle(models.Model):
     producto_variacion = models.ForeignKey(ProductoVariacion, on_delete=models.CASCADE)
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    @property
+    def subtotal(self):
+        return self.cantidad * self.precio_unitario
 
 
 class MiniBodegaDetalleMerma(models.Model):

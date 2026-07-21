@@ -131,64 +131,71 @@
 
     <!-- Sección de Métricas -->
     <div class="row g-4 mb-4" id="indicadores"></div>
-
-    <!-- Accesos Directos -->
-    <div class="row g-4 mb-4">
-        <div class="col-6 col-md-3">
-            <a href="{% url 'registrar_salidaPT' %}" class="text-decoration-none">
-                <div class="dashboard-card card bg-white h-100 text-center pt-4 pb-3">
-                    <div class="card-icon bg-danger bg-opacity-10">
-                        <i class="bi bi-box-arrow-up text-danger fs-2"></i>
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title text-dark mb-0">Registrar Salida</h5>
-                        <small class="text-muted">Producto Terminado</small>
-                    </div>
+<!-- Accesos Directos -->
+<div class="row g-4 mb-4">
+    <!-- Entrada Manual -->
+    <div class="col-6 col-md-3">
+        <a href="{% url 'registrar_entradaPT' %}" class="text-decoration-none">
+            <div class="dashboard-card card bg-white h-100 text-center pt-4 pb-3">
+                <div class="card-icon bg-success bg-opacity-10">
+                    <i class="bi bi-box-arrow-in-down text-success fs-2"></i>
                 </div>
-            </a>
-        </div>
-
-        <div class="col-6 col-md-3">
-            <a href="{% url 'registrar_entradaPT' %}" class="text-decoration-none">
-                <div class="dashboard-card card bg-white h-100 text-center pt-4 pb-3">
-                    <div class="card-icon bg-success bg-opacity-10">
-                        <i class="bi bi-box-arrow-in-down text-success fs-2"></i>
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title text-dark mb-0">Registrar Entrada</h5>
-                        <small class="text-muted">Producto Terminado</small>
-                    </div>
+                <div class="card-body">
+                    <h5 class="card-title text-dark mb-0">Entrada Manual</h5>
+                    <small class="text-muted">Producto Terminado</small>
                 </div>
-            </a>
-        </div>
+            </div>
+        </a>
+    </div>
 
-        <div class="col-6 col-md-3">
-            <a href="{% url 'ventas_por_dia' %}" class="text-decoration-none">
-                <div class="dashboard-card card bg-white h-100 text-center pt-4 pb-3">
-                    <div class="card-icon bg-primary bg-opacity-10">
-                        <i class="bi bi-journal-check text-primary fs-2"></i>
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title text-dark mb-0">Ver Pedidos</h5>
-                        <small class="text-muted">Ventas Diarias por Usuario</small>
-                    </div>
+    <!-- Salida Manual -->
+    <div class="col-6 col-md-3">
+        <a href="{% url 'registrar_salidaPT' %}" class="text-decoration-none">
+            <div class="dashboard-card card bg-white h-100 text-center pt-4 pb-3">
+                <div class="card-icon bg-danger bg-opacity-10">
+                    <i class="bi bi-box-arrow-up text-danger fs-2"></i>
                 </div>
-            </a>
-        </div>
+                <div class="card-body">
+                    <h5 class="card-title text-dark mb-0">Salida Manual</h5>
+                    <small class="text-muted">Producto Terminado</small>
+                </div>
+            </div>
+        </a>
+    </div>
 
-        <div class="col-6 col-md-3">
-            <a href="{% url 'realizar_corte_producto_terminado' %}" class="text-decoration-none">
-                <div class="dashboard-card card bg-white h-100 text-center pt-4 pb-3">
-                    <div class="card-icon bg-dark bg-opacity-10">
-                        <i class="bi bi-scissors text-dark fs-2"></i>
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title text-dark mb-0">Corte de Inventario</h5>
-                        <small class="text-muted">Reportes y análisis</small>
-                    </div>
+    <!-- Pedidos de Ruta -->
+    <div class="col-6 col-md-3">
+        <a href="{% url 'lista_pedidos_reparto' %}" class="text-decoration-none">
+            <div class="dashboard-card card bg-white h-100 text-center pt-4 pb-3">
+                <div class="card-icon bg-primary bg-opacity-10">
+                    <i class="bi bi-truck text-primary fs-2"></i>
                 </div>
-            </a>
-        </div>
+                <div class="card-body">
+                    <h5 class="card-title text-dark mb-0">Pedidos de Ruta</h5>
+                    <small class="text-muted">Reabastecimiento</small>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Bodegas de Ruta -->
+    <div class="col-6 col-md-3">
+        <a href="{% url 'minibodega_lista' %}" class="text-decoration-none">
+            <div class="dashboard-card card bg-white h-100 text-center pt-4 pb-3">
+                <div class="card-icon bg-warning bg-opacity-10">
+                    <i class="bi bi-shop text-warning fs-2"></i>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title text-dark mb-0">Bodegas de Ruta</h5>
+                    <small class="text-muted">Gestión de Inventario</small>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+  
+
+    
     </div>
     
     
@@ -199,13 +206,6 @@
         </div>
     </div>
     
-    <div class="my-4"></div>
-    
-    <div class="card bg-white">
-        <div class="card-body">
-            <div id="chart-top-productos"></div>
-        </div>
-    </div>
     
 </div>
 
@@ -215,7 +215,7 @@
 <!-- Las tarjetas con indicadores-->
 <script>
     document.addEventListener("DOMContentLoaded", () => {
-        fetch("/terminado/api/indicadoresPT/")  // la ruta de la appi
+        fetch("/terminado/api/indicadoresPT/")  
             .then(res => res.json())
             .then(data => {
                 document.getElementById("total_productos").textContent = data.total_productos;
@@ -275,48 +275,6 @@
         });
 </script>
 
-
-
-
-<!-- Grafica Top 5-->
-
-<script>
-    fetch('/terminado/api/top-productos-salidas/PT/')
-        .then(response => response.json())
-        .then(data => {
-            const options = {
-                chart: {
-                    type: 'bar',
-                    height: 350
-                },
-                series: [{
-                    name: 'Cantidad Salida',
-                    data: data.data
-                }],
-                xaxis: {
-                    categories: data.labels,
-                    title: {
-                        text: 'Producto'
-                    }
-                },
-                title: {
-                    text: 'Productos con más salidas en los últimos 7 dias',
-                    align: 'center'
-                },
-                colors: ['#FF4560', '#00E396', '#775DD0', '#FEB019', '#0090FF'],
-                plotOptions: {
-                    bar: {
-                        distributed: true, // ✅ Esto permite un color por barra
-                        borderRadius: 6,
-                        columnWidth: '55%'
-                    }
-                }
-            };
-
-            const chart = new ApexCharts(document.querySelector("#chart-top-productos"), options);
-            chart.render();
-        });
-</script>
 
 
 

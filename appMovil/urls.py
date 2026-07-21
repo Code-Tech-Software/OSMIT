@@ -3,8 +3,6 @@ from rest_framework.routers import DefaultRouter
 from appMovil import views
 from .views import *
 
-
-
 router = DefaultRouter()
 router.register(r'roles', RolViewSet)
 router.register(r'usuarios', UsuarioViewSet)
@@ -38,10 +36,10 @@ urlpatterns = [
     path('pedidos/<int:pedido_id>/', views.detalle_pedido, name='detalle_pedido_reparto'),
     path('pedidos/<int:pedido_id>/procesar/', views.procesar_reabastecimiento, name='procesar_reabastecimiento'),
 
-    path('minibodegas/', views.minibodega_list,name='minibodega_lista'),
+    path('minibodegas/', views.minibodega_list, name='minibodega_lista'),
 
     # Ruta para el detalle (Llama a la función minibodega_detail pasando el pk)
-    path('minibodegas/<int:pk>/',views.minibodega_detail,name='minibodega_detalle'),
+    path('minibodegas/<int:pk>/', views.minibodega_detail, name='minibodega_detalle'),
 
     path('minibodegas/agregar/', views.agregar_minibodega, name='agregar_minibodega'),
     path('sync/ventas/', sync_ventas),
@@ -50,4 +48,17 @@ urlpatterns = [
     path('movil/ventas/', get_ventas),
     path('movil/abonos/', get_abonos),
     path('movil/devoluciones/', get_devoluciones),
+
+    path('ventas2/', ListaVentasView.as_view(), name='lista_ventas'),
+    path('ventas2/<int:pk>/', DetalleVentaView.as_view(), name='detalle_venta'),
+
+    # ---------------------------------------------------------------------------------------- CARGAR CSV
+    path('cargar-clientes/', views.cargar_clientes_csv, name='cargar_clientes_csv'),
+    path('cargar-productos/', views.cargar_productos_csv, name='cargar_productos'),
+    path('minibodega/<int:pk>/abrir/', views.abrir_minibodega_manual, name='abrir_minibodega_manual'),
+    path('minibodega/detalle/<int:detalle_pk>/regresar/', views.regresar_producto_bodega,
+         name='regresar_producto_bodega'),
+
+    path('devoluciones/', ListaDevolucionesView.as_view(), name='lista_devoluciones'),
+    path('devoluciones/<int:pk>/', DetalleDevolucionView.as_view(), name='detalle_devolucion'),
 ]

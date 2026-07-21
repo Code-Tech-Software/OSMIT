@@ -17,7 +17,8 @@
             {% csrf_token %}
 
             <div class="row mb-4">
-                <div class="col-md-6">
+                <!-- Se agregó el ID contenedorRuta para manipular su visibilidad desde JS -->
+                <div class="col-md-6" id="contenedorRuta">
                     {{ form.ruta.label_tag }}
                     {{ form.ruta }}
                     {% for error in form.ruta.errors %}
@@ -146,17 +147,48 @@
 
     {% include 'Partials/notificaciones.html' %}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    
+
     <script>
+        // LÓGICA DE UI PARA MOSTRAR/OCULTAR RUTA
+        const destinoSelect = document.getElementById('id_destino'); 
+        const rutaSelect = document.getElementById('id_ruta'); 
+        const contenedorRuta = document.getElementById('contenedorRuta');
+
+        function toggleRutaRequisito() {
+            if (destinoSelect && rutaSelect && contenedorRuta) {
+                // 'opcion1' corresponde a "Ruta" en tus DESTINO_CHOICES
+                if (destinoSelect.value === 'opcion1') {
+                    contenedorRuta.style.display = 'block';
+                    rutaSelect.setAttribute('required', 'required');
+                } else {
+                    contenedorRuta.style.display = 'none';
+                    rutaSelect.removeAttribute('required');
+                    rutaSelect.value = ''; // Limpia el valor si se oculta
+                }
+            }
+        }
+
+        if (destinoSelect) {
+            destinoSelect.addEventListener('change', toggleRutaRequisito);
+            toggleRutaRequisito(); // Ejecutar al cargar para establecer el estado inicial
+        }
+
+        // LÓGICA DEL FORMULARIO Y MODAL
         const form = document.getElementById('salidaForm');
         const submitBtn = document.getElementById('submitBtn');
         const confirmSubmit = document.getElementById('confirmSubmit');
         const resumenSalida = document.getElementById('resumenSalida');
         const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
         const notyf = new Notyf({duration: 3000, position: {x: 'right', y: 'bottom'}, dismissible: true});
-        
+
         form.addEventListener('submit', function (e) {
             e.preventDefault();
+
+            // Validación de capa 8: Si es a Ruta, debe haber una ruta seleccionada
+            if (destinoSelect && destinoSelect.value === 'opcion1' && (!rutaSelect || rutaSelect.value === '')) {
+                notyf.error('Debes seleccionar una Ruta específica.');
+                return;
+            }
 
             const dt = window.productosDT;
             const inputs = dt.$('input[name^="cantidad_"]');
@@ -198,15 +230,17 @@
             }
 
             // Recuperar datos para el resumen
-            const ruta = document.querySelector('[name="ruta"]').selectedOptions ? document.querySelector('[name="ruta"]').selectedOptions[0]?.text : document.querySelector('[name="ruta"]').value;
+            const ruta = document.querySelector('[name="ruta"]').selectedOptions && document.querySelector('[name="ruta"]').value !== '' 
+                            ? document.querySelector('[name="ruta"]').selectedOptions[0]?.text 
+                            : 'N/A';
             const destino = document.querySelector('[name="destino"]').selectedOptions ? document.querySelector('[name="destino"]').selectedOptions[0]?.text : document.querySelector('[name="destino"]').value;
             const nota = document.querySelector('[name="nota"]').value || '(Sin nota)';
 
             resumenSalida.innerHTML = `
                 <div class="mb-3 p-3 bg-light rounded border border-danger-subtle">
                     <div class="row">
-                        <div class="col-md-6"><p class="mb-1"><strong>Ruta:</strong> ${ruta}</p></div>
                         <div class="col-md-6"><p class="mb-1"><strong>Destino:</strong> ${destino}</p></div>
+                        <div class="col-md-6" style="display: ${destinoSelect.value === 'opcion1' ? 'block' : 'none'};"><p class="mb-1"><strong>Ruta:</strong> ${ruta}</p></div>
                     </div>
                     <p class="mb-0 mt-2"><strong>Nota:</strong> ${nota}</p>
                 </div>
@@ -226,7 +260,7 @@
             `;
             confirmModal.show();
         });
-        
+
         confirmSubmit.addEventListener('click', function () {
             const dt = window.productosDT;
 
@@ -234,7 +268,7 @@
             confirmSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando...';
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Registrando...';
-            
+
             // Pasar inputs de DataTable al DOM real del Form
             dt.$('input[name^="cantidad_"]').each(function () {
                 const v = this.value;
@@ -252,7 +286,7 @@
             });
             form.submit();
         });
-        
+
         document.addEventListener('DOMContentLoaded', function () {
             form.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter' && e.target.tagName.toLowerCase() !== 'textarea') {

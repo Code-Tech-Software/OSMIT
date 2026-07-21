@@ -1,0 +1,212 @@
+{% extends 'Base/Sidebar.html' %} 
+{% load static %}
+
+{% block content %}
+<!-- Dependencias de Estilos e Íconos -->
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css" rel="stylesheet">
+
+<style>
+    .rounded-custom {
+        border-radius: 15px !important;
+    }
+    
+    .table-custom th {
+        font-weight: 600;
+        color: #4a5568;
+        border-bottom-width: 2px;
+    }
+    
+    .table-custom td {
+        color: #2d3748;
+        vertical-align: middle;
+    }
+
+    /* Estilo para que el input de archivo generado por Django luzca mejor */
+    input[type="file"] {
+        display: block;
+        width: 100%;
+        padding: 0.375rem 0.75rem;
+        font-size: 1rem;
+        font-weight: 400;
+        line-height: 1.5;
+        color: #212529;
+        background-color: #fff;
+        background-clip: padding-box;
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+        transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+    }
+</style>
+
+<div class="container-fluid px-0 mb-4">
+    
+    <!-- Título de la vista -->
+    <div class="d-flex align-items-center mb-4">
+        <div class="bg-primary bg-opacity-10 p-3 rounded-custom me-3">
+            <i class="bi bi-people fs-4" style="color: var(--primary-color, #0d6efd);"></i>
+        </div>
+        <div>
+            <h4 class="mb-0 fw-bold text-gray-800">Carga Masiva de Clientes</h4>
+            <span class="text-muted">Importa tu lista de clientes desde un archivo CSV</span>
+        </div>
+    </div>
+
+    <!-- Mostrar mensajes del servidor -->
+    {% if messages %}
+        <div class="row mb-3">
+            <div class="col-12">
+                {% for message in messages %}
+                    <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %} alert-dismissible fade show rounded-custom shadow-sm border-0" role="alert">
+                        {% if message.tags == 'error' %}
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        {% else %}
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                        {% endif %}
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="row g-4">
+        
+        <!-- Columna Izquierda: Formulario de Carga -->
+        <div class="col-lg-4">
+            <div class="card bg-white border-0 shadow-sm rounded-custom h-100">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold mb-4">Subir Archivo</h5>
+                    
+                    <form method="POST" enctype="multipart/form-data" id="csvUploadForm">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label for="id_archivo_csv" class="form-label fw-semibold text-muted">Selecciona tu archivo CSV:</label>
+                            <!-- El input generado por Django -->
+                            {{ form.archivo_csv }}
+                            <div class="form-text mt-2">Tamaño máximo permitido: 5MB.</div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100 py-2 rounded-3 fw-bold d-flex align-items-center justify-content-center" style="background-color: var(--primary-color, #0d6efd); border: none;">
+                            <i class="bi bi-cloud-arrow-up fs-5 me-2"></i> 
+                            <span id="btnText">Procesar y Cargar Clientes</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: Instrucciones -->
+        <div class="col-lg-8">
+            <div class="card bg-white border-0 shadow-sm rounded-custom h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-info-circle text-info fs-5 me-2"></i>
+                        <h5 class="card-title fw-bold mb-0">Instrucciones de Uso</h5>
+                    </div>
+                    
+                    <p class="text-muted mb-4">
+                        Para cargar correctamente los clientes, asegúrate de subir un archivo con formato <strong>.csv (delimitado por comas)</strong>. La primera fila del archivo debe contener exactamente los nombres de las columnas como se muestra a continuación.
+                    </p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover table-custom align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Columna CSV</th>
+                                    <th class="text-center">Obligatorio</th>
+                                    <th>Tipo de Dato y Ejemplo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="badge bg-secondary">nombre</span></td>
+                                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                                    <td>Texto (Ej: Juan Pérez)</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-secondary">nombre_negocio</span></td>
+                                    <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                                    <td>Texto (Ej: Abarrotes La Esperanza)</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="text-muted small">giro, tipo_exhibidor, direccion, localidad, colonia, telefono, observaciones</span></td>
+                                    <td class="text-center"><i class="bi bi-dash-circle text-muted"></i></td>
+                                    <td>Texto (Dejar en blanco si no aplica)</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="text-muted small">limite_credito, saldo_adeudo, porcentaje_descuento</span></td>
+                                    <td class="text-center"><i class="bi bi-dash-circle text-muted"></i></td>
+                                    <td>Número decimal sin símbolos (Ej: 1500.50). <em>Por defecto es 0.00</em>.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-secondary">ruta_id</span></td>
+                                    <td class="text-center"><i class="bi bi-dash-circle text-muted"></i></td>
+                                    <td>Número entero (ID de la ruta en el sistema. Ej: 2).</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-secondary">estado</span></td>
+                                    <td class="text-center"><i class="bi bi-dash-circle text-muted"></i></td>
+                                    <td>Texto: <code>true</code> (Activo) o <code>false</code> (Inactivo). <em>Por defecto es true</em>.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-secondary">dias_visita</span></td>
+                                    <td class="text-center"><i class="bi bi-dash-circle text-muted"></i></td>
+                                    <td>Texto sin acentos separados por coma (Ej: <code>lunes,miercoles,viernes</code>).</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Validaciones del lado del cliente usando JavaScript -->
+<script>
+    document.getElementById('csvUploadForm').addEventListener('submit', function(event) {
+        var fileInput = document.getElementById('id_archivo_csv');
+        
+        // Validar que se haya seleccionado un archivo
+        if (fileInput.files.length === 0) {
+            alert('Por favor, selecciona un archivo antes de procesar.');
+            event.preventDefault();
+            return false;
+        }
+
+        // Obtener el nombre del archivo y validar la extensión
+        var fileName = fileInput.files[0].name;
+        var allowedExtension = ".csv";
+        
+        if (!fileName.toLowerCase().endsWith(allowedExtension)) {
+            alert('Formato no válido. Por favor, asegúrate de subir un archivo con extensión .csv');
+            fileInput.value = ''; // Limpia el input
+            event.preventDefault();
+            return false;
+        }
+        
+        // Validar tamaño del archivo (máximo 5MB)
+        var fileSize = fileInput.files[0].size / 1024 / 1024; // en MB
+        if (fileSize > 5) {
+            alert('El archivo es demasiado pesado. El límite máximo es de 5MB.');
+            event.preventDefault();
+            return false;
+        }
+
+        // Deshabilitar botón y mostrar estado de carga
+        var btn = this.querySelector('button[type="submit"]');
+        var btnText = document.getElementById('btnText');
+        
+        btn.disabled = true;
+        btn.classList.add('opacity-75');
+        
+        // Cambiar el contenido manteniendo el diseño del botón
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Cargando clientes...';
+    });
+</script>
+
+{% endblock %}

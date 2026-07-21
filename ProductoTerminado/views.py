@@ -3,9 +3,10 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from ProductoGranel.models import User, PedidoProduccion
+from appMovil.models import MiniBodega, MiniBodegaDetalle, PedidoReabastecimiento
 from . import models
 from .forms import ProductoTerminadoForm, EntradaForm, ProductoVariacionForm
-from .models import ProductoTerminado, EntradaPTerminado, DetalleEntradaPTerminado, ProductoVariacion
+from .models import ProductoTerminado, EntradaPTerminado, DetalleEntradaPTerminado, ProductoVariacion, InventarioRuta
 from decimal import Decimal
 from django.contrib import messages
 from django.shortcuts import render, redirect
@@ -258,10 +259,13 @@ def registrar_entrada(request):
     })
 
 
+
+
 @login_required
 def registrar_salida(request):
-    productos = ProductoTerminado.objects.filter(estado=True).prefetch_related('variaciones',
-                                                                               'variaciones__presentacion')
+    productos = ProductoTerminado.objects.filter(estado=True).prefetch_related(
+        'variaciones', 'variaciones__presentacion'
+    )
     presentaciones = PresentacionProductoTerminado.objects.filter(estado=True)
 
     if request.method == 'POST':
@@ -271,63 +275,105 @@ def registrar_salida(request):
             destino = form.cleaned_data.get('destino')
             nota = form.cleaned_data.get('nota', '')
 
-            detalles_validos = []
-            errores_stock = []
-
-            # Recopilar cantidades y validar
-            for key, value in request.POST.items():
-                if key.startswith('cantidad_'):
-                    try:
-                        variacion_id = int(key.split('_')[1])
-                        cantidad = Decimal(value)
-
-                        if cantidad > 0:
-                            variacion = ProductoVariacion.objects.get(id=variacion_id)
-                            # Validar que no salga más del stock disponible
-                            if cantidad > variacion.stock:
-                                errores_stock.append(
-                                    f"{variacion.producto.nombre} ({variacion.presentacion}): Solicitado {cantidad}, Disponible {variacion.stock}")
-                            else:
-                                detalles_validos.append((variacion, cantidad))
-                    except (ValueError, TypeError, ProductoVariacion.DoesNotExist):
-                        continue
-
-            if errores_stock:
-                for error in errores_stock:
-                    messages.error(request, f'Stock insuficiente - {error}')
-            elif detalles_validos:
-                try:
-                    with transaction.atomic():
-                        # Crear el registro principal de la salida
-                        salida = SalidaPTerminado.objects.create(
-                            fecha_salida=timezone.now(),
-                            usuario=request.user,
-                            ruta=ruta,
-                            destino=destino,
-                            nota=nota
-                        )
-                        # Registrar los detalles y restar el stock
-                        for variacion, cantidad in detalles_validos:
-                            DetalleSalidaPTerminado.objects.create(
-                                salida_p_terminado=salida,
-                                producto_variacion=variacion,
-                                cantidad=cantidad
-                            )
-                            variacion.stock -= cantidad  # AQUI SE RESTA EL STOCK
-                            variacion.save()
-
-                    messages.success(request, 'Salida registrada correctamente.')
-                    return redirect('registrar_salidaPT')  # Cambia esto por el nombre real de tu url
-                except Exception as e:
-                    messages.error(request, f'Error al registrar la salida: {str(e)}')
+            # 1. Validación estricta: Si el destino es "Ruta" (opcion1), la ruta es obligatoria
+            if destino == 'opcion1' and not ruta:
+                messages.error(request, 'Debes seleccionar una Ruta específica cuando el destino es "Ruta".')
             else:
-                messages.error(request, 'Debe ingresar al menos una cantidad mayor a 0.')
+                detalles_validos = []
+                errores_stock = []
+
+                # 2. Recopilar cantidades y validar stock
+                for key, value in request.POST.items():
+                    if key.startswith('cantidad_'):
+                        try:
+                            variacion_id = int(key.split('_')[1])
+                            cantidad = Decimal(value)
+
+                            if cantidad > 0:
+                                variacion = ProductoVariacion.objects.select_for_update().get(id=variacion_id)
+
+                                # Validar que no salga más del stock disponible
+                                if cantidad > variacion.stock:
+                                    errores_stock.append(
+                                        f"{variacion.producto.nombre} ({variacion.presentacion}): Solicitado {cantidad}, Disponible {variacion.stock}"
+                                    )
+                                else:
+                                    detalles_validos.append((variacion, cantidad))
+                        except (ValueError, TypeError, ProductoVariacion.DoesNotExist):
+                            continue
+
+                if errores_stock:
+                    for error in errores_stock:
+                        messages.error(request, f'Stock insuficiente - {error}')
+                elif not detalles_validos:
+                    messages.error(request, 'Debe ingresar al menos una cantidad mayor a 0.')
+                else:
+                    try:
+                        # 3. Transacción Atómica: Todo o nada
+                        with transaction.atomic():
+                            # A. Crear el registro principal de la salida
+                            salida = SalidaPTerminado.objects.create(
+                                fecha_salida=timezone.now(),
+                                usuario=request.user,
+                                ruta=ruta if destino == 'opcion1' else None,
+                                destino=destino,
+                                nota=nota
+                            )
+
+                            # Variables para MiniBodega si aplica
+                            minibodega = None
+                            if destino == 'opcion1' and ruta:
+                                hoy = timezone.now().date()
+                                # Buscar minibodega de la ruta de hoy, si no existe, la crea
+                                minibodega, created = MiniBodega.objects.get_or_create(
+                                    ruta=ruta,
+                                    fecha=hoy,
+                                    defaults={
+                                        'usuario': request.user,
+                                        # Asegúrate que tu modelo MiniBodega acepte la instancia de request.user
+                                        'vehiculo': ruta.vehiculo,
+                                        'estado': True
+                                    }
+                                )
+
+                            # B. Registrar los detalles y mover el stock
+                            for variacion, cantidad in detalles_validos:
+                                # Descontar del stock principal
+                                DetalleSalidaPTerminado.objects.create(
+                                    salida_p_terminado=salida,
+                                    producto_variacion=variacion,
+                                    cantidad=cantidad
+                                )
+                                variacion.stock -= cantidad
+                                variacion.save()
+
+                                # C. Si el destino es la ruta, cargar a la MiniBodegaDetalle
+                                if minibodega:
+                                    mb_detalle, created_mb = MiniBodegaDetalle.objects.get_or_create(
+                                        mini_bodega=minibodega,
+                                        producto_variacion=variacion,
+                                        defaults={
+                                            'cantidad_inicial': Decimal('0.00'),
+                                            'cantidad_actual': Decimal('0.00')
+                                        }
+                                    )
+                                    # Se suma a lo que ya tuviera en la ruta ese día
+                                    mb_detalle.cantidad_inicial += cantidad
+                                    mb_detalle.cantidad_actual += cantidad
+                                    mb_detalle.save()
+
+                        messages.success(request, 'Salida registrada y stock actualizado correctamente.')
+                        return redirect('registrar_salidaPT')  # <- Asegura que sea tu url real
+
+                    except Exception as e:
+                        messages.error(request, f'Error crítico al registrar la salida: {str(e)}')
+        else:
+            messages.error(request, 'Por favor, corrige los errores en el formulario.')
     else:
         form = SalidaForm()
 
-    # Construir la matriz de productos (Igual que en entradas)
+    # Construir la matriz de productos
     productos_matriz = []
-
     for prod in productos:
         vars_dict = {var.presentacion.id: var for var in prod.variaciones.all()}
         if not vars_dict:
@@ -357,13 +403,6 @@ def registrar_salida(request):
         'presentaciones': presentaciones,
         'productos_matriz': productos_matriz
     })
-
-
-
-
-
-
-
 
 
 
@@ -538,5 +577,26 @@ def indicadores_de_produccion(request):
 
     })
 
+
+def api_indicadores_pt(request):
+    total_productos = ProductoVariacion.objects.filter(producto__estado=True).count()
+    productos_bajo_min = ProductoVariacion.objects.filter(
+        producto__estado=True,
+        stock__lte=F('stock_min'),
+        stock__gt=0
+    ).count()
+    productos_sin_stock = ProductoVariacion.objects.filter(
+        producto__estado=True,
+        stock__lte=0
+    ).count()
+    pedidos_pendientes = PedidoReabastecimiento.objects.filter(estado=True).count()
+    data = {
+        "total_productos": total_productos,
+        "productos_bajo_min": productos_bajo_min,
+        "productos_sin_stock": productos_sin_stock,
+        "pedidos_pendientes": pedidos_pendientes
+    }
+
+    return JsonResponse(data)
 
 

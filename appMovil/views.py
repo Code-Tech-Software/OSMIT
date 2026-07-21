@@ -8,7 +8,8 @@ from rest_framework.response import Response
 from decimal import Decimal
 
 
-from ProductoTerminado.models import SalidaPTerminado, DetalleSalidaPTerminado
+from ProductoTerminado.models import SalidaPTerminado, DetalleSalidaPTerminado, EntradaPTerminado, \
+    DetalleEntradaPTerminado
 from appMovil.serializers import *
 
 from django.shortcuts import render, get_object_or_404, redirect
@@ -437,17 +438,85 @@ def minibodega_list(request):
 def minibodega_detail(request, pk):
     # Buscamos la mini bodega por su ID (Primary Key). Si no existe, lanza un 404.
     minibodega = get_object_or_404(MiniBodega, pk=pk)
-
-    # Mandamos el objeto al template
     context = {
         'minibodega': minibodega
     }
     return render(request, 'appMovil/miniBodegas/minibodega_detail.html', context)
 
+
+
+
+
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+
+
+@login_required
+def abrir_minibodega_manual(request, pk):
+    if request.method == 'POST':
+        try:
+            minibodega = get_object_or_404(MiniBodega, pk=pk)
+            minibodega.estado = True
+            minibodega.save()
+            return JsonResponse({'success': True, 'message': 'La Mini Bodega ha sido abierta exitosamente.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+    return JsonResponse({'success': False, 'message': 'Método no permitido.'}, status=405)
+
+import json
+@login_required
+def regresar_producto_bodega(request, detalle_pk):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            cantidad_a_regresar = Decimal(str(data.get('cantidad', 0)))
+
+            if cantidad_a_regresar <= 0:
+                return JsonResponse({'success': False, 'message': 'La cantidad debe ser mayor a 0.'})
+
+            # Transacción atómica para evitar descuadres
+            with transaction.atomic():
+                detalle = MiniBodegaDetalle.objects.select_for_update().get(pk=detalle_pk)
+
+                if cantidad_a_regresar > detalle.cantidad_actual:
+                    return JsonResponse(
+                        {'success': False, 'message': 'No puedes regresar más de lo que hay en la Mini Bodega.'})
+
+                # 1. Restar de la Mini Bodega
+                detalle.cantidad_actual -= cantidad_a_regresar
+                detalle.save()
+
+                # 2. Sumar al stock principal
+                variacion = ProductoVariacion.objects.select_for_update().get(pk=detalle.producto_variacion.id)
+                variacion.stock += cantidad_a_regresar
+                variacion.save()
+
+                # 3. Registrar la entrada para historial (¡Bien hecho!)
+                entrada = EntradaPTerminado.objects.create(
+                    fecha_entrada=timezone.now(),
+                    usuario=request.user,
+                    nota=f"Retorno desde Mini Bodega #{detalle.mini_bodega.id} (Ruta: {detalle.mini_bodega.ruta.nombre})"
+                )
+                DetalleEntradaPTerminado.objects.create(
+                    entrada_p_terminado=entrada,
+                    producto_variacion=variacion,
+                    cantidad=cantidad_a_regresar
+                )
+
+            return JsonResponse({'success': True, 'message': 'El stock ha sido regresado a la bodega principal.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+    return JsonResponse({'success': False, 'message': 'Método no permitido.'}, status=405)
+
+
+
+
+
 # views.py
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from .forms import MiniBodegaForm
+from .forms import MiniBodegaForm, FiltroDevolucionesForm
+
 
 def agregar_minibodega(request):
     if request.method == 'POST':
@@ -936,3 +1005,299 @@ def get_devoluciones(request):
         })
 
     return Response(data)
+
+
+from django.views.generic import ListView
+from django.db.models import Sum
+from .models import Venta
+from .forms import FiltroVentasForm
+
+class ListaVentasView(ListView):
+    model = Venta
+    template_name = 'appMovil/ventas/lista_ventas.html'
+    context_object_name = 'ventas'
+    paginate_by = 50  # Paginará de 50 en 50 registros
+
+    def get_queryset(self):
+        queryset = super().get_queryset().select_related('cliente', 'usuario')
+
+        # Obtener parámetros del GET
+        fecha_inicio = self.request.GET.get('fecha_inicio')
+        fecha_fin = self.request.GET.get('fecha_fin')
+        repartidor = self.request.GET.get('repartidor')
+
+        # Aplicar filtros
+        if fecha_inicio:
+            queryset = queryset.filter(fecha__date__gte=fecha_inicio)
+        if fecha_fin:
+            queryset = queryset.filter(fecha__date__lte=fecha_fin)
+        if repartidor:
+            queryset = queryset.filter(usuario_id=repartidor)
+
+        return queryset.order_by('-fecha')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form'] = FiltroVentasForm(self.request.GET or None)
+
+        # Calculamos el total de TODO el filtrado, no solo de la página actual
+        ventas_filtradas = self.get_queryset()
+        total_suma = ventas_filtradas.aggregate(total=Sum('total'))['total'] or 0.00
+        context['total_suma'] = total_suma
+
+        return context
+
+from django.views.generic import DetailView
+from .models import Venta
+
+class DetalleVentaView(DetailView):
+    model = Venta
+    template_name = 'appMovil/ventas/detalle_venta.html'
+    context_object_name = 'venta'
+
+    def get_queryset(self):
+        return super().get_queryset().prefetch_related(
+            'ventadetalle_set__producto_variacion',
+            'abonos__usuario'
+        )
+
+
+from django.views.generic import ListView, DetailView
+from django.db.models import Sum, F, FloatField
+from .models import Devolucion
+
+
+class ListaDevolucionesView(ListView):
+    model = Devolucion
+    template_name = 'appMovil/devoluciones/lista_devoluciones.html'
+    context_object_name = 'devoluciones'
+    paginate_by = 50  # Paginará de 50 en 50 registros
+
+    def get_queryset(self):
+        # Hacemos select_related y calculamos el total de cada devolución al vuelo
+        queryset = super().get_queryset().select_related('cliente', 'usuario', 'mini_bodega').annotate(
+            total=Sum(
+                F('devoluciondetalle__cantidad') * F('devoluciondetalle__precio_unitario'),
+                output_field=FloatField()
+            )
+        )
+
+        # Obtener parámetros del GET
+        fecha_inicio = self.request.GET.get('fecha_inicio')
+        fecha_fin = self.request.GET.get('fecha_fin')
+        repartidor = self.request.GET.get('repartidor')
+
+        # Aplicar filtros
+        if fecha_inicio:
+            queryset = queryset.filter(fecha__date__gte=fecha_inicio)
+        if fecha_fin:
+            queryset = queryset.filter(fecha__date__lte=fecha_fin)
+        if repartidor:
+            queryset = queryset.filter(usuario_id=repartidor)
+
+        return queryset.order_by('-fecha')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Asumiendo que crearás un formulario de filtros idéntico al de ventas
+        context['form'] = FiltroDevolucionesForm(self.request.GET or None)
+
+        # Calculamos el total de TODO el filtrado (Suma global de todos los detalles)
+        devoluciones_filtradas = self.get_queryset()
+        total_suma = devoluciones_filtradas.aggregate(
+            total_global=Sum(
+                F('devoluciondetalle__cantidad') * F('devoluciondetalle__precio_unitario'),
+                output_field=FloatField()
+            )
+        )['total_global'] or 0.00
+
+        context['total_suma'] = total_suma
+
+        return context
+
+
+class DetalleDevolucionView(DetailView):
+    model = Devolucion
+    template_name = 'appMovil/devoluciones/detalle_devolucion.html'
+    context_object_name = 'devolucion'
+
+    def get_queryset(self):
+        # Traemos las relaciones y calculamos el total general de esta devolución en específico
+        return super().get_queryset().select_related('cliente', 'usuario', 'mini_bodega').prefetch_related(
+            'devoluciondetalle_set__producto_variacion'
+        ).annotate(
+            total=Sum(
+                F('devoluciondetalle__cantidad') * F('devoluciondetalle__precio_unitario'),
+                output_field=FloatField()
+            )
+        )
+
+#CARGAR COSAS#
+
+import csv
+import io
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from .models import Cliente, Ruta
+from .forms import CargarCSVForm
+
+
+def cargar_clientes_csv(request):
+    if request.method == 'POST':
+        form = CargarCSVForm(request.POST, request.FILES)
+        if form.is_valid():
+            archivo = request.FILES['archivo_csv']
+
+            if not archivo.name.endswith('.csv'):
+                messages.error(request, 'Por favor, sube un archivo con extensión .csv')
+                return redirect('cargar_clientes_csv')
+
+            try:
+                # --- SOLUCIÓN PARA EXCEL ---
+                try:
+                    # Intenta decodificar eliminando el BOM de Excel (el caracter invisible)
+                    data_set = archivo.read().decode('utf-8-sig')
+                except UnicodeDecodeError:
+                    # Si falla por acentos o eñes guardados en formato antiguo, usa latin-1
+                    archivo.seek(0)
+                    data_set = archivo.read().decode('latin-1')
+
+                io_string = io.StringIO(data_set)
+                reader = csv.DictReader(io_string)
+                # -----------------------------
+
+                # Usamos transaction.atomic para procesar de forma segura relaciones complejas
+                with transaction.atomic():
+                    contador_clientes = 0
+
+                    for row in reader:
+                        # 1. Buscar la Ruta por ID si viene en el CSV
+                        ruta_id = row.get('ruta_id')
+                        ruta_obj = None
+                        if ruta_id:
+                            try:
+                                ruta_obj = Ruta.objects.get(id=int(ruta_id))
+                            except (Ruta.DoesNotExist, ValueError):
+                                pass  # Si no existe, queda como None
+
+                        # 2. Conversión del estado booleano
+                        estado_str = str(row.get('estado', 'true')).lower()
+                        estado_bool = estado_str in ['true', '1', 'si', 'yes', 'active']
+
+                        # 3. Crear e insertar el Cliente con TODOS sus campos
+                        # Aplicamos .strip() al nombre para limpiar espacios residuales
+                        cliente = Cliente.objects.create(
+                            nombre=row.get('nombre', '').strip(),
+                            nombre_negocio=row.get('nombre_negocio', '').strip(),
+                            giro=row.get('giro', None),
+                            tipo_exhibidor=row.get('tipo_exhibidor', None),
+                            direccion=row.get('direccion', '').strip(),
+                            localidad=row.get('localidad', None),
+                            colonia=row.get('colonia', None),
+                            telefono=row.get('telefono', None),
+                            limite_credito=float(row.get('limite_credito', 0.00) or 0.00),
+                            saldo_adeudo=float(row.get('saldo_adeudo', 0.00) or 0.00),
+                            porcentaje_descuento=float(row.get('porcentaje_descuento', 0.00) or 0.00),
+                            imagen=row.get('imagen', None),
+                            observaciones=row.get('observaciones', None),
+                            ruta=ruta_obj,
+                            estado=estado_bool
+                        )
+                        contador_clientes += 1
+
+                        # 4. Procesar los Días de Visita (ClienteDiasVisita)
+                        dias_visita_str = row.get('dias_visita', '')
+                        if dias_visita_str:
+                            lista_dias = [dia.strip().lower() for dia in dias_visita_str.split(',')]
+                            dias_validos = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+
+                            for dia in lista_dias:
+                                if dia in dias_validos:
+                                    ClienteDiasVisita.objects.create(
+                                        cliente=cliente,
+                                        dia_semana=dia
+                                    )
+
+                messages.success(request,
+                                 f'¡Éxito! Se registraron {contador_clientes} clientes con sus configuraciones y días de visita.')
+                return redirect('cargar_clientes_csv')
+
+            except Exception as e:
+                messages.error(request, f'Error crítico al procesar el archivo: {e}')
+                return redirect('cargar_clientes_csv')
+
+    else:
+        form = CargarCSVForm()
+
+    return render(request, 'appMovil/cargaDatos/cargar_csv.html', {'form': form})
+
+
+
+import csv
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.db import transaction
+from .models import  ProductoVariacion
+
+
+def cargar_productos_csv(request):
+    if request.method == 'POST':
+        form = CargarCSVForm(request.POST, request.FILES)
+
+        if form.is_valid():
+            archivo = request.FILES['archivo_csv']
+
+            if not archivo.name.endswith('.csv'):
+                messages.error(request, 'El archivo debe tener extensión .csv.')
+                return redirect('cargar_productos')  # Asegúrate de que este nombre de URL sea el correcto
+
+            try:
+                decoded_file = archivo.read().decode('utf-8-sig').splitlines()
+                reader = csv.DictReader(decoded_file)
+
+                with transaction.atomic():
+                    for row in reader:
+                        # 1. Categoría
+                        categoria, _ = CategoriaProducto.objects.get_or_create(
+                            nombre=row['categoria'].strip()
+                        )
+
+                        producto, _ = ProductoTerminado.objects.get_or_create(
+                            nombre=row['producto_nombre'].strip(),
+                            defaults={'categoria_producto': categoria}
+                        )
+
+                        presentacion, _ = PresentacionProductoTerminado.objects.get_or_create(
+                            nombre=row['presentacion'].strip()
+                        )
+
+                        codigo_barras = row.get('codigo_barras', '').strip()
+                        if not codigo_barras:
+                            codigo_barras = None
+
+                        ProductoVariacion.objects.update_or_create(
+                            producto=producto,
+                            presentacion=presentacion,
+                            defaults={
+                                'costo': row['costo'],
+                                'precio': row['precio'],
+                                'stock': row['stock'],
+                                'stock_min': row['stock_min'],
+                                'codigo_barras': codigo_barras
+                            }
+                        )
+
+                messages.success(request, 'Todos los productos se cargaron exitosamente.')
+                return redirect('cargar_productos')
+
+            except Exception as e:
+                # Si algo falla (ej. una letra en un campo decimal), se cancela toda la transacción
+                messages.error(request, f'Error procesando el archivo: {str(e)}')
+                return redirect('cargar_productos')
+        else:
+            messages.error(request, 'Por favor, selecciona un archivo válido.')
+            return redirect('cargar_productos')
+
+    else:
+        form = CargarCSVForm()
+    return render(request, 'appMovil/cargaDatos/cargarProductosTerminados_csv.html', {'form': form})
