@@ -259,14 +259,38 @@ def registrar_entrada(request):
     })
 
 
+from django.db import transaction
+from django.utils import timezone
+from decimal import Decimal
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
 
+# (Asegúrate de que tus modelos y formularios estén importados correctamente arriba)
+
+
+from django.db import transaction
+from django.utils import timezone
+from decimal import Decimal
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+
+
+# (Asegúrate de que tus modelos y formularios estén importados correctamente)
 
 @login_required
 def registrar_salida(request):
-    productos = ProductoTerminado.objects.filter(estado=True).prefetch_related(
+    productos = ProductoTerminado.objects.filter(estado=True).order_by('id').prefetch_related(
         'variaciones', 'variaciones__presentacion'
     )
-    presentaciones = PresentacionProductoTerminado.objects.filter(estado=True)
+
+    presentaciones_qs = PresentacionProductoTerminado.objects.filter(estado=True)
+    orden_deseado = [
+        "Chico", "Mediano", "Grande", "250g", "500g","1kg", "Yeos 200", "Yeos gnd", "Kiosko", "Minis",
+    ]
+    presentaciones = list(presentaciones_qs)
+    presentaciones.sort(key=lambda p: orden_deseado.index(str(p)) if str(p) in orden_deseado else 99)
 
     if request.method == 'POST':
         form = SalidaForm(request.POST)
@@ -279,42 +303,47 @@ def registrar_salida(request):
             if destino == 'opcion1' and not ruta:
                 messages.error(request, 'Debes seleccionar una Ruta específica cuando el destino es "Ruta".')
             else:
-                detalles_validos = []
-                errores_stock = []
+                try:
+                    # Todo dentro de atomic para que el select_for_update funcione
+                    # y si algo falla, no se guarde nada a medias.
+                    with transaction.atomic():
+                        detalles_validos = []
+                        errores_stock = []
 
-                # 2. Recopilar cantidades y validar stock
-                for key, value in request.POST.items():
-                    if key.startswith('cantidad_'):
-                        try:
-                            variacion_id = int(key.split('_')[1])
-                            cantidad = Decimal(value)
+                        # 2. Recopilar cantidades y validar stock
+                        for key, value in request.POST.items():
+                            if key.startswith('cantidad_'):
+                                try:
+                                    variacion_id = int(key.split('_')[1])
+                                    cantidad = Decimal(value)
 
-                            if cantidad > 0:
-                                variacion = ProductoVariacion.objects.select_for_update().get(id=variacion_id)
+                                    if cantidad > 0:
+                                        # Bloqueamos la fila para evitar concurrencia
+                                        variacion = ProductoVariacion.objects.select_for_update().get(id=variacion_id)
 
-                                # Validar que no salga más del stock disponible
-                                if cantidad > variacion.stock:
-                                    errores_stock.append(
-                                        f"{variacion.producto.nombre} ({variacion.presentacion}): Solicitado {cantidad}, Disponible {variacion.stock}"
-                                    )
-                                else:
-                                    detalles_validos.append((variacion, cantidad))
-                        except (ValueError, TypeError, ProductoVariacion.DoesNotExist):
-                            continue
+                                        # Validar que no salga más del stock disponible
+                                        if cantidad > variacion.stock:
+                                            errores_stock.append(
+                                                f"{variacion.producto.nombre} ({variacion.presentacion}): Solicitado {cantidad}, Disponible {variacion.stock}"
+                                            )
+                                        else:
+                                            detalles_validos.append((variacion, cantidad))
+                                except (ValueError, TypeError, ProductoVariacion.DoesNotExist):
+                                    continue
 
-                if errores_stock:
-                    for error in errores_stock:
-                        messages.error(request, f'Stock insuficiente - {error}')
-                elif not detalles_validos:
-                    messages.error(request, 'Debe ingresar al menos una cantidad mayor a 0.')
-                else:
-                    try:
-                        # 3. Transacción Atómica: Todo o nada
-                        with transaction.atomic():
+                        # Procesar errores o continuar
+                        if errores_stock:
+                            for error in errores_stock:
+                                messages.error(request, f'Stock insuficiente - {error}')
+                        elif not detalles_validos:
+                            messages.error(request, 'Debe ingresar al menos una cantidad mayor a 0.')
+                        else:
+                            # 3. Guardado en base de datos: Todo o nada
+
                             # A. Crear el registro principal de la salida
                             salida = SalidaPTerminado.objects.create(
                                 fecha_salida=timezone.now(),
-                                usuario=request.user,
+                                usuario=request.user,  # Quien registra la salida en el sistema
                                 ruta=ruta if destino == 'opcion1' else None,
                                 destino=destino,
                                 nota=nota
@@ -324,17 +353,24 @@ def registrar_salida(request):
                             minibodega = None
                             if destino == 'opcion1' and ruta:
                                 hoy = timezone.now().date()
-                                # Buscar minibodega de la ruta de hoy, si no existe, la crea
+
+                                # Buscar minibodega de la ruta de hoy, si no existe, la crea con los datos de la ruta
                                 minibodega, created = MiniBodega.objects.get_or_create(
                                     ruta=ruta,
                                     fecha=hoy,
                                     defaults={
-                                        'usuario': request.user,
-                                        # Asegúrate que tu modelo MiniBodega acepte la instancia de request.user
+                                        'usuario': ruta.usuario,  # Asignamos al encargado de la ruta
                                         'vehiculo': ruta.vehiculo,
                                         'estado': True
                                     }
                                 )
+
+                                # Si ya existía (por pruebas o cambios), forzamos a que tenga los datos correctos actuales
+                                if not created:
+                                    if minibodega.usuario != ruta.usuario or minibodega.vehiculo != ruta.vehiculo:
+                                        minibodega.usuario = ruta.usuario
+                                        minibodega.vehiculo = ruta.vehiculo
+                                        minibodega.save()
 
                             # B. Registrar los detalles y mover el stock
                             for variacion, cantidad in detalles_validos:
@@ -362,11 +398,11 @@ def registrar_salida(request):
                                     mb_detalle.cantidad_actual += cantidad
                                     mb_detalle.save()
 
-                        messages.success(request, 'Salida registrada y stock actualizado correctamente.')
-                        return redirect('registrar_salidaPT')  # <- Asegura que sea tu url real
+                            messages.success(request, 'Salida registrada y stock actualizado correctamente.')
+                            return redirect('registrar_salidaPT')
 
-                    except Exception as e:
-                        messages.error(request, f'Error crítico al registrar la salida: {str(e)}')
+                except Exception as e:
+                    messages.error(request, f'Error crítico al registrar la salida: {str(e)}')
         else:
             messages.error(request, 'Por favor, corrige los errores en el formulario.')
     else:
@@ -403,7 +439,6 @@ def registrar_salida(request):
         'presentaciones': presentaciones,
         'productos_matriz': productos_matriz
     })
-
 
 
 
