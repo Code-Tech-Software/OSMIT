@@ -1,0 +1,697 @@
+{% extends "Base/Sidebar.html" %}
+{% load static %}
+
+{% block content %}
+
+```
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+<link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+<link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
+
+<div>
+    <span class="fw-bold text-dark">Inventario</span>
+    <span class="mx-2 text-dark">|</span>
+    <span class="text-secondary">Registrar Entrada de Productos Especiales</span>
+</div>
+
+<!-- ===================================================== -->
+<!-- SELECTOR DE ESPECIAL -->
+<!-- ===================================================== -->
+
+<div class="custom-card mt-4">
+
+    <div class="row align-items-end">
+
+        <div class="col-md-6">
+
+            <label for="especial" class="form-label fw-semibold">
+                Seleccionar especial:
+            </label>
+
+            <select id="especial" class="form-select">
+
+                {% for codigo, datos in especiales.items %}
+
+                    <option value="{{ codigo }}"
+                        {% if codigo == especial_seleccionado %}
+                            selected
+                        {% endif %}>
+                        {{ datos.nombre }}
+                    </option>
+
+                {% endfor %}
+
+            </select>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ===================================================== -->
+<!-- TABLA -->
+<!-- ===================================================== -->
+
+<div class="custom-card mt-4">
+
+    <form id="entradaForm" method="post">
+
+        {% csrf_token %}
+
+        <div class="table-responsive">
+
+            <table id="productosTable"
+                   class="table table-striped table-bordered align-middle text-center">
+
+                <thead class="table-light">
+
+                <tr>
+
+                    <th class="text-start">
+                        Producto
+                    </th>
+
+                    {% for pres in presentaciones %}
+
+                        <th>
+                            {{ pres }}
+                        </th>
+
+                    {% endfor %}
+
+                </tr>
+
+                </thead>
+
+                <tbody>
+
+                {% for fila in productos_matriz %}
+
+                    <tr>
+
+                        <td class="text-start fw-bold">
+                            {{ fila.producto.nombre }}
+                        </td>
+
+                        {% for celda in fila.celdas %}
+
+                            <td>
+
+                                {% if celda.existe %}
+
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        name="cantidad_{{ celda.variacion_id }}"
+                                        data-prod="{{ fila.producto.nombre }}"
+                                        data-pres="{{ celda.nombre_presentacion }}"
+                                        data-stock="{{ celda.stock }}"
+                                        class="form-control w-100"
+                                        placeholder="0.0"
+                                    >
+
+                                    <div class="mb-1"
+                                         style="font-size: 0.8rem; opacity:0.6;">
+
+                                        <span class="text-muted">
+                                            Stock:
+                                        </span>
+
+                                        <span class="text-muted">
+                                            {{ celda.stock }}
+                                        </span>
+
+                                    </div>
+
+                                {% else %}
+
+                                    <span class="text-muted"
+                                          style="font-size: 0.85rem;">
+                                        ---
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                        {% endfor %}
+
+                    </tr>
+
+                {% empty %}
+
+                    <tr>
+
+                        <td
+                            colspan="{{ presentaciones|length|add:1 }}"
+                            class="text-muted py-4">
+
+                            No hay productos disponibles para este especial.
+
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+        <!-- ================================================= -->
+        <!-- NOTA -->
+        <!-- ================================================= -->
+
+        <div class="mt-3">
+
+            <label for="nota"
+                   class="form-label fw-semibold">
+
+                Nota (opcional):
+
+            </label>
+
+            <textarea
+                name="nota"
+                id="nota"
+                class="form-control"
+                rows="3"
+                placeholder="Detalles adicionales..."
+            ></textarea>
+
+        </div>
+
+
+        <!-- ================================================= -->
+        <!-- BOTÓN -->
+        <!-- ================================================= -->
+
+        <div class="text-end mt-3">
+
+            <button
+                type="submit"
+                class="btn btn-custom-success"
+                id="submitBtn">
+
+                <i class="bi bi-box-arrow-in-down"></i>
+
+                Registrar Entrada
+
+            </button>
+
+        </div>
+
+    </form>
+
+</div>
+
+
+<!-- ===================================================== -->
+<!-- MODAL CONFIRMACIÓN -->
+<!-- ===================================================== -->
+
+<div
+    class="modal fade"
+    id="confirmModal"
+    tabindex="-1"
+    aria-labelledby="confirmModalLabel"
+    aria-hidden="true"
+>
+
+    <div class="modal-dialog modal-lg">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5
+                    class="modal-title"
+                    id="confirmModalLabel"
+                >
+                    Confirmar entrada de productos especiales
+                </h5>
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Cerrar"
+                ></button>
+
+            </div>
+
+
+            <div class="modal-body">
+
+                <h6>
+                    Resumen de productos seleccionados:
+                </h6>
+
+                <div
+                    id="resumenEntrada"
+                    style="max-height: 400px; overflow-y: auto;"
+                ></div>
+
+            </div>
+
+
+            <div class="modal-footer">
+
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal"
+                >
+                    Cancelar
+                </button>
+
+                <button
+                    type="button"
+                    class="btn btn-custom-success"
+                    id="confirmSubmit"
+                >
+                    Confirmar y registrar
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ===================================================== -->
+<!-- LIBRERÍAS -->
+<!-- ===================================================== -->
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+
+<!-- ===================================================== -->
+<!-- DROPDOWN -->
+<!-- ===================================================== -->
+
+<script>
+
+    document.getElementById('especial').addEventListener('change', function () {
+
+        const especial = this.value;
+
+        window.location.href =
+            "{% url 'registrar_entrada_especialPT' %}?especial="
+            + encodeURIComponent(especial);
+
+    });
+
+</script>
+
+
+<!-- ===================================================== -->
+<!-- DATATABLE -->
+<!-- ===================================================== -->
+
+<script>
+
+    $(document).ready(function () {
+
+        window.productosDT = $('#productosTable').DataTable({
+
+            pageLength: 50,
+
+            responsive: true,
+
+            language: {
+
+                "decimal": "",
+
+                "emptyTable":
+                    "No hay productos disponibles",
+
+                "info":
+                    "Mostrando _START_ a _END_ de _TOTAL_ productos",
+
+                "infoEmpty":
+                    "Mostrando 0 a 0 de 0 productos",
+
+                "infoFiltered":
+                    "(filtrado de _MAX_ productos en total)",
+
+                "lengthMenu":
+                    "Mostrar _MENU_ productos",
+
+                "loadingRecords":
+                    "Cargando...",
+
+                "processing":
+                    "Procesando...",
+
+                "search":
+                    "Buscar:",
+
+                "zeroRecords":
+                    "No se encontraron productos coincidentes",
+
+                "paginate": {
+
+                    "first":
+                        '<i class="bi bi-rewind-fill"></i>',
+
+                    "last":
+                        '<i class="bi bi-fast-forward-fill"></i>',
+
+                    "next":
+                        '<i class="bi bi-caret-right-fill"></i>',
+
+                    "previous":
+                        '<i class="bi bi-caret-left-fill"></i>'
+
+                }
+
+            }
+
+        });
+
+    });
+
+</script>
+
+
+{% include 'Partials/notificaciones.html' %}
+
+
+<!-- ===================================================== -->
+<!-- CONFIRMACIÓN DE ENTRADA -->
+<!-- ===================================================== -->
+
+<script>
+
+    const form =
+        document.getElementById('entradaForm');
+
+    const submitBtn =
+        document.getElementById('submitBtn');
+
+    const confirmSubmit =
+        document.getElementById('confirmSubmit');
+
+    const resumenEntrada =
+        document.getElementById('resumenEntrada');
+
+    const confirmModal =
+        new bootstrap.Modal(
+            document.getElementById('confirmModal')
+        );
+
+
+    form.addEventListener('submit', function (e) {
+
+        e.preventDefault();
+
+        const dt =
+            window.productosDT;
+
+        const inputs =
+            dt.$('input[name^="cantidad_"]');
+
+        const rows = [];
+
+
+        inputs.each(function () {
+
+            const val =
+                parseFloat(this.value);
+
+            if (!isNaN(val) && val > 0) {
+
+                const nombre =
+                    this.getAttribute('data-prod');
+
+                const present =
+                    this.getAttribute('data-pres');
+
+                const stock =
+                    this.getAttribute('data-stock');
+
+
+                rows.push(`
+                    <tr>
+
+                        <td>
+                            ${nombre}
+                        </td>
+
+                        <td>
+                            ${present}
+                        </td>
+
+                        <td class="text-center">
+                            ${stock}
+                        </td>
+
+                        <td class="text-center fw-bold">
+                            ${val}
+                        </td>
+
+                    </tr>
+                `);
+
+            }
+
+        });
+
+
+        if (rows.length === 0) {
+
+            const notyf =
+                new Notyf({
+                    duration: 2500,
+                    position: {
+                        x: 'right',
+                        y: 'bottom'
+                    },
+                    dismissible: true
+                });
+
+            notyf.error(
+                'Debes ingresar al menos una cantidad mayor a 0.'
+            );
+
+            return;
+
+        }
+
+
+        const nota =
+            document.querySelector('#nota')?.value
+            || '(Sin nota)';
+
+
+        resumenEntrada.innerHTML = `
+
+            <div class="mb-3 p-3 bg-light rounded">
+
+                <p class="mb-0">
+
+                    <strong>Especial:</strong>
+                    {{ especial.nombre }}
+
+                </p>
+
+                <p class="mb-0">
+
+                    <strong>Nota:</strong>
+                    ${nota}
+
+                </p>
+
+            </div>
+
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-sm">
+
+                    <thead class="table-light text-center">
+
+                        <tr>
+
+                            <th class="text-start">
+                                Producto
+                            </th>
+
+                            <th class="text-start">
+                                Presentación
+                            </th>
+
+                            <th>
+                                Stock Actual
+                            </th>
+
+                            <th>
+                                Cantidad Ingreso
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+                        ${rows.join('')}
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        `;
+
+
+        confirmModal.show();
+
+    });
+
+
+    confirmSubmit.addEventListener(
+        'click',
+        function () {
+
+            const dt =
+                window.productosDT;
+
+
+            confirmSubmit.disabled = true;
+
+            confirmSubmit.innerHTML = `
+                <span
+                    class="spinner-border spinner-border-sm me-2"
+                    role="status"
+                    aria-hidden="true">
+                </span>
+                Registrando...
+            `;
+
+
+            submitBtn.disabled = true;
+
+            submitBtn.innerHTML = `
+                <span
+                    class="spinner-border spinner-border-sm me-2"
+                    role="status"
+                    aria-hidden="true">
+                </span>
+                Registrando...
+            `;
+
+
+            dt.$('input[name^="cantidad_"]')
+                .each(function () {
+
+                    if (
+                        !document.contains(this)
+                        && this.value !== ''
+                    ) {
+
+                        const hidden =
+                            document.createElement('input');
+
+                        hidden.type = 'hidden';
+
+                        hidden.name =
+                            this.name;
+
+                        hidden.value =
+                            this.value;
+
+                        form.appendChild(hidden);
+
+                    }
+
+                });
+
+
+            dt.$('input[name^="cantidad_"]')
+                .each(function () {
+
+                    const v =
+                        this.value;
+
+
+                    if (
+                        v === ''
+                        || isNaN(parseFloat(v))
+                        || parseFloat(v) <= 0
+                    ) {
+
+                        this.removeAttribute('name');
+
+                    } else {
+
+                        if (!document.contains(this)) {
+
+                            const hidden =
+                                document.createElement('input');
+
+                            hidden.type = 'hidden';
+
+                            hidden.name =
+                                this.name;
+
+                            hidden.value =
+                                this.value;
+
+                            form.appendChild(hidden);
+
+                        }
+
+                    }
+
+                });
+
+
+            form.submit();
+
+        }
+    );
+
+
+    document.addEventListener(
+        'DOMContentLoaded',
+        function () {
+
+            form.addEventListener(
+                'keydown',
+                function (e) {
+
+                    if (
+                        e.key === 'Enter'
+                        &&
+                        e.target.tagName.toLowerCase()
+                        !== 'textarea'
+                    ) {
+
+                        e.preventDefault();
+
+                    }
+
+                }
+            );
+
+        }
+    );
+
+</script>
+```
+
+{% endblock %}

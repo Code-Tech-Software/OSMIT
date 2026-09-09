@@ -9,6 +9,10 @@ urlpatterns = [
 
     path('registrar-salida/', views.registrar_salida, name='registrar_salidaPT'),
 
+    path('registrar-entrada-especial/', views.registrar_entrada_especial, name='registrar_entrada_especialPT'),
+
+    path('registrar-salida-especial/', views.registrar_salida_especial, name='registrar_salida_especialPT'),
+
     path('productos/', views.listar_productos, name='listar_productosPT'),
     path('productos/editar/<int:pk>/', views.editar_producto, name='editar_productoPT'),
     path('productos/eliminar/<int:pk>/', views.eliminar_producto, name='eliminar_productoPT'),

@@ -6,7 +6,7 @@ from ProductoGranel.models import User, PedidoProduccion
 from appMovil.models import MiniBodega, MiniBodegaDetalle, PedidoReabastecimiento
 from . import models
 from .forms import ProductoTerminadoForm, EntradaForm, ProductoVariacionForm
-from .models import ProductoTerminado, EntradaPTerminado, DetalleEntradaPTerminado, ProductoVariacion, InventarioRuta
+from .models import PresentacionProductoTerminado, ProductoTerminado, EntradaPTerminado, DetalleEntradaPTerminado, ProductoVariacion, InventarioRuta
 from decimal import Decimal
 from django.contrib import messages
 from django.shortcuts import render, redirect
@@ -33,6 +33,8 @@ from .models import ProductoTerminado
 from .forms import ProductoTerminadoForm
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
+from django.db.models import Q
+from django.urls import reverse
 
 
 
@@ -180,8 +182,44 @@ def eliminar_producto(request, pk):
 @login_required
 def registrar_entrada(request):
 
-    productos = ProductoTerminado.objects.filter(estado=True).prefetch_related('variaciones',                                                                         'variaciones__presentacion')
-    presentaciones = PresentacionProductoTerminado.objects.filter(estado=True)
+    # =========================================================
+    # PRESENTACIONES NORMALES
+    # =========================================================
+    presentaciones = PresentacionProductoTerminado.objects.filter(
+        estado=True,
+        nombre__in=[
+            "Minis",
+            "Chico",
+            "Mediano",
+            "Grande",
+            "250g",
+            "500g",
+            "1kg",
+            "Grande 150g",
+            "Grande 140g",
+            "Pieza",
+            "Kiosko",
+        ]
+    )
+    #Yeos 200 Yeos gnd Kiosko
+
+    # =========================================================
+    # PRODUCTOS NORMALES
+    # Excluimos los que comienzan con los prefijos especiales
+    # =========================================================
+    productos = ProductoTerminado.objects.filter(
+        estado=True
+    ).exclude(
+        Q(nombre__startswith="ML ") |
+        Q(nombre__startswith="Y ") |
+        Q(nombre__startswith="YML ") |
+        Q(nombre__startswith="YV ") |
+        Q(nombre__startswith="JP ") |
+        Q(nombre__startswith="N ")
+    ).prefetch_related(
+        'variaciones',
+        'variaciones__presentacion'
+    )
 
     if request.method == 'POST':
         form = EntradaForm(request.POST)
@@ -259,6 +297,233 @@ def registrar_entrada(request):
     })
 
 
+@login_required
+def registrar_entrada_especial  (request):
+    ##Especiales disponibles
+
+    especiales={
+        "ML": {
+            "nombre": "Mega Lupita",
+            "presentaciones": [
+                "250g",
+                "230g",
+                "60g",
+                "50g",
+                "150g",
+                "40g",
+                ]
+        },
+        "Y": {
+            "nombre": "Yeos",
+            "presentaciones": [
+                "200g",
+                "180g",
+                "150g",
+                "120g",
+                "60g",
+                "220g",
+                "250g",
+                "100g",
+                "700g",
+                "650g",
+                ]
+        },
+        "YML": {
+            "nombre": "Yeos la merced",
+            "presentaciones": [
+                "20g",
+                "70g",
+                "80g",
+                "60g",
+                "65g",
+                "100g",
+                "50g",
+                "45g",
+                "40g",
+                "200g",
+                "150g",
+                "180g",
+                "220g",
+                ]
+        },
+        "YV": {
+            "nombre": "Yeos Victoria",
+            "presentaciones": [
+                "200g",
+                "180g",
+                "150g",
+                "220g",
+                "60g",
+                "100g",
+                "250g",
+                "700g",
+                "650g",
+                ]
+        },
+        "JP": {
+            "nombre": "Juaquin Perez",
+            "presentaciones": [
+                "750g",
+                "250g",
+                "150g",
+                ]
+        },
+        "N": {
+            "nombre": "Norma",
+            "presentaciones": [
+                "620g",
+                "600g",
+                ]
+        },
+    }
+
+
+    #Especial seleccionado
+
+    especial_seleccionado = request.GET.get('especial', 'ML')  # Valor por defecto
+    if especial_seleccionado not in especiales:
+        especial_seleccionado = 'ML'  # Valor por defecto si no es válido
+
+    especial = especiales[especial_seleccionado]
+
+    nombres_presentaciones = especial["presentaciones"]
+
+
+
+    ##Presentaciones
+
+    presentaciones = PresentacionProductoTerminado.objects.filter(
+        estado=True,
+        nombre__in=nombres_presentaciones
+    )
+
+    # =========================================================
+    # PRODUCTOS ESPECIALES
+    # =========================================================
+
+    productos = ProductoTerminado.objects.filter(
+        estado=True,
+        nombre__startswith=f"{especial_seleccionado} "
+        )   .order_by('id').prefetch_related(
+        'variaciones',
+        'variaciones__presentacion')
+
+    #Post
+
+    if request.method == 'POST':
+        form  = EntradaForm(request.POST)
+        if form.is_valid():
+            nota = form.cleaned_data.get('nota', '')
+            detalles_validos = []
+
+            for key, value in request.POST.items():
+                if key.startswith('cantidad_'):
+                    try:
+                        variacion_id = int(key.split('_')[1])
+                        cantidad = Decimal(value)
+
+                        if cantidad > 0:
+                            variacion = (
+                                ProductoVariacion.objects.get(
+                                    id=variacion_id,
+                                    producto__nombre__startswith=(
+                                        f"{especial_seleccionado} "
+                                    ),
+                                    presentacion__nombre__in=(
+                                        nombres_presentaciones
+                                    )
+                                )
+                            )
+
+                            detalles_validos.append((variacion, cantidad))
+                    except (ValueError, TypeError, ProductoVariacion.DoesNotExist):
+                        continue
+
+            if detalles_validos:
+                try:
+                    with transaction.atomic():
+                        entrada = EntradaPTerminado.objects.create(
+                            fecha_entrada=timezone.now(),
+                            usuario=request.user,
+                            nota=nota
+                        )
+                        for variacion, cantidad in detalles_validos:
+                            DetalleEntradaPTerminado.objects.create(
+                                entrada_p_terminado=entrada,
+                                producto_variacion=variacion,
+                                cantidad=cantidad
+                            )
+                            variacion.stock += cantidad
+                            variacion.save()
+
+                    messages.success(request, 'Entrada registrada correctamente.')
+                    return redirect('registrar_entrada_especialPT')
+                except Exception as e:
+                    messages.error(request, f'Error al registrar la entrada: {str(e)}')
+            else:
+                messages.error(request, 'Debe ingresar al menos una cantidad mayor a 0.')
+    else:
+        form = EntradaForm()
+
+
+    #Matriz de productos x Presentacion
+
+    productos_matriz = []
+    for prod in productos:
+
+        vars_dict = {
+            var.presentacion.id: var
+            for var in prod.variaciones.all()
+            if var.presentacion.nombre in nombres_presentaciones
+        }
+
+        if not vars_dict:
+            continue
+
+        celdas = []
+
+        for pres in presentaciones:
+
+            variacion = vars_dict.get(pres.id)
+
+            if variacion:
+
+                celdas.append({
+                    'existe': True,
+                    'variacion_id': variacion.id,
+                    'stock': variacion.stock,
+                    'stock_min': variacion.stock_min,
+                    'nombre_presentacion': str(pres)
+                })
+
+            else:
+
+                celdas.append({
+                    'existe': False
+                })
+
+        productos_matriz.append({
+            'producto': prod,
+            'celdas': celdas
+        })
+
+    return render(
+        request,
+        'ProductoTerminado/entradas/registrar_entrada_especial.html',
+        {
+            'form': form,
+            'especiales': especiales,
+            'especial_seleccionado': especial_seleccionado,
+            'especial': especial,
+            'presentaciones': presentaciones,
+            'productos_matriz': productos_matriz,
+        }
+    )
+
+
+
+
+
 from django.db import transaction
 from django.utils import timezone
 from decimal import Decimal
@@ -281,16 +546,65 @@ from django.contrib.auth.decorators import login_required
 
 @login_required
 def registrar_salida(request):
-    productos = ProductoTerminado.objects.filter(estado=True).order_by('id').prefetch_related(
-        'variaciones', 'variaciones__presentacion'
+    # =========================================================
+    # PRODUCTOS NORMALES
+    # =========================================================
+    productos = ProductoTerminado.objects.filter(
+        estado=True
+    ).exclude(
+        Q(nombre__startswith="ML ") |
+        Q(nombre__startswith="Y ") |
+        Q(nombre__startswith="YML ") |
+        Q(nombre__startswith="YV ") |
+        Q(nombre__startswith="JP ") |
+        Q(nombre__startswith="N ")
+    ).order_by('id').prefetch_related(
+        'variaciones',
+        'variaciones__presentacion'
     )
 
-    presentaciones_qs = PresentacionProductoTerminado.objects.filter(estado=True)
+    # =========================================================
+    # PRESENTACIONES NORMALES
+    # =========================================================
+    presentaciones_qs = PresentacionProductoTerminado.objects.filter(
+        estado=True,
+        nombre__in=[
+            "Minis",
+            "Chico",
+            "Mediano",
+            "Grande",
+            "250g",
+            "500g",
+            "1kg",
+            "Grande 150g",
+            "Grande 140g",
+            "Pieza",
+            "Kiosko",
+        ]
+    )
+
     orden_deseado = [
-        "Chico", "Mediano", "Grande", "250g", "500g","1kg", "Yeos 200", "Yeos gnd", "Kiosko", "Minis",
+        "Chico",
+        "Mediano",
+        "Grande",
+        "250g",
+        "500g",
+        "1kg",
+        "Grande 150g",
+        "Grande 140g",
+        "Minis",
+        "Kiosko",
     ]
+
     presentaciones = list(presentaciones_qs)
-    presentaciones.sort(key=lambda p: orden_deseado.index(str(p)) if str(p) in orden_deseado else 99)
+
+    presentaciones.sort(
+        key=lambda p: (
+            orden_deseado.index(str(p))
+            if str(p) in orden_deseado
+            else 99
+        )
+    )
 
     if request.method == 'POST':
         form = SalidaForm(request.POST)
@@ -357,7 +671,7 @@ def registrar_salida(request):
                                 # Buscar minibodega de la ruta de hoy, si no existe, la crea con los datos de la ruta
                                 minibodega, created = MiniBodega.objects.get_or_create(
                                     ruta=ruta,
-                                    fecha=hoy,
+                                    #fecha=hoy,
                                     defaults={
                                         'usuario': ruta.usuario,  # Asignamos al encargado de la ruta
                                         'vehiculo': ruta.vehiculo,
@@ -439,6 +753,464 @@ def registrar_salida(request):
         'presentaciones': presentaciones,
         'productos_matriz': productos_matriz
     })
+
+
+
+@login_required
+def registrar_salida_especial(request):
+
+    # =========================================================
+    # CONFIGURACIÓN DE PRODUCTOS ESPECIALES
+    # =========================================================
+    especiales={
+            "ML": {
+                "nombre": "Mega Lupita",
+                "presentaciones": [
+                    "250g",
+                    "230g",
+                    "60g",
+                    "50g",
+                    "150g",
+                    "40g",
+                    ]
+            },
+            "Y": {
+                "nombre": "Yeos",
+                "presentaciones": [
+                    "200g",
+                    "180g",
+                    "150g",
+                    "120g",
+                    "60g",
+                    "220g",
+                    "250g",
+                    "100g",
+                    "700g",
+                    "650g",
+                    ]
+            },
+            "YML": {
+                "nombre": "Yeos la merced",
+                "presentaciones": [
+                    "20g",
+                    "70g",
+                    "80g",
+                    "60g",
+                    "65g",
+                    "100g",
+                    "50g",
+                    "45g",
+                    "40g",
+                    "200g",
+                    "150g",
+                    "180g",
+                    "220g",
+                    ]
+            },
+            "YV": {
+                "nombre": "Yeos Victoria",
+                "presentaciones": [
+                    "200g",
+                    "180g",
+                    "150g",
+                    "220g",
+                    "60g",
+                    "100g",
+                    "250g",
+                    "700g",
+                    "650g",
+                    ]
+            },
+            "JP": {
+                "nombre": "Juaquin Perez",
+                "presentaciones": [
+                    "750g",
+                    "250g",
+                    "150g",
+                    ]
+            },
+            "N": {
+                "nombre": "Norma",
+                "presentaciones": [
+                    "620g",
+                    "600g",
+                    ]
+            },
+    }
+
+    # =========================================================
+    # OBTENER EL ESPECIAL SELECCIONADO
+    # =========================================================
+    # GET -> cuando cambias el dropdown
+    # POST -> cuando mandas el formulario de salida
+    especial_seleccionado = (
+        request.GET.get("especial")
+        or request.POST.get("especial")
+        or "ML"
+    )
+
+    # Protección por si llega algo inválido
+    if especial_seleccionado not in especiales:
+        especial_seleccionado = "ML"
+
+    especial = especiales[especial_seleccionado]
+    nombres_presentaciones = especial["presentaciones"]
+
+    # =========================================================
+    # PRODUCTOS DEL ESPECIAL SELECCIONADO
+    # =========================================================
+    # Ejemplos:
+    # ML -> "ML Enchilado"
+    # Y  -> "Y Enchilado"
+    # JP -> "JP Enchilado"
+    # =========================================================
+    productos = ProductoTerminado.objects.filter(
+        estado=True,
+        nombre__startswith=f"{especial_seleccionado} "
+    ).order_by("id").prefetch_related(
+        "variaciones",
+        "variaciones__presentacion"
+    )
+
+    # =========================================================
+    # PRESENTACIONES DEL ESPECIAL
+    # =========================================================
+    presentaciones_qs = PresentacionProductoTerminado.objects.filter(
+        estado=True,
+        nombre__in=nombres_presentaciones
+    )
+
+    # Mantener exactamente el orden definido en el diccionario
+    presentaciones = list(presentaciones_qs)
+
+    presentaciones.sort(
+        key=lambda p: (
+            nombres_presentaciones.index(p.nombre)
+            if p.nombre in nombres_presentaciones
+            else 99
+        )
+    )
+
+    # =========================================================
+    # POST - REGISTRAR SALIDA
+    # =========================================================
+    if request.method == "POST":
+
+        form = SalidaForm(request.POST)
+
+        if form.is_valid():
+
+            ruta = form.cleaned_data.get("ruta")
+            destino = form.cleaned_data.get("destino")
+            nota = form.cleaned_data.get("nota", "")
+
+            # =================================================
+            # VALIDAR RUTA
+            # =================================================
+            if destino == "opcion1" and not ruta:
+
+                messages.error(
+                    request,
+                    'Debes seleccionar una Ruta específica cuando '
+                    'el destino es "Ruta".'
+                )
+
+            else:
+
+                try:
+
+                    with transaction.atomic():
+
+                        detalles_validos = []
+                        errores_stock = []
+
+                        # =================================================
+                        # RECORRER LAS CANTIDADES
+                        # =================================================
+                        for key, value in request.POST.items():
+
+                            if key.startswith("cantidad_"):
+
+                                try:
+
+                                    variacion_id = int(
+                                        key.split("_")[1]
+                                    )
+
+                                    cantidad = Decimal(value)
+
+                                    if cantidad > 0:
+
+                                        # =================================
+                                        # IMPORTANTE:
+                                        # Además del ID validamos que:
+                                        #
+                                        # 1. Sea del especial seleccionado
+                                        # 2. Sea de una presentación permitida
+                                        #
+                                        # Así no pueden mandar manualmente
+                                        # un ID de otro producto.
+                                        # =================================
+                                        variacion = (
+                                            ProductoVariacion.objects
+                                            .select_for_update()
+                                            .get(
+                                                id=variacion_id,
+                                                producto__estado=True,
+                                                producto__nombre__startswith=(
+                                                    f"{especial_seleccionado} "
+                                                ),
+                                                presentacion__estado=True,
+                                                presentacion__nombre__in=(
+                                                    nombres_presentaciones
+                                                )
+                                            )
+                                        )
+
+                                        # =================================
+                                        # VALIDAR STOCK
+                                        # =================================
+                                        if cantidad > variacion.stock:
+
+                                            errores_stock.append(
+                                                f"{variacion.producto.nombre} "
+                                                f"({variacion.presentacion}): "
+                                                f"Solicitado {cantidad}, "
+                                                f"Disponible {variacion.stock}"
+                                            )
+
+                                        else:
+
+                                            detalles_validos.append(
+                                                (
+                                                    variacion,
+                                                    cantidad
+                                                )
+                                            )
+
+                                except (
+                                    ValueError,
+                                    TypeError,
+                                    ProductoVariacion.DoesNotExist
+                                ):
+                                    continue
+
+                        # =================================================
+                        # ERRORES DE STOCK
+                        # =================================================
+                        if errores_stock:
+
+                            for error in errores_stock:
+                                messages.error(
+                                    request,
+                                    f"Stock insuficiente - {error}"
+                                )
+
+                        elif not detalles_validos:
+
+                            messages.error(
+                                request,
+                                "Debe ingresar al menos una cantidad "
+                                "mayor a 0."
+                            )
+
+                        else:
+
+                            # =================================================
+                            # CREAR SALIDA
+                            # =================================================
+                            salida = SalidaPTerminado.objects.create(
+                                fecha_salida=timezone.now(),
+                                usuario=request.user,
+                                ruta=(
+                                    ruta
+                                    if destino == "opcion1"
+                                    else None
+                                ),
+                                destino=destino,
+                                nota=nota
+                            )
+
+                            # =================================================
+                            # MINIBODEGA
+                            # =================================================
+                            minibodega = None
+
+                            if destino == "opcion1" and ruta:
+
+                                # Se mantiene exactamente tu lógica:
+                                # una MiniBodega asociada a la ruta.
+                                minibodega, created = (
+                                    MiniBodega.objects.get_or_create(
+                                        ruta=ruta,
+                                        defaults={
+                                            "usuario": ruta.usuario,
+                                            "vehiculo": ruta.vehiculo,
+                                            "estado": True
+                                        }
+                                    )
+                                )
+
+                                # Si ya existe, actualizar usuario/vehículo
+                                # en caso de que hayan cambiado en la Ruta.
+                                if not created:
+
+                                    if (
+                                        minibodega.usuario
+                                        != ruta.usuario
+                                        or minibodega.vehiculo
+                                        != ruta.vehiculo
+                                    ):
+
+                                        minibodega.usuario = ruta.usuario
+                                        minibodega.vehiculo = ruta.vehiculo
+                                        minibodega.save()
+
+                            # =================================================
+                            # REGISTRAR DETALLES
+                            # =================================================
+                            for variacion, cantidad in detalles_validos:
+
+                                # -----------------------------------------
+                                # Detalle de la salida
+                                # -----------------------------------------
+                                DetalleSalidaPTerminado.objects.create(
+                                    salida_p_terminado=salida,
+                                    producto_variacion=variacion,
+                                    cantidad=cantidad
+                                )
+
+                                # -----------------------------------------
+                                # Descontar stock principal
+                                # -----------------------------------------
+                                variacion.stock -= cantidad
+                                variacion.save()
+
+                                # -----------------------------------------
+                                # Si sale a Ruta -> MiniBodega
+                                # -----------------------------------------
+                                if minibodega:
+
+                                    mb_detalle, created_mb = (
+                                        MiniBodegaDetalle.objects.get_or_create(
+                                            mini_bodega=minibodega,
+                                            producto_variacion=variacion,
+                                            defaults={
+                                                "cantidad_inicial": Decimal(
+                                                    "0.00"
+                                                ),
+                                                "cantidad_actual": Decimal(
+                                                    "0.00"
+                                                )
+                                            }
+                                        )
+                                    )
+
+                                    # Se acumula con lo que ya tenga
+                                    # la MiniBodega.
+                                    mb_detalle.cantidad_inicial += cantidad
+                                    mb_detalle.cantidad_actual += cantidad
+                                    mb_detalle.save()
+
+                            messages.success(
+                                request,
+                                "Salida especial registrada y stock "
+                                "actualizado correctamente."
+                            )
+
+                            # =================================================
+                            # REGRESAR AL MISMO ESPECIAL
+                            # =================================================
+                            url = reverse(
+                                "registrar_salida_especialPT"
+                            )
+
+                            return redirect(
+                                f"{url}?especial={especial_seleccionado}"
+                            )
+
+                except Exception as e:
+
+                    messages.error(
+                        request,
+                        f"Error crítico al registrar la salida: {str(e)}"
+                    )
+
+        else:
+
+            messages.error(
+                request,
+                "Por favor, corrige los errores en el formulario."
+            )
+
+    else:
+
+        form = SalidaForm()
+
+    # =========================================================
+    # CONSTRUIR MATRIZ DE PRODUCTOS
+    # =========================================================
+    productos_matriz = []
+
+    for prod in productos:
+
+        # Relacionar presentación -> variación
+        vars_dict = {
+            var.presentacion.id: var
+            for var in prod.variaciones.all()
+        }
+
+        if not vars_dict:
+            continue
+
+        celdas = []
+
+        for pres in presentaciones:
+
+            variacion = vars_dict.get(pres.id)
+
+            if variacion:
+
+                celdas.append({
+                    "existe": True,
+                    "variacion_id": variacion.id,
+                    "stock": variacion.stock,
+                    "stock_min": variacion.stock_min,
+                    "nombre_presentacion": str(pres)
+                })
+
+            else:
+
+                celdas.append({
+                    "existe": False
+                })
+
+        productos_matriz.append({
+            "producto": prod,
+            "celdas": celdas
+        })
+
+    # =========================================================
+    # TEMPLATE
+    # =========================================================
+    return render(
+        request,
+        "ProductoTerminado/salidas/registrar_salida_especial.html",
+        {
+            "form": form,
+            "especiales": especiales,
+            "especial": especial,
+            "especial_seleccionado": especial_seleccionado,
+            "presentaciones": presentaciones,
+            "productos_matriz": productos_matriz
+        }
+    )
+
+
+
+
+
+
 
 
 

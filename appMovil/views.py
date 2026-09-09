@@ -6,6 +6,7 @@ from django.utils.timezone import make_aware, is_naive
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from decimal import Decimal
+from django.contrib.auth.decorators import login_required
 
 
 from ProductoTerminado.models import SalidaPTerminado, DetalleSalidaPTerminado, EntradaPTerminado, \
@@ -315,6 +316,7 @@ def sincronizar_reabastecimiento(request):
 
 
 # 1. Ver lista de pedidos pendientes
+@login_required
 def lista_pedidos(request):
     # Filtramos solo los pedidos activos (pendientes) y ordenamos por ID descendente
     pedidos = PedidoReabastecimiento.objects.filter(estado=True).order_by('-id')
@@ -322,6 +324,7 @@ def lista_pedidos(request):
 
 
 # 2. Ver detalles del pedido
+@login_required
 def detalle_pedido(request, pedido_id):
     pedido = get_object_or_404(PedidoReabastecimiento, id=pedido_id)
     detalles = pedido.pedidoreabastecimientodetalle_set.all()
@@ -329,6 +332,7 @@ def detalle_pedido(request, pedido_id):
 
 
 # 3. Procesar el Reabastecimiento
+@login_required
 def procesar_reabastecimiento(request, pedido_id):
     if request.method == 'POST':
         pedido = get_object_or_404(PedidoReabastecimiento, id=pedido_id, estado=True)
@@ -423,6 +427,7 @@ from .models import MiniBodega
 
 
 # Vista para el listado
+@login_required
 def minibodega_list(request):
     # Traemos todas las mini bodegas, ordenadas de la más reciente a la más vieja
     minibodegas = MiniBodega.objects.all().order_by('-fecha', '-id')
@@ -435,6 +440,7 @@ def minibodega_list(request):
 
 
 # Vista para el detalle
+@login_required
 def minibodega_detail(request, pk):
     # Buscamos la mini bodega por su ID (Primary Key). Si no existe, lanza un 404.
     minibodega = get_object_or_404(MiniBodega, pk=pk)

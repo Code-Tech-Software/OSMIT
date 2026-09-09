@@ -88,6 +88,16 @@ WSGI_APPLICATION = 'OSMIT.wsgi.application'
 DATABASES = {
    'default': dj_database_url.config(default=os.getenv("DATABASE_URL"))
 }
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.postgresql',
+#        'NAME': 'Osmit_Pruebas',
+#        'USER': 'postgres',
+#        'PASSWORD': 'ADMIN',
+#        'HOST': 'localhost',
+#        'PORT': '5432',
+#    }
+#}
 
 
 #DATABASES = {

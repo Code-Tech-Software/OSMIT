@@ -1,0 +1,1056 @@
+{% extends "Base/Sidebar.html" %}
+{% load static %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+<link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+<link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
+
+<div>
+    <span class="fw-bold text-dark">Inventario</span>
+    <span class="mx-2 text-dark">|</span>
+    <span class="text-secondary">Registrar Salida de Productos Especiales</span>
+</div>
+
+<div class="custom-card mt-4">
+
+    <form id="salidaForm" method="post">
+        {% csrf_token %}
+
+        <!-- =====================================================
+             SELECTOR DE ESPECIAL
+        ====================================================== -->
+        <div class="row mb-4">
+
+            <div class="col-md-6">
+                <label for="especial" class="form-label fw-semibold">
+                    Producto especial
+                </label>
+
+                <select id="especial" name="especial" class="form-select">
+                    {% for codigo, datos in especiales.items %}
+                        <option value="{{ codigo }}"
+                            {% if codigo == especial_seleccionado %}selected{% endif %}>
+                            {{ datos.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+        </div>
+
+
+        <!-- =====================================================
+             DESTINO Y RUTA
+        ====================================================== -->
+        <div class="row mb-4">
+
+            <!-- RUTA -->
+            <div class="col-md-6" id="contenedorRuta">
+
+                {{ form.ruta.label_tag }}
+                {{ form.ruta }}
+
+                {% for error in form.ruta.errors %}
+                    <div class="text-danger small">
+                        {{ error }}
+                    </div>
+                {% endfor %}
+
+            </div>
+
+
+            <!-- DESTINO -->
+            <div class="col-md-6">
+
+                {{ form.destino.label_tag }}
+                {{ form.destino }}
+
+                {% for error in form.destino.errors %}
+                    <div class="text-danger small">
+                        {{ error }}
+                    </div>
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+
+        <!-- =====================================================
+             TABLA DE PRODUCTOS
+        ====================================================== -->
+        <div class="table-responsive">
+
+            <table id="productosTable"
+                   class="table table-striped table-bordered align-middle text-center">
+
+                <thead class="table-light">
+
+                    <tr>
+
+                        <th class="text-start">
+                            Producto
+                        </th>
+
+                        {% for pres in presentaciones %}
+                            <th>
+                                {{ pres }}
+                            </th>
+                        {% endfor %}
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for fila in productos_matriz %}
+
+                        <tr>
+
+                            <td class="text-start fw-bold">
+                                {{ fila.producto.nombre }}
+                            </td>
+
+
+                            {% for celda in fila.celdas %}
+
+                                <td>
+
+                                    {% if celda.existe %}
+
+                                        <input
+                                            type="number"
+                                            step="any"
+                                            min="0"
+                                            max="{{ celda.stock }}"
+                                            name="cantidad_{{ celda.variacion_id }}"
+                                            data-prod="{{ fila.producto.nombre }}"
+                                            data-pres="{{ celda.nombre_presentacion }}"
+                                            data-stock="{{ celda.stock }}"
+                                            class="form-control w-100 cantidad-input"
+                                            placeholder="0.0"
+                                        >
+
+                                        <div class="mb-1"
+                                             style="font-size: 0.8rem; opacity:0.6;">
+
+                                            <span class="text-muted">
+                                                Stock:
+                                            </span>
+
+                                            <span class="
+                                                {% if celda.stock == 0 %}
+                                                    text-danger fw-bold
+                                                {% elif celda.stock <= celda.stock_min %}
+                                                    text-warning fw-bold
+                                                {% else %}
+                                                    text-muted
+                                                {% endif %}
+                                            ">
+                                                {{ celda.stock }}
+                                            </span>
+
+                                        </div>
+
+                                    {% else %}
+
+                                        <span class="text-muted"
+                                              style="font-size: 0.85rem;">
+                                            ---
+                                        </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                            {% endfor %}
+
+                        </tr>
+
+                    {% empty %}
+
+                        <tr>
+
+                            <td colspan="{{ presentaciones|length|add:1 }}"
+                                class="text-muted py-4">
+
+                                No hay productos disponibles para
+                                {{ especial.nombre }}.
+
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+        <!-- =====================================================
+             NOTA
+        ====================================================== -->
+        <div class="mt-3">
+
+            <label for="{{ form.nota.id_for_label }}"
+                   class="form-label fw-semibold">
+
+                Nota (opcional):
+
+            </label>
+
+            {{ form.nota }}
+
+            {% for error in form.nota.errors %}
+
+                <div class="text-danger small">
+                    {{ error }}
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+
+        <!-- =====================================================
+             BOTÓN
+        ====================================================== -->
+        <div class="text-end mt-4">
+
+            <button type="submit"
+                    class="btn btn-custom-danger"
+                    id="submitBtn">
+
+                <i class="bi bi-box-arrow-up"></i>
+                Registrar Salida
+
+            </button>
+
+        </div>
+
+    </form>
+
+</div>
+
+
+
+<!-- =========================================================
+     MODAL DE CONFIRMACIÓN
+========================================================= -->
+
+<div class="modal fade"
+     id="confirmModal"
+     tabindex="-1"
+     aria-labelledby="confirmModalLabel"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-lg">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title"
+                    id="confirmModalLabel">
+
+                    Confirmar salida de productos especiales
+
+                </h5>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Cerrar">
+                </button>
+
+            </div>
+
+
+            <div class="modal-body">
+
+                <h6>
+                    Resumen de productos seleccionados:
+                </h6>
+
+                <div id="resumenSalida"
+                     style="max-height: 400px; overflow-y: auto;">
+                </div>
+
+            </div>
+
+
+            <div class="modal-footer">
+
+                <button type="button"
+                        class="btn btn-secondary"
+                        data-bs-dismiss="modal">
+
+                    Cancelar
+
+                </button>
+
+
+                <button type="button"
+                        class="btn btn-custom-danger"
+                        id="confirmSubmit">
+
+                    Confirmar y registrar
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     SCRIPTS
+========================================================= -->
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
+
+
+
+<!-- =========================================================
+     DATATABLE
+========================================================= -->
+
+<script>
+
+    $(document).ready(function () {
+
+        window.productosDT = $('#productosTable').DataTable({
+
+            pageLength: 50,
+
+            responsive: true,
+
+            order: [],
+
+            language: {
+
+                "decimal": "",
+
+                "emptyTable":
+                    "No hay productos disponibles",
+
+                "info":
+                    "Mostrando _START_ a _END_ de _TOTAL_ productos",
+
+                "infoEmpty":
+                    "Mostrando 0 a 0 de 0 productos",
+
+                "infoFiltered":
+                    "(filtrado de _MAX_ productos en total)",
+
+                "lengthMenu":
+                    "Mostrar _MENU_ productos",
+
+                "loadingRecords":
+                    "Cargando...",
+
+                "processing":
+                    "Procesando...",
+
+                "search":
+                    "Buscar:",
+
+                "zeroRecords":
+                    "No se encontraron productos coincidentes",
+
+                "paginate": {
+
+                    "first":
+                        '<i class="bi bi-rewind-fill"></i>',
+
+                    "last":
+                        '<i class="bi bi-fast-forward-fill"></i>',
+
+                    "next":
+                        '<i class="bi bi-caret-right-fill"></i>',
+
+                    "previous":
+                        '<i class="bi bi-caret-left-fill"></i>'
+
+                }
+
+            }
+
+        });
+
+    });
+
+</script>
+
+
+
+{% include 'Partials/notificaciones.html' %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+
+
+<!-- =========================================================
+     LÓGICA PRINCIPAL
+========================================================= -->
+
+<script>
+
+    // =========================================================
+    // ELEMENTOS
+    // =========================================================
+
+    const especialSelect =
+        document.getElementById('especial');
+
+    const destinoSelect =
+        document.getElementById('id_destino');
+
+    const rutaSelect =
+        document.getElementById('id_ruta');
+
+    const contenedorRuta =
+        document.getElementById('contenedorRuta');
+
+    const form =
+        document.getElementById('salidaForm');
+
+    const submitBtn =
+        document.getElementById('submitBtn');
+
+    const confirmSubmit =
+        document.getElementById('confirmSubmit');
+
+    const resumenSalida =
+        document.getElementById('resumenSalida');
+
+    const confirmModal =
+        new bootstrap.Modal(
+            document.getElementById('confirmModal')
+        );
+
+    const notyf =
+        new Notyf({
+            duration: 3000,
+            position: {
+                x: 'right',
+                y: 'bottom'
+            },
+            dismissible: true
+        });
+
+
+
+    // =========================================================
+    // CAMBIAR ESPECIAL
+    // =========================================================
+
+    if (especialSelect) {
+
+        especialSelect.addEventListener('change', function () {
+
+            const especial = this.value;
+
+            window.location.href =
+                "{% url 'registrar_salida_especialPT' %}?especial="
+                + encodeURIComponent(especial);
+
+        });
+
+    }
+
+
+
+    // =========================================================
+    // MOSTRAR / OCULTAR RUTA
+    // =========================================================
+
+    function toggleRutaRequisito() {
+
+        if (
+            destinoSelect &&
+            rutaSelect &&
+            contenedorRuta
+        ) {
+
+            // opcion1 = Ruta
+
+            if (destinoSelect.value === 'opcion1') {
+
+                contenedorRuta.style.display = 'block';
+
+                rutaSelect.setAttribute(
+                    'required',
+                    'required'
+                );
+
+            } else {
+
+                contenedorRuta.style.display = 'none';
+
+                rutaSelect.removeAttribute(
+                    'required'
+                );
+
+                rutaSelect.value = '';
+
+            }
+
+        }
+
+    }
+
+
+    if (destinoSelect) {
+
+        destinoSelect.addEventListener(
+            'change',
+            toggleRutaRequisito
+        );
+
+        toggleRutaRequisito();
+
+    }
+
+
+
+    // =========================================================
+    // FORMULARIO
+    // =========================================================
+
+    form.addEventListener('submit', function (e) {
+
+        e.preventDefault();
+
+
+        // -----------------------------------------------------
+        // VALIDAR RUTA
+        // -----------------------------------------------------
+
+        if (
+            destinoSelect &&
+            destinoSelect.value === 'opcion1' &&
+            (
+                !rutaSelect ||
+                rutaSelect.value === ''
+            )
+        ) {
+
+            notyf.error(
+                'Debes seleccionar una Ruta específica.'
+            );
+
+            return;
+
+        }
+
+
+
+        // -----------------------------------------------------
+        // OBTENER INPUTS DE DATATABLE
+        // -----------------------------------------------------
+
+        const dt =
+            window.productosDT;
+
+        const inputs =
+            dt.$('input[name^="cantidad_"]');
+
+        const rows = [];
+
+        let errorStock = false;
+
+
+
+        // -----------------------------------------------------
+        // RECORRER CANTIDADES
+        // -----------------------------------------------------
+
+        inputs.each(function () {
+
+            const val =
+                parseFloat(this.value);
+
+            const maxStock =
+                parseFloat(
+                    this.getAttribute('data-stock')
+                );
+
+
+            if (
+                !isNaN(val) &&
+                val > 0
+            ) {
+
+                // ---------------------------------------------
+                // VALIDAR STOCK
+                // ---------------------------------------------
+
+                if (val > maxStock) {
+
+                    errorStock = true;
+
+                    this.classList.add(
+                        'is-invalid'
+                    );
+
+                } else {
+
+                    this.classList.remove(
+                        'is-invalid'
+                    );
+
+
+                    const nombre =
+                        this.getAttribute(
+                            'data-prod'
+                        );
+
+                    const present =
+                        this.getAttribute(
+                            'data-pres'
+                        );
+
+                    const stock =
+                        this.getAttribute(
+                            'data-stock'
+                        );
+
+
+                    rows.push(`
+
+                        <tr>
+
+                            <td class="text-start">
+                                ${nombre}
+                            </td>
+
+                            <td class="text-start">
+                                ${present}
+                            </td>
+
+                            <td class="text-center">
+                                ${stock}
+                            </td>
+
+                            <td class="text-center fw-bold text-danger">
+                                -${val}
+                            </td>
+
+                        </tr>
+
+                    `);
+
+                }
+
+            }
+
+        });
+
+
+
+        // -----------------------------------------------------
+        // ERROR DE STOCK
+        // -----------------------------------------------------
+
+        if (errorStock) {
+
+            notyf.error(
+                'Estás intentando sacar más productos del stock disponible.'
+            );
+
+            return;
+
+        }
+
+
+
+        // -----------------------------------------------------
+        // SIN PRODUCTOS
+        // -----------------------------------------------------
+
+        if (rows.length === 0) {
+
+            notyf.error(
+                'Debes ingresar al menos una cantidad mayor a 0.'
+            );
+
+            return;
+
+        }
+
+
+
+        // =====================================================
+        // OBTENER DATOS DE DESTINO
+        // =====================================================
+
+        const rutaElement =
+            document.querySelector(
+                '[name="ruta"]'
+            );
+
+        const destinoElement =
+            document.querySelector(
+                '[name="destino"]'
+            );
+
+        const notaElement =
+            document.querySelector(
+                '[name="nota"]'
+            );
+
+
+        const ruta =
+            rutaElement &&
+            rutaElement.selectedOptions &&
+            rutaElement.value !== ''
+                ? rutaElement.selectedOptions[0]?.text
+                : 'N/A';
+
+
+        const destino =
+            destinoElement &&
+            destinoElement.selectedOptions
+                ? destinoElement.selectedOptions[0]?.text
+                : destinoElement.value;
+
+
+        const nota =
+            notaElement &&
+            notaElement.value
+                ? notaElement.value
+                : '(Sin nota)';
+
+
+
+        // =====================================================
+        // RESUMEN
+        // =====================================================
+
+        resumenSalida.innerHTML = `
+
+            <div class="mb-3 p-3 bg-light rounded border border-danger-subtle">
+
+                <div class="row">
+
+                    <div class="col-md-6">
+
+                        <p class="mb-1">
+
+                            <strong>
+                                Especial:
+                            </strong>
+
+                            {{ especial.nombre }}
+
+                        </p>
+
+                    </div>
+
+
+                    <div class="col-md-6">
+
+                        <p class="mb-1">
+
+                            <strong>
+                                Destino:
+                            </strong>
+
+                            ${destino}
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="row">
+
+                    <div
+                        class="col-md-6"
+                        style="
+                            display:
+                            ${
+                                destinoSelect.value === 'opcion1'
+                                    ? 'block'
+                                    : 'none'
+                            };
+                        "
+                    >
+
+                        <p class="mb-1">
+
+                            <strong>
+                                Ruta:
+                            </strong>
+
+                            ${ruta}
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <p class="mb-0 mt-2">
+
+                    <strong>
+                        Nota:
+                    </strong>
+
+                    ${nota}
+
+                </p>
+
+            </div>
+
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-sm">
+
+                    <thead class="table-light text-center">
+
+                        <tr>
+
+                            <th class="text-start">
+                                Producto
+                            </th>
+
+                            <th class="text-start">
+                                Presentación
+                            </th>
+
+                            <th>
+                                Stock Actual
+                            </th>
+
+                            <th>
+                                Cantidad a Salir
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        ${rows.join('')}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        `;
+
+
+        // Mostrar modal
+        confirmModal.show();
+
+    });
+
+
+
+    // =========================================================
+    // CONFIRMAR SALIDA
+    // =========================================================
+
+    confirmSubmit.addEventListener(
+        'click',
+        function () {
+
+            const dt =
+                window.productosDT;
+
+
+            // -----------------------------------------------
+            // DESHABILITAR BOTONES
+            // -----------------------------------------------
+
+            confirmSubmit.disabled = true;
+
+            confirmSubmit.innerHTML = `
+
+                <span
+                    class="spinner-border spinner-border-sm me-2"
+                    role="status"
+                    aria-hidden="true">
+                </span>
+
+                Registrando...
+
+            `;
+
+
+            submitBtn.disabled = true;
+
+            submitBtn.innerHTML = `
+
+                <span
+                    class="spinner-border spinner-border-sm me-2"
+                    role="status"
+                    aria-hidden="true">
+                </span>
+
+                Registrando...
+
+            `;
+
+
+
+            // =================================================
+            // PASAR INPUTS DE DATATABLE AL FORM
+            // =================================================
+
+            dt.$(
+                'input[name^="cantidad_"]'
+            ).each(function () {
+
+                const v =
+                    this.value;
+
+
+                // ---------------------------------------------
+                // INPUT VACÍO / INVÁLIDO
+                // ---------------------------------------------
+
+                if (
+                    v === '' ||
+                    isNaN(parseFloat(v)) ||
+                    parseFloat(v) <= 0
+                ) {
+
+                    this.removeAttribute(
+                        'name'
+                    );
+
+                }
+
+                // ---------------------------------------------
+                // INPUT VÁLIDO
+                // ---------------------------------------------
+
+                else {
+
+                    if (
+                        !document.contains(this)
+                    ) {
+
+                        const hidden =
+                            document.createElement(
+                                'input'
+                            );
+
+                        hidden.type =
+                            'hidden';
+
+                        hidden.name =
+                            this.name;
+
+                        hidden.value =
+                            this.value;
+
+                        form.appendChild(
+                            hidden
+                        );
+
+                    }
+
+                }
+
+            });
+
+
+            // -------------------------------------------------
+            // ENVIAR FORMULARIO
+            // -------------------------------------------------
+
+            form.submit();
+
+        }
+    );
+
+
+
+    // =========================================================
+    // EVITAR ENTER
+    // =========================================================
+
+    document.addEventListener(
+        'DOMContentLoaded',
+        function () {
+
+            form.addEventListener(
+                'keydown',
+                function (e) {
+
+                    if (
+                        e.key === 'Enter' &&
+                        e.target.tagName.toLowerCase()
+                        !== 'textarea'
+                    ) {
+
+                        e.preventDefault();
+
+                    }
+
+                }
+            );
+
+
+
+            // =================================================
+            // EVITAR VALORES NEGATIVOS
+            // =================================================
+
+            const dtInputs =
+                window.productosDT
+                    ? window.productosDT.$(
+                        'input[name^="cantidad_"]'
+                    )
+                    : $(
+                        'input[name^="cantidad_"]'
+                    );
+
+
+            dtInputs.on(
+                'input',
+                function () {
+
+                    if (this.value < 0) {
+
+                        this.value = 0;
+
+                    }
+
+                }
+            );
+
+        }
+    );
+
+</script>
+
+{% endblock %}
