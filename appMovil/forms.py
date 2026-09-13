@@ -26,6 +26,7 @@ class FiltroVentasForm(forms.Form):
             'placeholder': 'Fecha inicial'
         })
     )
+
     fecha_fin = forms.DateField(
         required=False,
         widget=forms.DateInput(attrs={
@@ -34,18 +35,17 @@ class FiltroVentasForm(forms.Form):
             'placeholder': 'Fecha final'
         })
     )
+
     repartidor = forms.ModelChoiceField(
-        queryset=Usuario.objects.all(),
+        queryset=Usuario.objects.filter(
+            rol__nombre='Repartidor',
+            rol__estado=True,
+            is_active=True
+        ),
         required=False,
         empty_label="Todos los repartidores",
         widget=forms.Select(attrs={'class': 'form-select'})
     )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Opcional: Si quieres que el select SOLO muestre usuarios con rol "Repartidor"
-        # asumiendo que tienes un rol llamado así:
-        # self.fields['repartidor'].queryset = Usuario.objects.filter(rol__nombre__icontains='repartidor')
 
 
 class CargarCSVForm(forms.Form):
@@ -59,20 +59,34 @@ from django import forms
 from .models import Usuario
 
 class FiltroDevolucionesForm(forms.Form):
+
     fecha_inicio = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control d-inline-block w-auto'}),
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control d-inline-block w-auto'
+        }),
         label='Desde'
     )
+
     fecha_fin = forms.DateField(
         required=False,
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control d-inline-block w-auto'}),
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control d-inline-block w-auto'
+        }),
         label='Hasta'
     )
+
     repartidor = forms.ModelChoiceField(
-        # Si tienes cómo identificar a los repartidores (ej. rol='REPARTIDOR'), agrégalo al filter
-        queryset=Usuario.objects.all(),
+        queryset=Usuario.objects.filter(
+            rol__nombre='Repartidor',
+            rol__estado=True,
+            is_active=True
+        ),
         required=False,
         empty_label="Todos los repartidores",
-        widget=forms.Select(attrs={'class': 'form-select d-inline-block w-auto'})
+        widget=forms.Select(
+            attrs={'class': 'form-select d-inline-block w-auto'}
+        )
     )

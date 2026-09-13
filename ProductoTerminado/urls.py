@@ -23,6 +23,12 @@ urlpatterns = [
     path('editarPresentacionPT/<int:pk>/', views.editar_presentacion, name='editar_presentacion'),
     path('eliminarPresentacionPT/<int:pk>/', views.eliminar_presentacion, name='eliminar_presentacion'),
 
+    path('historial-entradas/', views.historial_entradas, name='historial_entradasPT'),
+    path('entrada/<int:entrada_id>/detalle', views.detalle_entrada, name='detalle_entrada'),
+
+    path('historial-salidas/', views.historial_salidas, name='historial_salidasPT'),
+    path('salida/<int:salida_id>/detalle', views.detalle_salida, name='detalle_salida'),
+
     # DASBOAR
 
     path('api/stock_productos/', views.stock_productos),

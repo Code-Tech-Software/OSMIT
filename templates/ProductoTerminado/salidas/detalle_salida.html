@@ -1,0 +1,253 @@
+```html
+{% extends "Base/Sidebar.html" %}
+{% load static %}
+
+{% block content %}
+
+<style>
+    .titulo-pagina {
+        font-weight: 700;
+        color: #333;
+    }
+
+    .info-card,
+    .tabla-card {
+        background: #fff;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+</style>
+
+<div class="container-fluid py-4">
+
+    <!-- ENCABEZADO -->
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <h2 class="titulo-pagina mb-0">
+            Inventario | Detalle de Salida
+        </h2>
+
+        <a
+            href="{% url 'historial_salidasPT' %}"
+            class="btn btn-secondary"
+        >
+            Regresar
+        </a>
+
+    </div>
+
+
+    <!-- INFORMACIÓN -->
+
+    <div class="info-card mb-4">
+
+        <h5 class="fw-bold mb-3">
+            Salida #{{ salida.id }}
+        </h5>
+
+        <div class="row">
+
+            <div class="col-md-4 mb-3">
+
+                <span class="text-muted d-block">
+                    Fecha
+                </span>
+
+                <strong>
+                    {{ salida.fecha_salida|date:"d/m/Y H:i" }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-4 mb-3">
+
+                <span class="text-muted d-block">
+                    Usuario
+                </span>
+
+                <strong>
+                    {{ salida.usuario.username }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-4 mb-3">
+
+                <span class="text-muted d-block">
+                    Destino
+                </span>
+
+                <strong>
+                    {{ salida.get_destino_display }}
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-4 mb-3">
+
+                <span class="text-muted d-block">
+                    Ruta
+                </span>
+
+                <strong>
+
+                    {% if salida.ruta %}
+                        {{ salida.ruta }}
+                    {% else %}
+                        -
+                    {% endif %}
+
+                </strong>
+
+            </div>
+
+
+            <div class="col-md-8 mb-3">
+
+                <span class="text-muted d-block">
+                    Nota
+                </span>
+
+                <strong>
+
+                    {% if salida.nota %}
+                        {{ salida.nota }}
+                    {% else %}
+                        -
+                    {% endif %}
+
+                </strong>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- PRODUCTOS -->
+
+    <div class="tabla-card">
+
+        <h5 class="fw-bold mb-3">
+            Productos de la salida
+        </h5>
+
+        <div class="table-responsive">
+
+            <table
+                id="detalleSalidaTable"
+                class="table table-hover align-middle text-center"
+                style="width:100%"
+            >
+
+                <thead>
+
+                    <tr>
+                        <th>Producto</th>
+                        <th>Presentación</th>
+                        <th>Cantidad</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for detalle in detalles %}
+
+                        <tr>
+
+                            <td class="text-start fw-semibold">
+                                {{ detalle.producto_variacion.producto.nombre }}
+                            </td>
+
+                            <td>
+                                {{ detalle.producto_variacion.presentacion.nombre }}
+                            </td>
+
+                            <td>
+                                {{ detalle.cantidad }}
+                            </td>
+
+                        </tr>
+
+                    {% empty %}
+
+                        <tr>
+                            <td colspan="3" class="text-muted py-4">
+                                No hay productos registrados en esta salida.
+                            </td>
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- DATATABLES -->
+
+<link
+    rel="stylesheet"
+    href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css"
+>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+
+<script>
+
+    $(document).ready(function () {
+
+        $('#detalleSalidaTable').DataTable({
+
+            pageLength: 25,
+
+            responsive: true,
+
+            order: [],
+
+            language: {
+
+                emptyTable: "No hay productos registrados",
+
+                zeroRecords: "No se encontraron productos",
+
+                info: "Mostrando _START_ a _END_ de _TOTAL_ productos",
+
+                infoEmpty: "Mostrando 0 a 0 de 0 productos",
+
+                lengthMenu: "Mostrar _MENU_ productos",
+
+                search: "Buscar:",
+
+                paginate: {
+                    first: "Primero",
+                    last: "Último",
+                    next: "Siguiente",
+                    previous: "Anterior"
+                }
+
+            }
+
+        });
+
+    });
+
+</script>
+
+{% endblock %}

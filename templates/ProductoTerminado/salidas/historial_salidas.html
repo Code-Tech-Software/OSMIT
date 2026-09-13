@@ -1,0 +1,255 @@
+```html
+{% extends "Base/Sidebar.html" %}
+{% load static %}
+
+{% block content %}
+
+<style>
+    .titulo-pagina {
+        font-weight: 700;
+        color: #333;
+    }
+
+    .filtros-card {
+        background: #fff;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .tabla-card {
+        background: #fff;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+</style>
+
+<div class="container-fluid py-4">
+
+    <!-- ENCABEZADO -->
+
+    <div class="mb-4">
+        <h2 class="titulo-pagina">
+            Inventario | Historial de Salidas
+        </h2>
+    </div>
+
+
+    <!-- FILTROS -->
+
+    <div class="filtros-card mb-4">
+
+        <form method="GET" class="row g-3 align-items-end">
+
+            <div class="col-md-4">
+
+                <label for="desde" class="form-label fw-semibold">
+                    Desde
+                </label>
+
+                <input
+                    type="date"
+                    id="desde"
+                    name="desde"
+                    class="form-control"
+                    value="{{ desde|default:'' }}"
+                >
+
+            </div>
+
+
+            <div class="col-md-4">
+
+                <label for="hasta" class="form-label fw-semibold">
+                    Hasta
+                </label>
+
+                <input
+                    type="date"
+                    id="hasta"
+                    name="hasta"
+                    class="form-control"
+                    value="{{ hasta|default:'' }}"
+                >
+
+            </div>
+
+
+            <div class="col-md-4 d-flex gap-2">
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+                    Buscar
+                </button>
+
+                <a
+                    href="{% url 'historial_salidasPT' %}"
+                    class="btn btn-secondary"
+                >
+                    Limpiar
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+
+    <!-- TABLA -->
+
+    <div class="tabla-card">
+
+        <div class="table-responsive">
+
+            <table
+                id="salidasTable"
+                class="table table-hover align-middle text-center"
+                style="width:100%"
+            >
+
+                <thead>
+
+                    <tr>
+                        <th>ID</th>
+                        <th>Fecha</th>
+                        <th>Usuario</th>
+                        <th>Destino</th>
+                        <th>Ruta</th>
+                        <th>Nota</th>
+                        <th>Detalle</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for salida in salidas %}
+
+                        <tr>
+
+                            <td>
+                                {{ salida.id }}
+                            </td>
+
+
+                            <td>
+                                {{ salida.fecha_salida|date:"d/m/Y H:i" }}
+                            </td>
+
+
+                            <td>
+                                {{ salida.usuario.username }}
+                            </td>
+
+
+                            <td>
+                                {{ salida.get_destino_display }}
+                            </td>
+
+
+                            <td>
+
+                                {% if salida.ruta %}
+                                    {{ salida.ruta }}
+                                {% else %}
+                                    -
+                                {% endif %}
+
+                            </td>
+
+
+                            <td class="text-start">
+
+                                {% if salida.nota %}
+                                    {{ salida.nota }}
+                                {% else %}
+                                    -
+                                {% endif %}
+
+                            </td>
+
+
+                            <td>
+
+                                <a
+                                    href="{% url 'detalle_salida' salida.id %}"
+                                    class="btn btn-sm btn-primary"
+                                >
+                                    Ver detalle
+                                </a>
+
+                            </td>
+
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- DATATABLES -->
+
+<link
+    rel="stylesheet"
+    href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css"
+>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+
+<script>
+
+    $(document).ready(function () {
+
+        $('#salidasTable').DataTable({
+
+            pageLength: 25,
+
+            responsive: true,
+
+            order: [[1, 'desc']],
+
+            language: {
+
+                emptyTable: "No hay salidas registradas",
+
+                zeroRecords: "No se encontraron salidas",
+
+                info: "Mostrando _START_ a _END_ de _TOTAL_ salidas",
+
+                infoEmpty: "Mostrando 0 a 0 de 0 salidas",
+
+                lengthMenu: "Mostrar _MENU_ salidas",
+
+                search: "Buscar:",
+
+                paginate: {
+                    first: "Primero",
+                    last: "Último",
+                    next: "Siguiente",
+                    previous: "Anterior"
+                }
+
+            }
+
+        });
+
+    });
+
+</script>
+
+{% endblock %}

@@ -192,6 +192,8 @@
                         <li><a href="{% url 'registrar_entrada_especialPT' %}" class="sub-menu-link">Registrar Entrada Especial</a></li>
                         <li><a href="{% url 'registrar_salidaPT' %}" class="sub-menu-link">Registrar Salida</a></li>
                         <li><a href="{% url 'registrar_salida_especialPT' %}" class="sub-menu-link">Registrar Salida Especial</a></li>
+                        <li><a href="{% url 'historial_entradasPT' %}" class="sub-menu-link">Historial Entradas</a></li>
+                        <li><a href="{% url 'historial_salidasPT' %}" class="sub-menu-link">Historial Salidas</a></li>
 
                     </ul>
                 </li>
@@ -312,6 +314,9 @@
         <span>Settings</span>
         <i class='bx bx-chevron-down'></i>
     </a>
+
+    {% if user|has_role:"Administrador,Producto Terminado" %}
+
     <ul class="sub-menu">
         <li>
             <a href="{% url 'cargar_productos' %}" class="sub-menu-link">Carga masiva de productos</a>
@@ -320,6 +325,7 @@
             <a href="{% url 'cargar_clientes_csv' %}" class="sub-menu-link">Carga masiva de clientes</a>
         </li>
     </ul>
+    {% endif %}
 </li>
             
         </ul>

@@ -671,17 +671,19 @@ def registrar_salida(request):
                                 # Buscar minibodega de la ruta de hoy, si no existe, la crea con los datos de la ruta
                                 minibodega, created = MiniBodega.objects.get_or_create(
                                     ruta=ruta,
-                                    #fecha=hoy,
                                     defaults={
-                                        'usuario': ruta.usuario,  # Asignamos al encargado de la ruta
-                                        'vehiculo': ruta.vehiculo,
-                                        'estado': True
+                                    'fecha': hoy,
+                                    'usuario': ruta.usuario,
+                                    'vehiculo': ruta.vehiculo,
+                                    'estado': True
                                     }
                                 )
 
-                                # Si ya existía (por pruebas o cambios), forzamos a que tenga los datos correctos actuales
                                 if not created:
-                                    if minibodega.usuario != ruta.usuario or minibodega.vehiculo != ruta.vehiculo:
+                                    if (
+                                    minibodega.usuario != ruta.usuario
+                                    or minibodega.vehiculo != ruta.vehiculo
+                                    ):
                                         minibodega.usuario = ruta.usuario
                                         minibodega.vehiculo = ruta.vehiculo
                                         minibodega.save()
@@ -1031,19 +1033,20 @@ def registrar_salida_especial(request):
                                 nota=nota
                             )
 
-                            # =================================================
+                           # =================================================
                             # MINIBODEGA
                             # =================================================
                             minibodega = None
 
                             if destino == "opcion1" and ruta:
 
-                                # Se mantiene exactamente tu lógica:
-                                # una MiniBodega asociada a la ruta.
+                                hoy = timezone.localdate()
+
                                 minibodega, created = (
                                     MiniBodega.objects.get_or_create(
                                         ruta=ruta,
                                         defaults={
+                                            "fecha": hoy,
                                             "usuario": ruta.usuario,
                                             "vehiculo": ruta.vehiculo,
                                             "estado": True
@@ -1056,10 +1059,8 @@ def registrar_salida_especial(request):
                                 if not created:
 
                                     if (
-                                        minibodega.usuario
-                                        != ruta.usuario
-                                        or minibodega.vehiculo
-                                        != ruta.vehiculo
+                                        minibodega.usuario != ruta.usuario
+                                        or minibodega.vehiculo != ruta.vehiculo
                                     ):
 
                                         minibodega.usuario = ruta.usuario
@@ -1262,7 +1263,107 @@ def eliminar_presentacion(request, pk):
     messages.success(request, "Presentación desactivada correctamente.")
     return redirect('lista_presentaciones')
 
+@login_required
+def historial_entradas(request):
 
+    hoy = timezone.localdate()
+
+    desde = request.GET.get("desde") or hoy.strftime("%Y-%m-%d")
+    hasta = request.GET.get("hasta") or hoy.strftime("%Y-%m-%d")
+
+    entradas = (
+        EntradaPTerminado.objects
+        .select_related("usuario")
+        .filter(
+            fecha_entrada__date__gte=desde,
+            fecha_entrada__date__lte=hasta
+        )
+        .order_by("-fecha_entrada")
+    )
+
+    return render(
+        request,
+        "ProductoTerminado/entradas/historial_entradas.html",
+        {
+            "entradas": entradas,
+            "desde": desde,
+            "hasta": hasta,
+        }
+    )
+
+@login_required
+def detalle_entrada(request,entrada_id):
+
+    entrada = get_object_or_404(EntradaPTerminado.objects.select_related("usuario"),
+                                 id=entrada_id)
+    detalles=(DetalleEntradaPTerminado.objects.filter(entrada_p_terminado=entrada)
+              .select_related(
+            "producto_variacion",
+            "producto_variacion__producto",
+            "producto_variacion__presentacion")
+            .order_by("id")
+    )
+
+    return render(
+        request,
+        "ProductoTerminado/entradas/detalle_entrada.html",
+        {
+            "entrada": entrada,
+            "detalles": detalles,
+        }
+    )
+
+
+
+@login_required
+def historial_salidas(request):
+    hoy=timezone.localdate()
+
+    desde=request.GET.get("desde") or hoy.strftime("%Y-%m-%d")
+    hasta=request.GET.get("hasta") or hoy.strftime("%Y-%m-%d")
+
+    salidas=(
+        SalidaPTerminado.objects
+        .select_related("usuario","ruta")
+        .filter(
+            fecha_salida__date__gte=desde,
+            fecha_salida__date__lte=hasta
+        )
+        .order_by("-fecha_salida")
+    )
+
+    return render(
+        request,
+        "ProductoTerminado/salidas/historial_salidas.html",
+        {
+            "salidas": salidas,
+            "desde": desde,
+            "hasta": hasta,
+        }
+    )
+
+@login_required
+def detalle_salida(request,salida_id):
+    
+    salida=get_object_or_404(SalidaPTerminado.objects.select_related("usuario","ruta"),
+                             id=salida_id)
+    
+    detalles=(DetalleSalidaPTerminado.objects.filter(salida_p_terminado=salida)
+              .select_related(
+            "producto_variacion",
+            "producto_variacion__producto",
+            "producto_variacion__presentacion")
+            .order_by("id")
+    )
+
+    return render(
+        request,
+        "ProductoTerminado/salidas/detalle_salida.html",
+        {
+            "salida": salida,
+            "detalles": detalles,
+        }
+    )
 
 
 # PARA EL DASSBOAR

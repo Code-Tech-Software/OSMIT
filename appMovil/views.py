@@ -45,7 +45,10 @@ class RolViewSet(BaseSyncViewSet):
 
 
 class UsuarioViewSet(BaseSyncViewSet):
-    queryset = Usuario.objects.all()
+    queryset = Usuario.objects.filter(
+        rol__nombre="Repartidor",
+        rol__estado=True
+    )
     serializer_class = UsuarioSerializer
 
 
@@ -1147,7 +1150,7 @@ from django.contrib import messages
 from .models import Cliente, Ruta
 from .forms import CargarCSVForm
 
-
+@login_required
 def cargar_clientes_csv(request):
     if request.method == 'POST':
         form = CargarCSVForm(request.POST, request.FILES)
@@ -1245,7 +1248,7 @@ from django.contrib import messages
 from django.db import transaction
 from .models import  ProductoVariacion
 
-
+@login_required
 def cargar_productos_csv(request):
     if request.method == 'POST':
         form = CargarCSVForm(request.POST, request.FILES)
