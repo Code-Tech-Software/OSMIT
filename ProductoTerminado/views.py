@@ -709,9 +709,10 @@ def registrar_salida(request):
                                             'cantidad_actual': Decimal('0.00')
                                         }
                                     )
+                                    #
                                     # Se suma a lo que ya tuviera en la ruta ese día
-                                    mb_detalle.cantidad_inicial += cantidad
                                     mb_detalle.cantidad_actual += cantidad
+                                    mb_detalle.cantidad_inicial = mb_detalle.cantidad_actual
                                     mb_detalle.save()
 
                             messages.success(request, 'Salida registrada y stock actualizado correctamente.')
@@ -1106,11 +1107,12 @@ def registrar_salida_especial(request):
                                             }
                                         )
                                     )
+                                    #
 
                                     # Se acumula con lo que ya tenga
                                     # la MiniBodega.
-                                    mb_detalle.cantidad_inicial += cantidad
                                     mb_detalle.cantidad_actual += cantidad
+                                    mb_detalle.cantidad_inicial = mb_detalle.cantidad_actual
                                     mb_detalle.save()
 
                             messages.success(

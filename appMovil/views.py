@@ -190,6 +190,8 @@ def cerrar_mini_bodega(request):
     return Response({"message": "Cierre realizado correctamente"})
 
 
+
+
 {
   "uuid": "550e8400-e29b-41d4-a716-446655440000",
   "ruta_id": 1,
@@ -335,6 +337,7 @@ def detalle_pedido(request, pedido_id):
 
 
 # 3. Procesar el Reabastecimiento
+
 @login_required
 def procesar_reabastecimiento(request, pedido_id):
     if request.method == 'POST':
@@ -460,17 +463,46 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 
 
+
 @login_required
 def abrir_minibodega_manual(request, pk):
+
     if request.method == 'POST':
+
         try:
-            minibodega = get_object_or_404(MiniBodega, pk=pk)
+            minibodega = get_object_or_404(
+                MiniBodega,
+                pk=pk
+            )
+
+            # Lo que quedó actualmente pasa a ser
+            # la cantidad inicial de la nueva jornada.
+            MiniBodegaDetalle.objects.filter(
+                mini_bodega=minibodega
+            ).update(
+                cantidad_inicial=F('cantidad_actual')
+            )
+
+            # Abrir MiniBodega
             minibodega.estado = True
             minibodega.save()
-            return JsonResponse({'success': True, 'message': 'La Mini Bodega ha sido abierta exitosamente.'})
+
+            return JsonResponse({
+                'success': True,
+                'message': 'La Mini Bodega ha sido abierta exitosamente.'
+            })
+
         except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)})
-    return JsonResponse({'success': False, 'message': 'Método no permitido.'}, status=405)
+
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            })
+
+    return JsonResponse({
+        'success': False,
+        'message': 'Método no permitido.'
+    }, status=405)
 
 import json
 @login_required

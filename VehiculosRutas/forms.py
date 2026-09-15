@@ -53,7 +53,8 @@ class ClienteForm(forms.ModelForm):
         model = Cliente
         fields = [
             'nombre', 'nombre_negocio', 'giro', 'tipo_exhibidor', 'direccion',
-            'localidad', 'colonia', 'telefono', 'limite_credito','saldo_adeudo', 'imagen',
+            'localidad', 'colonia', 'telefono', 'limite_credito',
+            'saldo_adeudo', 'porcentaje_descuento', 'imagen',
             'observaciones', 'ruta', 'estado'
         ]
         widgets = {
@@ -67,6 +68,7 @@ class ClienteForm(forms.ModelForm):
             'telefono': forms.TextInput(attrs={'class': 'form-control'}),
             'limite_credito': forms.NumberInput(attrs={ 'class': 'form-control','step': '0.1','min': '0','placeholder': '0.00'}),
             'saldo_adeudo': forms.NumberInput(attrs={'class': 'form-control','step': '0.1','min': '0','placeholder': '0.00'}),
+            'porcentaje_descuento': forms.NumberInput(attrs={'class': 'form-control','step': '1','min': '0','max': '100','placeholder': '0'}),
             'imagen': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'ruta': forms.Select(attrs={'class': 'form-control'}),
@@ -79,10 +81,12 @@ class ClienteForm(forms.ModelForm):
 #DIAS DE VISITA
 
 class ClienteDiasVisitaForm(forms.Form):
-    dias = forms.MultipleChoiceField(
+    dia = forms.ChoiceField(
         choices=ClienteDiasVisita.DIAS,
-        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
-        required=False,
-        label="Días de visita"
+        required=True,
+        label="Día de visita",
+        widget=forms.Select(attrs={
+            'class': 'form-control'
+        })
     )
 

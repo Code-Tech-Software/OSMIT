@@ -134,15 +134,41 @@ def agregar_cliente(request):
     """
     Permite agregar un nuevo cliente.
     """
+
     if request.method == 'POST':
         form = ClienteForm(request.POST, request.FILES)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Cliente agregado correctamente.")
+        dias_form = ClienteDiasVisitaForm(request.POST)
+
+        if form.is_valid() and dias_form.is_valid():
+
+            # Guardar cliente
+            cliente = form.save()
+
+            # Guardar día de visita
+            ClienteDiasVisita.objects.create(
+                cliente=cliente,
+                dia_semana=dias_form.cleaned_data['dia']
+            )
+
+            messages.success(
+                request,
+                "Cliente agregado correctamente."
+            )
+
             return redirect('listar_clientes')
+
     else:
         form = ClienteForm()
-    return render(request, 'VehiculosRutas/clientes/agregar_cliente.html', {'form': form})
+        dias_form = ClienteDiasVisitaForm()
+
+    return render(
+        request,
+        'VehiculosRutas/clientes/agregar_cliente.html',
+        {
+            'form': form,
+            'dias_form': dias_form
+        }
+    )
 
 
 @login_required
@@ -150,16 +176,70 @@ def editar_cliente(request, pk):
     """
     Permite editar un cliente existente.
     """
+
     cliente = get_object_or_404(Cliente, pk=pk)
+
+    # Obtener el día de visita actual
+    dia_visita = ClienteDiasVisita.objects.filter(
+        cliente=cliente
+    ).first()
+
     if request.method == 'POST':
-        form = ClienteForm(request.POST, request.FILES, instance=cliente)
-        if form.is_valid():
+
+        form = ClienteForm(
+            request.POST,
+            request.FILES,
+            instance=cliente
+        )
+
+        dias_form = ClienteDiasVisitaForm(request.POST)
+
+        if form.is_valid() and dias_form.is_valid():
+
+            # Actualizar datos del cliente
             form.save()
-            messages.success(request, "Cliente actualizado correctamente.")
+
+            # Nuevo día seleccionado
+            nuevo_dia = dias_form.cleaned_data['dia']
+
+            if dia_visita:
+                # Si ya tenía día, actualizarlo
+                dia_visita.dia_semana = nuevo_dia
+                dia_visita.save()
+
+            else:
+                # Si por alguna razón no tenía día, crearlo
+                ClienteDiasVisita.objects.create(
+                    cliente=cliente,
+                    dia_semana=nuevo_dia
+                )
+
+            messages.success(
+                request,
+                "Cliente actualizado correctamente."
+            )
+
             return redirect('listar_clientes')
+
     else:
+
         form = ClienteForm(instance=cliente)
-    return render(request, 'VehiculosRutas/clientes/editar_cliente.html', {'form': form})
+
+        # Cargar el día actual en el dropdown
+        dias_form = ClienteDiasVisitaForm(
+            initial={
+                'dia': dia_visita.dia_semana if dia_visita else None
+            }
+        )
+
+    return render(
+        request,
+        'VehiculosRutas/clientes/editar_cliente.html',
+        {
+            'form': form,
+            'dias_form': dias_form
+        }
+    )
 
 
 @login_required
