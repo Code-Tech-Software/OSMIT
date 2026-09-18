@@ -150,3 +150,30 @@ class MiniBodegaDetalleMerma(models.Model):
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     devolucion = models.ForeignKey('Devolucion', on_delete=models.CASCADE, null=True, blank=True)
     devolucion_uuid = models.UUIDField(null=True, blank=True)# Despues quitar null=True, blank=True
+
+
+
+class Dispositivo(models.Model):
+    codigo = models.CharField(max_length=50, unique=True)
+
+    credencial_hash = models.CharField(max_length=255)
+
+    repartidor = models.ForeignKey(
+        Usuario,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="dispositivos"
+    )
+
+    activo = models.BooleanField(default=True)
+
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    ultima_conexion = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    def __str__(self):
+        return self.codigo

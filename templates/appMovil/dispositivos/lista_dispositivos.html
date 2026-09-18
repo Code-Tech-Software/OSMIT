@@ -1,0 +1,142 @@
+{% extends "Base/Sidebar.html" %}
+{% load static %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+
+<!-- Breadcrumb Header -->
+
+<div class="section-title">
+    <span class="fw-bold text-dark">Gestión de Dispositivos</span>
+    <span class="mx-2 text-dark">|</span>
+    <span class="text-secondary">Dispositivos Registrados</span>
+</div>
+
+<!-- Encabezado y botón -->
+
+<div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+    <h5 class="fw-bold text-dark mb-0">
+        Dispositivos
+    </h5>
+
+
+<a href="{% url 'registrar_dispositivo' %}" class="btn btn-custom-success btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>
+    Agregar Dispositivo
+</a>
+
+
+</div>
+
+<div class="custom-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Repartidor</th>
+                    <th>Estado</th>
+                    <th>Fecha de registro</th>
+                    <th>Última conexión</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+
+
+        <tbody>
+            {% for dispositivo in dispositivos %}
+                <tr>
+                    <td>
+                        <span class="fw-semibold">
+                            {{ dispositivo.codigo }}
+                        </span>
+                    </td>
+
+                    <td>
+                        {% if dispositivo.repartidor %}
+                            {{ dispositivo.repartidor }}
+                        {% else %}
+                            <span class="text-muted">
+                                Sin asignar
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if dispositivo.activo %}
+                            <span class="badge bg-success">
+                                Activo
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary">
+                                Inactivo
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {{ dispositivo.fecha_registro|date:"d/m/Y H:i" }}
+                    </td>
+
+                    <td>
+                        {% if dispositivo.ultima_conexion %}
+                            {{ dispositivo.ultima_conexion|date:"d/m/Y H:i" }}
+                        {% else %}
+                            <span class="text-muted">
+                                Nunca
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <td class="text-center">
+                        <div class="btn-group" role="group">
+
+                            <!-- Editar -->
+                            <a href="{% url 'editar_dispositivo' dispositivo.id %}"
+                               class="btn btn-sm btn-outline-primary"
+                               title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+
+                            <!-- Activar / Desactivar -->
+                            {% if dispositivo.activo %}
+                                <a href="{% url 'desactivar_dispositivo' dispositivo.id %}"
+                                   class="btn btn-sm btn-outline-warning"
+                                   title="Desactivar">
+                                    <i class="bi bi-toggle-on"></i>
+                                </a>
+                            {% else %}
+                                <a href="{% url 'activar_dispositivo' dispositivo.id %}"
+                                   class="btn btn-sm btn-outline-success"
+                                   title="Activar">
+                                    <i class="bi bi-toggle-off"></i>
+                                </a>
+                            {% endif %}
+
+                            <!-- Eliminar -->
+                            <a href="{% url 'eliminar_dispositivo' dispositivo.id %}"
+                               class="btn btn-sm btn-outline-danger"
+                               title="Eliminar">
+                                <i class="bi bi-trash"></i>
+                            </a>
+
+                        </div>
+                    </td>
+                </tr>
+
+            {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        No hay dispositivos registrados.
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+
+</div>
+
+{% endblock %}

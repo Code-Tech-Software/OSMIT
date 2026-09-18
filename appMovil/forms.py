@@ -1,6 +1,8 @@
 # forms.py
+from pyclbr import Class
+
 from django import forms
-from .models import MiniBodega
+from .models import Dispositivo, MiniBodega
 
 class MiniBodegaForm(forms.ModelForm):
     class Meta:
@@ -90,3 +92,25 @@ class FiltroDevolucionesForm(forms.Form):
             attrs={'class': 'form-select d-inline-block w-auto'}
         )
     )
+
+
+class DispositivoForm(forms.ModelForm):
+    class Meta:
+        model = Dispositivo
+        fields = [
+            "codigo",
+            "repartidor",
+            "activo",
+        ]
+        widgets = {
+            "codigo": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Ej. OSMIT-001",
+            }),
+            "repartidor": forms.Select(attrs={
+                "class": "form-select",
+            }),
+            "activo": forms.CheckboxInput(attrs={
+                "class": "form-check-input",
+            }),
+        }

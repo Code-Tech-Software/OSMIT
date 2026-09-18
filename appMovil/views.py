@@ -1,14 +1,15 @@
 from datetime import datetime, timedelta
 from django.shortcuts import render
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from django.utils.dateparse import parse_datetime, parse_date
 from django.utils.timezone import make_aware, is_naive
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from decimal import Decimal
 from django.contrib.auth.decorators import login_required
-
-
+import secrets
+from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import check_password
 from ProductoTerminado.models import SalidaPTerminado, DetalleSalidaPTerminado, EntradaPTerminado, \
     DetalleEntradaPTerminado
 from appMovil.serializers import *
@@ -21,20 +22,26 @@ from .models import (
     PedidoReabastecimiento,
     MiniBodega,
     MiniBodegaDetalle,
+    
 )
+from .models import Dispositivo
 
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
+from .forms import DispositivoForm
+from .autenticacion_dispositivo import DispositivoActivoPermission
 
 
 # Create your views here.
 
 class BaseSyncViewSet(viewsets.ModelViewSet):
-   def get_queryset(self):
-        queryset = super().get_queryset().all()  # 🔥 ESTO ES LA CLAVE
+    permission_classes = [DispositivoActivoPermission]
+
+    def get_queryset(self):
+        queryset = super().get_queryset().all()
 
         return queryset
    
@@ -142,6 +149,7 @@ class PedidoReabastecimientoDetalleViewSet(BaseSyncViewSet):
 }
 """
 @api_view(['POST'])
+@permission_classes([DispositivoActivoPermission])
 def cerrar_mini_bodega(request):
     serializer = CerrarMiniBodegaSerializer2(data=request.data)
 
@@ -207,6 +215,7 @@ def cerrar_mini_bodega(request):
   ]
 }
 @api_view(['POST'])
+@permission_classes([DispositivoActivoPermission])
 def crear_reabastecimiento(request):
     data = request.data
 
@@ -475,10 +484,16 @@ def abrir_minibodega_manual(request, pk):
                 pk=pk
             )
 
-            # Lo que quedó actualmente pasa a ser
-            # la cantidad inicial de la nueva jornada.
+            # Eliminar productos que ya no tienen existencia
             MiniBodegaDetalle.objects.filter(
-                mini_bodega=minibodega
+                mini_bodega=minibodega,
+                cantidad_actual=0
+            ).delete()
+
+            # Lo que quedó pasa a ser el nuevo inicial
+            MiniBodegaDetalle.objects.filter(
+                mini_bodega=minibodega,
+                cantidad_actual__gt=0
             ).update(
                 cantidad_inicial=F('cantidad_actual')
             )
@@ -612,7 +627,9 @@ def agregar_minibodega(request):
   ]
 }
 """
+
 @api_view(['POST'])
+@permission_classes([DispositivoActivoPermission])
 def sync_ventas(request):
     data = request.data
 
@@ -736,6 +753,7 @@ def sync_ventas(request):
 }
 """
 @api_view(['POST'])
+@permission_classes([DispositivoActivoPermission])
 def sync_abonos(request):
     data = request.data
     abonos = data.get('abonos', [])
@@ -864,6 +882,7 @@ def sync_abonos(request):
 }
 """
 @api_view(['POST'])
+@permission_classes([DispositivoActivoPermission])
 def sync_devoluciones(request):
     data = request.data
 
@@ -1342,3 +1361,171 @@ def cargar_productos_csv(request):
     else:
         form = CargarCSVForm()
     return render(request, 'appMovil/cargaDatos/cargarProductosTerminados_csv.html', {'form': form})
+
+
+
+@login_required
+def registrar_dispositivo(request):
+
+    if request.method == "POST":
+        form = DispositivoForm(request.POST)
+
+        if form.is_valid():
+            dispositivo = form.save(commit=False)
+
+            # Generar credencial única para el dispositivo
+            credencial = secrets.token_urlsafe(32)
+
+            # Guardar únicamente el hash en la base de datos
+            dispositivo.credencial_hash = make_password(credencial)
+
+            dispositivo.save()
+
+            return render(
+                request,
+                "appMovil/dispositivos/credencial.html",
+                {
+                    "dispositivo": dispositivo,
+                    "credencial": credencial,
+                }
+            )
+
+    else:
+        form = DispositivoForm()
+
+    return render(
+        request,
+        "appMovil/dispositivos/registrar_dispositivo.html",
+        {
+            "form": form
+        }
+    )
+
+@login_required
+def lista_dispositivos(request):
+    dispositivos = Dispositivo.objects.select_related("repartidor").all()
+
+    return render(
+        request,
+        "appMovil/dispositivos/lista_dispositivos.html",
+        {
+            "dispositivos": dispositivos
+        }
+    )
+
+
+@login_required
+def editar_dispositivo(request, dispositivo_id):
+    dispositivo = get_object_or_404(Dispositivo, id=dispositivo_id)
+
+    if request.method == "POST":
+        form = DispositivoForm(request.POST, instance=dispositivo)
+
+        if form.is_valid():
+            form.save()
+
+            return redirect("lista_dispositivos")
+
+    else:
+        form = DispositivoForm(instance=dispositivo)
+
+    return render(
+        request,
+        "appMovil/dispositivos/editar.html",
+        {
+            "form": form,
+            "dispositivo": dispositivo
+        }
+    )
+
+@login_required
+def activar_dispositivo(request, dispositivo_id):
+    dispositivo = get_object_or_404(Dispositivo, id=dispositivo_id)
+    dispositivo.activo = True
+    dispositivo.save(update_fields=["activo"])
+    #messages.success(request, f'Dispositivo {dispositivo.nombre} activado.')
+    return redirect('lista_dispositivos')
+
+
+@login_required
+def desactivar_dispositivo(request, dispositivo_id):
+    dispositivo = get_object_or_404(Dispositivo, id=dispositivo_id)
+    dispositivo.activo = False
+    dispositivo.save(update_fields=["activo"])
+    #messages.success(request, f'Dispositivo {dispositivo.nombre} desactivado.')
+    return redirect('lista_dispositivos')
+
+
+@login_required
+def eliminar_dispositivo(request, dispositivo_id):
+    dispositivo = get_object_or_404(Dispositivo, id=dispositivo_id)
+
+    if request.method == "POST":
+        dispositivo.delete()
+
+        return redirect("lista_dispositivos")
+
+    return render(
+        request,
+        "appMovil/dispositivos/eliminar.html",
+        {
+            "dispositivo": dispositivo
+        }
+    )
+
+@api_view(['POST'])
+def activar_dispositivo_api(request):
+    serializer=DispositivoActivacionSerializer(data=request.data)
+
+    if not serializer.is_valid():
+        return Response(
+            {
+            "succes":False,
+            "message":"Datos invalidos",
+            "errors":serializer.errors
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    codigo=serializer.validated_data["codigo"]
+    credencial=serializer.validated_data["credencial"]
+
+    try:
+        dispositivo=Dispositivo.objects.get(codigo=codigo)
+    except Dispositivo.DoesNotExist:
+        return Response(
+            {
+                "success":False,
+                "message":"Dispositivo no encontrado",
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    if not dispositivo.activo:
+        return Response(
+            {
+                "success": False,
+                "message": "El dispositivo se encuentra inactivo."
+            },
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    if not check_password(credencial,dispositivo.credencial_hash):
+        return Response(
+            {
+            "success":False,
+            "message":"Credencial incorrecta"
+            },
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    dispositivo.ultima_conexion=timezone.now()
+    dispositivo.save(update_fields=["ultima_conexion"])
+
+    return Response(
+        {
+            "success":True,
+            "message":"Dispositivo activado correctamente"
+        },
+        status=status.HTTP_200_OK
+    )

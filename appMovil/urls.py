@@ -61,4 +61,12 @@ urlpatterns = [
 
     path('devoluciones/', ListaDevolucionesView.as_view(), name='lista_devoluciones'),
     path('devoluciones/<int:pk>/', DetalleDevolucionView.as_view(), name='detalle_devolucion'),
+
+    path('dispositivos/registrar/', views.registrar_dispositivo, name='registrar_dispositivo'),
+    path('dispositivos/', views.lista_dispositivos, name='lista_dispositivos'),
+    path('dispositivos/<int:dispositivo_id>/activar/', views.activar_dispositivo, name='activar_dispositivo'),
+    path('dispositivos/<int:dispositivo_id>/desactivar/', views.desactivar_dispositivo, name='desactivar_dispositivo'),
+    path('dispositivos/<int:dispositivo_id>/eliminar/', views.eliminar_dispositivo, name='eliminar_dispositivo'),
+    path('dispositivos/<int:dispositivo_id>/editar/', views.editar_dispositivo, name='editar_dispositivo'),
+    path('dispositivos/activar/',views.activar_dispositivo_api,name="activar_dispositivo_api"),
 ]

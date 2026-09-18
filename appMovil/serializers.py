@@ -122,3 +122,8 @@ class PedidoDetalleSerializer(serializers.Serializer):
 class CrearPedidoReabastecimientoSerializer(serializers.Serializer):
     ruta_id = serializers.IntegerField()
     productos = PedidoDetalleSerializer(many=True)
+
+
+class DispositivoActivacionSerializer(serializers.Serializer):
+    codigo=serializers.CharField(max_length=50)
+    credencial=serializers.CharField(write_only=True)

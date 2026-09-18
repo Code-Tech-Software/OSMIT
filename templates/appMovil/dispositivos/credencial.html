@@ -1,0 +1,85 @@
+{% extends "Base/Sidebar.html" %}
+{% load static %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+
+<div class="section-title">
+    <span class="fw-bold text-dark">Gestión de Dispositivos</span>
+    <span class="mx-2 text-dark">|</span>
+    <span class="text-secondary">Dispositivo Registrado</span>
+</div>
+
+<div class="custom-card mt-4">
+
+<div class="text-center py-3">
+
+    <i class="bi bi-check-circle text-success"
+       style="font-size: 3rem;"></i>
+
+    <h5 class="fw-bold mt-3">
+        Dispositivo registrado correctamente
+    </h5>
+
+    <p class="text-muted">
+        El dispositivo
+        <strong>{{ dispositivo.codigo }}</strong>
+        ha sido registrado correctamente.
+    </p>
+
+    <div class="alert alert-warning mt-4 text-start">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        <strong>Importante:</strong>
+        esta credencial se muestra solamente en este momento.
+        Guárdala antes de salir de esta página.
+    </div>
+
+    <div class="mt-4">
+        <label class="form-label fw-bold">
+            Credencial del dispositivo
+        </label>
+
+        <div class="input-group">
+            <input
+                type="text"
+                id="credencial"
+                class="form-control"
+                value="{{ credencial }}"
+                readonly
+            >
+
+            <button
+                type="button"
+                class="btn btn-custom-secondary"
+                onclick="copiarCredencial()"
+                title="Copiar credencial">
+                <i class="bi bi-clipboard"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="mt-4 d-flex justify-content-center">
+        <a href="{% url 'lista_dispositivos' %}"
+           class="btn btn-custom-secondary btn-sm">
+            <i class="bi bi-arrow-return-left me-1"></i>
+            Volver al listado
+        </a>
+    </div>
+
+</div>
+
+
+</div>
+
+<script>
+    function copiarCredencial() {
+        const input = document.getElementById("credencial");
+
+        navigator.clipboard.writeText(input.value);
+
+        alert("Credencial copiada al portapapeles.");
+    }
+</script>
+
+{% endblock %}
