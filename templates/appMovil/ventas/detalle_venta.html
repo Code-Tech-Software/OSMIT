@@ -77,25 +77,112 @@
                 
                 <!-- Caja de Totales -->
                 <div class="p-3 bg-light rounded border border-info border-opacity-25">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="text-secondary fw-bold fs-5">Total:</span>
-                        <span class="text-dark fw-bold fs-4">${{ venta.total|floatformat:2 }}</span>
+
+                    {% if porcentaje_descuento_cliente > 0 or monto_descuento > 0 %}
+
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-secondary fw-bold">
+                                Subtotal:
+                            </span>
+                            <span class="text-dark fw-bold">
+                                ${{ subtotal_venta|floatformat:2 }}
+                            </span>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-success fw-bold">
+                                Descuento aplicado
+                                ({{ porcentaje_descuento_venta|floatformat:2 }}%):
+                            </span>
+                            <span class="text-success fw-bold">
+                                - ${{ monto_descuento|floatformat:2 }}
+                            </span>
+                        </div>
+
+                        {% if porcentaje_descuento_cliente > 0 %}
+
+                            {% if descuento_coincide %}
+
+                                <small class="text-muted d-block mb-2">
+                                    <i class="bi bi-check-circle me-1"></i>
+                                    El descuento aplicado coincide con el porcentaje
+                                    actual del cliente
+                                    ({{ porcentaje_descuento_cliente|floatformat:2 }}%).
+                                </small>
+
+                            {% else %}
+
+                                <div class="alert alert-warning py-2 px-3 mb-2">
+                                    <small>
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                        Esta venta se realizó con un porcentaje de descuento
+                                        diferente al que tiene actualmente el cliente.
+                                        <br>
+                                        Descuento de la venta:
+                                        <strong>
+                                            {{ porcentaje_descuento_venta|floatformat:2 }}%
+                                        </strong>
+                                        |
+                                        Descuento actual:
+                                        <strong>
+                                            {{ porcentaje_descuento_cliente|floatformat:2 }}%
+                                        </strong>
+                                    </small>
+                                </div>
+
+                            {% endif %}
+
+                        {% else %}
+
+                            <div class="alert alert-warning py-2 px-3 mb-2">
+                                <small>
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                    Esta venta se realizó con un descuento, pero el cliente
+                                    actualmente no tiene descuento.
+                                </small>
+                            </div>
+
+                        {% endif %}
+
+                        <hr class="my-2 border-secondary">
+
+                    {% endif %}
+
+                    <!-- Total -->
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-secondary fw-bold fs-5">
+                            Total:
+                        </span>
+                        <span class="text-dark fw-bold fs-4">
+                            ${{ venta.total|floatformat:2 }}
+                        </span>
                     </div>
 
                     {% if venta.tipo_venta == 'CREDITO' %}
+
                         <hr class="my-2 border-secondary">
+
                         <div class="d-flex justify-content-between align-items-center text-danger">
-                            <span class="fw-bold">Saldo Pendiente:</span>
-                            <span class="fw-bold fs-5">${{ venta.saldo_pendiente|floatformat:2 }}</span>
+                            <span class="fw-bold">
+                                Saldo Pendiente:
+                            </span>
+                            <span class="fw-bold fs-5">
+                                ${{ venta.saldo_pendiente|floatformat:2 }}
+                            </span>
                         </div>
+
                         {% if venta.fecha_vencimiento %}
                             <div class="text-end mt-1">
                                 <small class="text-muted">
-                                    <i class="bi bi-clock-history me-1"></i>Vence el: {{ venta.fecha_vencimiento|date:"d/m/Y" }}
+                                    <i class="bi bi-clock-history me-1"></i>
+                                    Vence el:
+                                    {{ venta.fecha_vencimiento|date:"d/m/Y" }}
                                 </small>
                             </div>
                         {% endif %}
+
                     {% endif %}
+
                 </div>
             </div>
         </div>

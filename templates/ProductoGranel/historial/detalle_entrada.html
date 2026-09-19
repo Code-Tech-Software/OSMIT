@@ -1,0 +1,130 @@
+{% extends "Base/Sidebar.html" %}
+
+{% block content %}
+
+<div class="container-fluid">
+
+    <!-- ENCABEZADO -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold text-dark mb-1">
+                Detalle de Entrada #{{ entrada.id }}
+            </h4>
+            <p class="text-secondary mb-0">
+                Información de la entrada de productos a granel
+            </p>
+        </div>
+
+        <a href="{% url 'historial_entradas' %}"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>
+            Regresar
+        </a>
+    </div>
+
+
+    <!-- INFORMACIÓN DE LA ENTRADA -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+
+            <div class="row">
+
+                <div class="col-md-4 mb-3">
+                    <strong>Fecha:</strong>
+                    <div class="text-secondary">
+                        {{ entrada.fecha_entrada|date:"d/m/Y H:i" }}
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <strong>Usuario:</strong>
+                    <div class="text-secondary">
+                        {{ entrada.usuario }}
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <strong>Nota:</strong>
+                    <div class="text-secondary">
+                        {% if entrada.nota %}
+                            {{ entrada.nota }}
+                        {% else %}
+                            Sin nota
+                        {% endif %}
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- PRODUCTOS DE LA ENTRADA -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+
+            <h5 class="fw-bold mb-3">
+                Productos ingresados
+            </h5>
+
+            <div class="table-responsive">
+
+                <table class="table table-hover align-middle w-100">
+
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Proveedor</th>
+                            <th>Cantidad</th>
+                            <th>Unidad</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        {% for detalle in detalles %}
+
+                        <tr>
+
+                            <td>
+                                {{ detalle.producto_granel.nombre }}
+                            </td>
+
+                            <td>
+                                {{ detalle.producto_granel.proveedor.nombre }}
+                            </td>
+
+                            <td>
+                                {{ detalle.cantidad }}
+                            </td>
+
+                            <td>
+                                {{ detalle.producto_granel.unidad_medida }}
+                            </td>
+
+                        </tr>
+
+                        {% empty %}
+
+                        <tr>
+                            <td colspan="4"
+                                class="text-center text-muted py-4">
+                                No hay productos registrados en esta entrada.
+                            </td>
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

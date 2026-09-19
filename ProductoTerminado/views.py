@@ -692,9 +692,10 @@ def registrar_salida(request):
                             for variacion, cantidad in detalles_validos:
                                 # Descontar del stock principal
                                 DetalleSalidaPTerminado.objects.create(
-                                    salida_p_terminado=salida,
-                                    producto_variacion=variacion,
-                                    cantidad=cantidad
+                                salida_p_terminado=salida,
+                                producto_variacion=variacion,
+                                cantidad=cantidad,
+                                precio_unitario=variacion.precio
                                 )
                                 variacion.stock -= cantidad
                                 variacion.save()
@@ -1077,9 +1078,10 @@ def registrar_salida_especial(request):
                                 # Detalle de la salida
                                 # -----------------------------------------
                                 DetalleSalidaPTerminado.objects.create(
-                                    salida_p_terminado=salida,
-                                    producto_variacion=variacion,
-                                    cantidad=cantidad
+                                salida_p_terminado=salida,
+                                producto_variacion=variacion,
+                                cantidad=cantidad,
+                                precio_unitario=variacion.precio
                                 )
 
                                 # -----------------------------------------
@@ -1345,17 +1347,31 @@ def historial_salidas(request):
     )
 
 @login_required
-def detalle_salida(request,salida_id):
-    
-    salida=get_object_or_404(SalidaPTerminado.objects.select_related("usuario","ruta"),
-                             id=salida_id)
-    
-    detalles=(DetalleSalidaPTerminado.objects.filter(salida_p_terminado=salida)
-              .select_related(
+def detalle_salida(request, salida_id):
+
+    salida = get_object_or_404(
+        SalidaPTerminado.objects.select_related("usuario", "ruta"),
+        id=salida_id
+    )
+
+    detalles = (
+        DetalleSalidaPTerminado.objects
+        .filter(salida_p_terminado=salida)
+        .select_related(
             "producto_variacion",
             "producto_variacion__producto",
-            "producto_variacion__presentacion")
-            .order_by("id")
+            "producto_variacion__presentacion"
+        )
+        .order_by("id")
+    )
+
+    total_salida = sum(
+        (
+            detalle.subtotal
+            for detalle in detalles
+            if detalle.subtotal is not None
+        ),
+        Decimal("0.00")
     )
 
     return render(
@@ -1364,6 +1380,7 @@ def detalle_salida(request,salida_id):
         {
             "salida": salida,
             "detalles": detalles,
+            "total_salida": total_salida,
         }
     )
 

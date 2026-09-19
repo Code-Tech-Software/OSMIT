@@ -1,0 +1,80 @@
+{% extends "Base/Sidebar.html" %}
+
+{% block content %}
+
+<div class="container-fluid">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold text-dark mb-1">Historial de Entradas</h4>
+            <p class="text-secondary mb-0">
+                Historial de entradas de productos a granel
+            </p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+
+            <div class="table-responsive">
+                <table id="tablaEntradas" class="table table-hover align-middle w-100">
+
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Fecha</th>
+                            <th>Usuario</th>
+                            <th>Nota</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for entrada in entradas %}
+                        <tr>
+                            <td>
+                                {{ entrada.id }}
+                            </td>
+
+                            <td>
+                                {{ entrada.fecha_entrada|date:"d/m/Y H:i" }}
+                            </td>
+
+                            <td>
+                                {{ entrada.usuario }}
+                            </td>
+
+                            <td>
+                                {% if entrada.nota %}
+                                    {{ entrada.nota }}
+                                {% else %}
+                                    <span class="text-muted">Sin nota</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                <a href="{% url 'detalle_historial_entrada' entrada.id %}"
+                                   class="btn btn-sm btn-outline-primary">
+                                    Ver detalle
+                                </a>
+                            </td>
+                        </tr>
+
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                No hay entradas registradas.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

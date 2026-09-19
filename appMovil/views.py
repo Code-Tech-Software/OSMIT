@@ -398,9 +398,10 @@ def procesar_reabastecimiento(request, pedido_id):
 
                     # 3. Crear Detalle de Salida
                     DetalleSalidaPTerminado.objects.create(
-                        salida_p_terminado=salida,
-                        producto_variacion=variacion,
-                        cantidad=cantidad_pedida
+                    salida_p_terminado=salida,
+                    producto_variacion=variacion,
+                    cantidad=cantidad_pedida,
+                    precio_unitario=variacion.precio
                     )
 
                     # 4. Ingresar a la MiniBodega del repartidor
@@ -420,6 +421,11 @@ def procesar_reabastecimiento(request, pedido_id):
                         mb_detalle.cantidad_actual += cantidad_pedida
                         mb_detalle.cantidad_inicial = mb_detalle.cantidad_actual
                         mb_detalle.save()
+
+                MiniBodegaDetalle.objects.filter(
+                mini_bodega=minibodega,
+                cantidad_actual=0
+                ).delete()
 
                 # 5. Marcar el pedido como procesado (inactivo)
                 pedido.estado = False
@@ -528,41 +534,81 @@ def regresar_producto_bodega(request, detalle_pk):
             cantidad_a_regresar = Decimal(str(data.get('cantidad', 0)))
 
             if cantidad_a_regresar <= 0:
-                return JsonResponse({'success': False, 'message': 'La cantidad debe ser mayor a 0.'})
+                return JsonResponse({
+                    'success': False,
+                    'message': 'La cantidad debe ser mayor a 0.'
+                })
 
-            # Transacción atómica para evitar descuadres
             with transaction.atomic():
-                detalle = MiniBodegaDetalle.objects.select_for_update().get(pk=detalle_pk)
+
+                detalle = (
+                    MiniBodegaDetalle.objects
+                    .select_for_update()
+                    .get(pk=detalle_pk)
+                )
 
                 if cantidad_a_regresar > detalle.cantidad_actual:
-                    return JsonResponse(
-                        {'success': False, 'message': 'No puedes regresar más de lo que hay en la Mini Bodega.'})
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'No puedes regresar más de lo que hay en la Mini Bodega.'
+                    })
 
-                # 1. Restar de la Mini Bodega
+                # Guardamos la MiniBodega y producto antes de modificar/eliminar
+                minibodega = detalle.mini_bodega
+
+                variacion = (
+                    ProductoVariacion.objects
+                    .select_for_update()
+                    .get(pk=detalle.producto_variacion.id)
+                )
+
+                # 1. Restar de la MiniBodega
                 detalle.cantidad_actual -= cantidad_a_regresar
-                detalle.save()
 
-                # 2. Sumar al stock principal
-                variacion = ProductoVariacion.objects.select_for_update().get(pk=detalle.producto_variacion.id)
+                # 2. La cantidad que queda se convierte en la nueva inicial
+                detalle.cantidad_inicial = detalle.cantidad_actual
+
+                # 3. Si ya no queda producto, eliminar el detalle
+                if detalle.cantidad_actual == 0:
+                    detalle.delete()
+                else:
+                    detalle.save()
+
+                # 4. Sumar al stock principal
                 variacion.stock += cantidad_a_regresar
                 variacion.save()
 
-                # 3. Registrar la entrada para historial (¡Bien hecho!)
+                # 5. Registrar la entrada para historial
                 entrada = EntradaPTerminado.objects.create(
                     fecha_entrada=timezone.now(),
                     usuario=request.user,
-                    nota=f"Retorno desde Mini Bodega #{detalle.mini_bodega.id} (Ruta: {detalle.mini_bodega.ruta.nombre})"
+                    nota=(
+                        f"Retorno desde Mini Bodega #{minibodega.id} "
+                        f"(Ruta: {minibodega.ruta.nombre})"
+                    )
                 )
+
                 DetalleEntradaPTerminado.objects.create(
                     entrada_p_terminado=entrada,
                     producto_variacion=variacion,
                     cantidad=cantidad_a_regresar
                 )
 
-            return JsonResponse({'success': True, 'message': 'El stock ha sido regresado a la bodega principal.'})
+            return JsonResponse({
+                'success': True,
+                'message': 'El stock ha sido regresado a la bodega principal.'
+            })
+
         except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)})
-    return JsonResponse({'success': False, 'message': 'Método no permitido.'}, status=405)
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            })
+
+    return JsonResponse({
+        'success': False,
+        'message': 'Método no permitido.'
+    }, status=405)
 
 
 
@@ -1076,21 +1122,25 @@ class ListaVentasView(ListView):
     model = Venta
     template_name = 'appMovil/ventas/lista_ventas.html'
     context_object_name = 'ventas'
-    paginate_by = 50  # Paginará de 50 en 50 registros
+    paginate_by = 50
 
     def get_queryset(self):
-        queryset = super().get_queryset().select_related('cliente', 'usuario')
+        queryset = super().get_queryset().select_related(
+            'cliente',
+            'usuario'
+        )
 
-        # Obtener parámetros del GET
-        fecha_inicio = self.request.GET.get('fecha_inicio')
-        fecha_fin = self.request.GET.get('fecha_fin')
+        hoy = timezone.localdate().strftime('%Y-%m-%d')
+
+        fecha_inicio = self.request.GET.get('fecha_inicio') or hoy
+        fecha_fin = self.request.GET.get('fecha_fin') or hoy
         repartidor = self.request.GET.get('repartidor')
 
-        # Aplicar filtros
-        if fecha_inicio:
-            queryset = queryset.filter(fecha__date__gte=fecha_inicio)
-        if fecha_fin:
-            queryset = queryset.filter(fecha__date__lte=fecha_fin)
+        queryset = queryset.filter(
+            fecha__date__gte=fecha_inicio,
+            fecha__date__lte=fecha_fin
+        )
+
         if repartidor:
             queryset = queryset.filter(usuario_id=repartidor)
 
@@ -1098,14 +1148,85 @@ class ListaVentasView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form'] = FiltroVentasForm(self.request.GET or None)
 
-        # Calculamos el total de TODO el filtrado, no solo de la página actual
+        hoy = timezone.localdate().strftime('%Y-%m-%d')
+
+        fecha_inicio = self.request.GET.get('fecha_inicio') or hoy
+        fecha_fin = self.request.GET.get('fecha_fin') or hoy
+        repartidor = self.request.GET.get('repartidor')
+
+        context['form'] = FiltroVentasForm({
+            'fecha_inicio': fecha_inicio,
+            'fecha_fin': fecha_fin,
+            'repartidor': repartidor
+        })
+
+        # =========================
+        # VENTAS
+        # =========================
+
         ventas_filtradas = self.get_queryset()
-        total_suma = ventas_filtradas.aggregate(total=Sum('total'))['total'] or 0.00
-        context['total_suma'] = total_suma
+
+        # Valor total de todas las ventas realizadas
+        total_ventas = ventas_filtradas.aggregate(
+            total=Sum('total')
+        )['total'] or Decimal('0.00')
+
+        # Dinero recibido inmediatamente por ventas de contado
+        total_contado = ventas_filtradas.filter(
+            tipo_venta='CONTADO'
+        ).aggregate(
+            total=Sum('total')
+        )['total'] or Decimal('0.00')
+
+        # Valor de ventas hechas a crédito
+        total_credito = ventas_filtradas.filter(
+            tipo_venta='CREDITO'
+        ).aggregate(
+            total=Sum('total')
+        )['total'] or Decimal('0.00')
+
+        # =========================
+        # ABONOS
+        # =========================
+
+        abonos_filtrados = Abono.objects.select_related(
+            'venta',
+            'venta__cliente',
+            'usuario'
+        ).filter(
+            fecha__date__gte=fecha_inicio,
+            fecha__date__lte=fecha_fin
+        )
+
+        if repartidor:
+            abonos_filtrados = abonos_filtrados.filter(
+                usuario_id=repartidor
+            )
+
+        abonos_filtrados = abonos_filtrados.order_by('-fecha')
+
+        total_abonos = abonos_filtrados.aggregate(
+            total=Sum('monto')
+        )['total'] or Decimal('0.00')
+
+        # =========================
+        # DINERO REALMENTE RECIBIDO
+        # =========================
+
+        total_recibido = total_contado + total_abonos
+
+        context['total_ventas'] = total_ventas
+        context['total_contado'] = total_contado
+        context['total_credito'] = total_credito
+
+        context['abonos'] = abonos_filtrados
+        context['total_abonos'] = total_abonos
+
+        context['total_recibido'] = total_recibido
 
         return context
+
 
 from django.views.generic import DetailView
 from .models import Venta
@@ -1121,6 +1242,59 @@ class DetalleVentaView(DetailView):
             'abonos__usuario'
         )
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        venta = self.object
+
+        # Descuento que el cliente tiene actualmente
+        porcentaje_descuento_cliente = (
+            venta.cliente.porcentaje_descuento
+            if venta.cliente
+            else Decimal('0.00')
+        )
+
+        # Subtotal real de la venta antes del descuento
+        subtotal_venta = sum(
+            (
+                detalle.subtotal
+                for detalle in venta.ventadetalle_set.all()
+            ),
+            Decimal('0.00')
+        )
+
+        # El descuento histórico se obtiene de la diferencia
+        # entre el subtotal de los productos y el total guardado.
+        monto_descuento = subtotal_venta - venta.total
+
+        if monto_descuento < 0:
+            monto_descuento = Decimal('0.00')
+
+        # Porcentaje que realmente se aplicó en esa venta
+        porcentaje_descuento_venta = Decimal('0.00')
+
+        if subtotal_venta > 0 and monto_descuento > 0:
+            porcentaje_descuento_venta = (
+                monto_descuento / subtotal_venta
+            ) * Decimal('100')
+
+        # Determinar si el porcentaje histórico coincide
+        # con el porcentaje actual del cliente.
+        descuento_coincide = (
+            abs(
+                porcentaje_descuento_venta -
+                porcentaje_descuento_cliente
+            ) < Decimal('0.01')
+        )
+
+        context['subtotal_venta'] = subtotal_venta
+        context['monto_descuento'] = monto_descuento
+        context['porcentaje_descuento_venta'] = porcentaje_descuento_venta
+        context['porcentaje_descuento_cliente'] = porcentaje_descuento_cliente
+        context['descuento_coincide'] = descuento_coincide
+
+        return context
+
 
 from django.views.generic import ListView, DetailView
 from django.db.models import Sum, F, FloatField
@@ -1131,42 +1305,66 @@ class ListaDevolucionesView(ListView):
     model = Devolucion
     template_name = 'appMovil/devoluciones/lista_devoluciones.html'
     context_object_name = 'devoluciones'
-    paginate_by = 50  # Paginará de 50 en 50 registros
+    paginate_by = 50
 
     def get_queryset(self):
-        # Hacemos select_related y calculamos el total de cada devolución al vuelo
-        queryset = super().get_queryset().select_related('cliente', 'usuario', 'mini_bodega').annotate(
+        queryset = super().get_queryset().select_related(
+            'cliente',
+            'usuario',
+            'mini_bodega'
+        ).annotate(
             total=Sum(
-                F('devoluciondetalle__cantidad') * F('devoluciondetalle__precio_unitario'),
+                F('devoluciondetalle__cantidad') *
+                F('devoluciondetalle__precio_unitario'),
                 output_field=FloatField()
             )
         )
 
+        hoy = timezone.localdate().strftime('%Y-%m-%d')
+
         # Obtener parámetros del GET
-        fecha_inicio = self.request.GET.get('fecha_inicio')
-        fecha_fin = self.request.GET.get('fecha_fin')
+        fecha_inicio = self.request.GET.get('fecha_inicio') or hoy
+        fecha_fin = self.request.GET.get('fecha_fin') or hoy
         repartidor = self.request.GET.get('repartidor')
 
-        # Aplicar filtros
-        if fecha_inicio:
-            queryset = queryset.filter(fecha__date__gte=fecha_inicio)
-        if fecha_fin:
-            queryset = queryset.filter(fecha__date__lte=fecha_fin)
+        # Aplicar filtros de fecha
+        queryset = queryset.filter(
+            fecha__date__gte=fecha_inicio,
+            fecha__date__lte=fecha_fin
+        )
+
+        # Filtrar por repartidor si se seleccionó
         if repartidor:
-            queryset = queryset.filter(usuario_id=repartidor)
+            queryset = queryset.filter(
+                usuario_id=repartidor
+            )
 
         return queryset.order_by('-fecha')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Asumiendo que crearás un formulario de filtros idéntico al de ventas
-        context['form'] = FiltroDevolucionesForm(self.request.GET or None)
 
-        # Calculamos el total de TODO el filtrado (Suma global de todos los detalles)
+        hoy = timezone.localdate().strftime('%Y-%m-%d')
+
+        # Valores actuales de los filtros
+        fecha_inicio = self.request.GET.get('fecha_inicio') or hoy
+        fecha_fin = self.request.GET.get('fecha_fin') or hoy
+        repartidor = self.request.GET.get('repartidor')
+
+        context['form'] = FiltroDevolucionesForm({
+            'fecha_inicio': fecha_inicio,
+            'fecha_fin': fecha_fin,
+            'repartidor': repartidor
+        })
+
+        # Total de todas las devoluciones del filtro,
+        # no solamente las de la página actual
         devoluciones_filtradas = self.get_queryset()
+
         total_suma = devoluciones_filtradas.aggregate(
             total_global=Sum(
-                F('devoluciondetalle__cantidad') * F('devoluciondetalle__precio_unitario'),
+                F('devoluciondetalle__cantidad') *
+                F('devoluciondetalle__precio_unitario'),
                 output_field=FloatField()
             )
         )['total_global'] or 0.00

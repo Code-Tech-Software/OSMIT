@@ -1059,3 +1059,36 @@ def pedidos_hoy_json(request):
         })
 
     return JsonResponse(data, safe=False)
+
+@login_required
+def historial_entradas(request):
+    entradas=EntradaGranel.objects.all().order_by('-fecha_entrada')
+
+    return render (
+        request,
+        'ProductoGranel/historial/entradas.html',
+        {'entradas':entradas}
+    )
+
+@login_required
+def detalle_historial_entrada(request,entrada_id):
+    entrada=get_object_or_404(
+        EntradaGranel,
+        id=entrada_id
+    )
+
+    detalles=DetalleEntradaGranel.objects.filter(
+        entrada_granel=entrada
+    ).select_related(
+        'producto_granel',
+        'producto_granel__proveedor'
+    )
+
+    return render(
+        request,
+        'ProductoGranel/historial/detalle_entrada.html',
+        {
+            'entrada': entrada,
+            'detalles': detalles
+        }
+    )

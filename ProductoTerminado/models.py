@@ -144,6 +144,14 @@ class DetalleSalidaPTerminado(models.Model):
     salida_p_terminado = models.ForeignKey(SalidaPTerminado, on_delete=models.CASCADE)
     producto_variacion = models.ForeignKey(ProductoVariacion, on_delete=models.CASCADE)
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
+    precio_unitario = models.DecimalField(max_digits=10,decimal_places=2, null=True,blank=True)
+
+    @property
+    def subtotal(self):
+        if self.precio_unitario is None:
+            return None
+
+        return self.cantidad * self.precio_unitario
 
     def __str__(self):
         return f"Detalle Salida {self.salida_p_terminado.id}"
