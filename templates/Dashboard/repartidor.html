@@ -1,0 +1,348 @@
+{% load static %}
+
+<div class="container-fluid">
+
+    <h1>Dashboard del Repartidor</h1>
+
+    <hr>
+
+    <!-- ========================= -->
+    <!-- INFORMACIÓN DEL REPARTIDOR -->
+    <!-- ========================= -->
+
+    <h2>Información del repartidor</h2>
+
+    <p>
+        <strong>Nombre:</strong>
+        <span id="nombre_repartidor">Cargando...</span>
+    </p>
+
+    <p>
+        <strong>Ruta:</strong>
+        <span id="nombre_ruta">Cargando...</span>
+    </p>
+
+    <p>
+        <strong>Vehículo:</strong>
+        <span id="vehiculo">Cargando...</span>
+    </p>
+
+    
+    <p>
+        <strong>MiniBodega:</strong>
+        <span id="minibodega">Cargando...</span>
+    </p>
+    
+    <p>
+        <strong>Estado:</strong>
+        <span id="estado_minibodega">Cargando...</span>
+    </p>
+
+
+    <hr>
+
+
+    <!-- ========================= -->
+    <!-- RESUMEN DE LA JORNADA -->
+    <!-- ========================= -->
+
+    <h2>Resumen de la jornada</h2>
+
+    <div class="row g-3 mb-4">
+
+        <!-- VENTAS -->
+        <div class="col-md-4">
+
+            <div class="card shadow-sm h-100">
+
+                <div class="card-body">
+
+                    <h5 class="card-title">
+                        Ventas
+                    </h5>
+
+                    <h2 id="cantidad_ventas">
+                        0
+                    </h2>
+
+                    <p class="text-muted mb-2">
+                        ventas realizadas
+                    </p>
+
+                    <h4 id="dinero_ventas">
+                        $0.00
+                    </h4>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ABONOS -->
+        <div class="col-md-4">
+
+            <div class="card shadow-sm h-100">
+
+                <div class="card-body">
+
+                    <h5 class="card-title">
+                        Abonos
+                    </h5>
+
+                    <h2 id="cantidad_abonos">
+                        0
+                    </h2>
+
+                    <p class="text-muted mb-2">
+                        abonos realizados
+                    </p>
+
+                    <h4 id="dinero_abonos">
+                        $0.00
+                    </h4>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- DEVOLUCIONES -->
+        <div class="col-md-4">
+
+            <div class="card shadow-sm h-100">
+
+                <div class="card-body">
+
+                    <h5 class="card-title">
+                        Devoluciones
+                    </h5>
+
+                    <h2 id="cantidad_devoluciones">
+                        0
+                    </h2>
+
+                    <p class="text-muted mb-2">
+                        devoluciones realizadas
+                    </p>
+
+                    <h4 id="dinero_devoluciones">
+                        $0.00
+                    </h4>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ========================= -->
+    <!-- EFECTIVO ESPERADO -->
+    <!-- ========================= -->
+
+    <div class="card shadow-sm mb-4">
+
+        <div class="card-body text-center">
+
+            <h5 class="card-title">
+                Efectivo esperado
+            </h5>
+
+            <h1 id="efectivo_esperado">
+                $0.00
+            </h1>
+
+            <p class="text-muted mb-0">
+                Dinero que debería traer el repartidor
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <hr>
+
+
+    <!-- ========================= -->
+    <!-- INVENTARIO -->
+    <!-- ========================= -->
+
+    <h2>Inventario</h2>
+
+    <table class="table">
+
+        <thead>
+
+            <tr>
+                <th>Producto</th>
+                <th>Presentación</th>
+                <th>Cantidad inicial</th>
+                <th>Cantidad actual</th>
+            </tr>
+
+        </thead>
+
+        <tbody id="tabla_inventario">
+
+            <tr>
+
+                <td colspan="4">
+                    Cargando inventario...
+                </td>
+
+            </tr>
+
+        </tbody>
+
+    </table>
+
+</div>
+
+
+<script>
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    fetch("/movil/dashboard/repartidor/api/")
+
+        .then(response => response.json())
+
+        .then(data => {
+
+            if (!data.success) {
+
+                document.getElementById("nombre_repartidor").textContent =
+                    data.mensaje;
+
+                return;
+            }
+
+
+            // =========================
+            // INFORMACIÓN DEL REPARTIDOR
+            // =========================
+
+            document.getElementById("nombre_repartidor").textContent =
+                data.repartidor.nombre;
+
+            document.getElementById("nombre_ruta").textContent =
+                data.ruta.nombre;
+
+            document.getElementById("vehiculo").textContent =
+                `${data.vehiculo.marca} - ${data.vehiculo.placa}`;
+
+
+            // =========================
+            // MINIBODEGA
+            // =========================
+
+            if (data.minibodega.id !== null) {
+
+                document.getElementById("minibodega").textContent =
+                    `MiniBodega #${data.minibodega.id}`;
+
+                document.getElementById("estado_minibodega").textContent =
+                    data.minibodega.estado
+                        ? "Activa"
+                        : "Cerrada";
+
+            } else {
+
+                document.getElementById("minibodega").textContent =
+                    "No encontrada";
+
+                document.getElementById("estado_minibodega").textContent =
+                    "-";
+            }
+
+
+            // =========================
+            // RESUMEN DE LA JORNADA
+            // =========================
+
+            document.getElementById("cantidad_ventas").textContent =
+                data.jornada.ventas.cantidad;
+
+            document.getElementById("dinero_ventas").textContent =
+                `$${Number(data.jornada.ventas.dinero).toFixed(2)}`;
+
+
+            document.getElementById("cantidad_abonos").textContent =
+                data.jornada.abonos.cantidad;
+
+            document.getElementById("dinero_abonos").textContent =
+                `$${Number(data.jornada.abonos.dinero).toFixed(2)}`;
+
+
+            document.getElementById("cantidad_devoluciones").textContent =
+                data.jornada.devoluciones.cantidad;
+
+            document.getElementById("dinero_devoluciones").textContent =
+                `$${Number(data.jornada.devoluciones.dinero).toFixed(2)}`;
+
+
+            document.getElementById("efectivo_esperado").textContent =
+                `$${Number(data.jornada.efectivo_esperado).toFixed(2)}`;
+
+
+            // =========================
+            // INVENTARIO
+            // =========================
+
+            const tabla =
+                document.getElementById("tabla_inventario");
+
+            tabla.innerHTML = "";
+
+
+            if (data.inventario.length === 0) {
+
+                tabla.innerHTML = `
+                    <tr>
+                        <td colspan="4">
+                            No hay productos registrados en la MiniBodega.
+                        </td>
+                    </tr>
+                `;
+
+                return;
+            }
+
+
+            data.inventario.forEach(detalle => {
+
+                const fila =
+                    document.createElement("tr");
+
+                fila.innerHTML = `
+                    <td>${detalle.producto}</td>
+                    <td>${detalle.presentacion}</td>
+                    <td>${detalle.cantidad_inicial}</td>
+                    <td>${detalle.cantidad_actual}</td>
+                `;
+
+                tabla.appendChild(fila);
+
+            });
+
+        })
+
+        .catch(error => {
+
+            console.error(
+                "Error cargando dashboard del repartidor:",
+                error
+            );
+
+        });
+
+});
+
+</script>

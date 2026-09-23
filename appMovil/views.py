@@ -1727,3 +1727,175 @@ def activar_dispositivo_api(request):
         },
         status=status.HTTP_200_OK
     )
+
+
+@login_required
+def dashboard_repartidor_api(request):
+
+    repartidor = request.user
+
+    # =========================
+    # RUTA
+    # =========================
+    ruta = Ruta.objects.filter(
+        usuario=repartidor,
+        estado=True
+    ).select_related(
+        'vehiculo'
+    ).first()
+
+    if not ruta:
+        return JsonResponse({
+            'success': False,
+            'mensaje': 'No tienes una ruta asignada.'
+        })
+
+    # =========================
+    # MINIBODEGA
+    # =========================
+    minibodega = MiniBodega.objects.filter(
+        ruta=ruta
+    ).select_related(
+        'vehiculo'
+    ).first()
+
+    # =========================
+    # INVENTARIO
+    # =========================
+    inventario = []
+
+    if minibodega:
+
+        detalles = MiniBodegaDetalle.objects.filter(
+            mini_bodega=minibodega
+        ).select_related(
+            'producto_variacion__producto',
+            'producto_variacion__presentacion'
+        )
+
+        for detalle in detalles:
+
+            inventario.append({
+                'producto': detalle.producto_variacion.producto.nombre,
+                'presentacion': detalle.producto_variacion.presentacion.nombre,
+                'cantidad_inicial': detalle.cantidad_inicial,
+                'cantidad_actual': detalle.cantidad_actual,
+            })
+
+    # =========================
+    # FECHA ACTUAL
+    # =========================
+    hoy = timezone.localdate()
+
+    # =========================
+    # VENTAS DEL DÍA
+    # =========================
+    ventas_hoy = Venta.objects.filter(
+        usuario=repartidor,
+        fecha__date=hoy
+    )
+
+    cantidad_ventas = ventas_hoy.count()
+
+    dinero_ventas = ventas_hoy.aggregate(
+        total=Sum('total')
+    )['total'] or Decimal('0.00')
+
+    # =========================
+    # VENTAS DE CONTADO
+    # =========================
+    ventas_contado = ventas_hoy.filter(
+        tipo_venta='CONTADO'
+    ).aggregate(
+        total=Sum('total')
+    )['total'] or Decimal('0.00')
+
+    # =========================
+    # ABONOS DEL DÍA
+    # =========================
+    abonos_hoy = Abono.objects.filter(
+        usuario=repartidor,
+        fecha__date=hoy
+    )
+
+    cantidad_abonos = abonos_hoy.count()
+
+    dinero_abonos = abonos_hoy.aggregate(
+        total=Sum('monto')
+    )['total'] or Decimal('0.00')
+
+    # =========================
+    # DEVOLUCIONES DEL DÍA
+    # =========================
+    devoluciones_hoy = Devolucion.objects.filter(
+        usuario=repartidor,
+        fecha__date=hoy
+    )
+
+    cantidad_devoluciones = devoluciones_hoy.count()
+
+    dinero_devoluciones = DevolucionDetalle.objects.filter(
+        devolucion__in=devoluciones_hoy
+    ).aggregate(
+        total=Sum(
+            F('cantidad') * F('precio_unitario')
+        )
+    )['total'] or Decimal('0.00')
+
+    # =========================
+    # EFECTIVO ESPERADO
+    # =========================
+    efectivo_esperado = (
+        ventas_contado +
+        dinero_abonos
+    )
+
+    # =========================
+    # RESPUESTA
+    # =========================
+    return JsonResponse({
+
+        'success': True,
+
+        'repartidor': {
+            'nombre': f'{repartidor.first_name} {repartidor.last_name}',
+        },
+
+        'ruta': {
+            'id': ruta.id,
+            'nombre': ruta.nombre,
+        },
+
+        'vehiculo': {
+            'marca': ruta.vehiculo.marca,
+            'placa': ruta.vehiculo.placa,
+        },
+
+        'minibodega': {
+            'id': minibodega.id if minibodega else None,
+            'estado': minibodega.estado if minibodega else None,
+        },
+
+        'inventario': inventario,
+
+        'jornada': {
+            'fecha': hoy.strftime('%Y-%m-%d'),
+
+            'ventas': {
+                'cantidad': cantidad_ventas,
+                'dinero': float(dinero_ventas),
+            },
+
+            'abonos': {
+                'cantidad': cantidad_abonos,
+                'dinero': float(dinero_abonos),
+            },
+
+            'devoluciones': {
+                'cantidad': cantidad_devoluciones,
+                'dinero': float(dinero_devoluciones),
+            },
+
+            'efectivo_esperado': float(efectivo_esperado),
+        }
+    })

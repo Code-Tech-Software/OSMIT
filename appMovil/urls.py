@@ -69,4 +69,7 @@ urlpatterns = [
     path('dispositivos/<int:dispositivo_id>/eliminar/', views.eliminar_dispositivo, name='eliminar_dispositivo'),
     path('dispositivos/<int:dispositivo_id>/editar/', views.editar_dispositivo, name='editar_dispositivo'),
     path('dispositivos/activar/',views.activar_dispositivo_api,name="activar_dispositivo_api"),
+
+    #
+    path('dashboard/repartidor/api/',views.dashboard_repartidor_api,name='dashboard_repartidor_api'),
 ]

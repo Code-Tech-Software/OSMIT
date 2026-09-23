@@ -329,7 +329,7 @@ def registrar_entrada_especial  (request):
                 ]
         },
         "YML": {
-            "nombre": "Yeos la merced",
+            "nombre": "Super la merced",
             "presentaciones": [
                 "20g",
                 "70g",
@@ -344,6 +344,7 @@ def registrar_entrada_especial  (request):
                 "150g",
                 "180g",
                 "220g",
+                "500g",
                 ]
         },
         "YV": {
@@ -794,7 +795,7 @@ def registrar_salida_especial(request):
                     ]
             },
             "YML": {
-                "nombre": "Yeos la merced",
+                "nombre": "Super la merced",
                 "presentaciones": [
                     "20g",
                     "70g",
@@ -809,6 +810,7 @@ def registrar_salida_especial(request):
                     "150g",
                     "180g",
                     "220g",
+                    "500g",
                     ]
             },
             "YV": {

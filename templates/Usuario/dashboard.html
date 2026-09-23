@@ -10,10 +10,12 @@
         {% include "Dashboard/productoTerminado.html" %}
     {% elif user|has_role:"Recursos Humanos" %}
         {% include "Dashboard/recursosHumanos.html" %}
-     {% elif user|has_role:"Administrador" %}
-        {% include "Dashboard/administrador.html" %}    
-             {% elif user|has_role:"Producción" %}
-        {% include "Dashboard/produccion.html" %}    
+    {% elif user|has_role:"Administrador" %}
+        {% include "Dashboard/administrador.html" %}
+    {% elif user|has_role:"Producción" %}
+        {% include "Dashboard/produccion.html" %}
+    {% elif user|has_role:"Repartidor" %}
+        {% include "Dashboard/repartidor.html" %}
     {% else %}
         {% include "Dashboard/eperaTurno.html" %}
     {% endif %}
