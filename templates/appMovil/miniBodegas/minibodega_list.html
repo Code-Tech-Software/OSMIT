@@ -1,5 +1,6 @@
 {% extends "Base/Sidebar.html" %}
 {% load static %}
+{% load rol_tags %}
 
 {% block content %}
     <!-- Estilos personalizados y DataTables -->
@@ -23,11 +24,13 @@
     </div>
 
     <!-- Botón Agregar -->
-    <div class="text-end">
-        <a href="{% url 'agregar_minibodega' %}" class="btn btn-custom-success btn-add mb-4">
-            <i class="bi bi-plus-circle"></i> Agregar Mini Bodega
-        </a>
-    </div>
+     {% if user|has_role:"Administrador" %}
+        <div class="text-end">
+            <a href="{% url 'agregar_minibodega' %}" class="btn btn-custom-success btn-add mb-4">
+                <i class="bi bi-plus-circle"></i> Agregar Mini Bodega
+            </a>
+        </div>
+    {% endif %}
 
     <div class="custom-card">
         <div class="table-responsive">

@@ -35,11 +35,13 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.db.models import Q
 from django.urls import reverse
+from Usuario.decorators import requiere_roles,solo_administrador
 
 
 
 
 @login_required
+@requiere_roles("Producto Terminado")
 @transaction.atomic
 def agregar_producto(request):
     # Definimos el formset
@@ -105,6 +107,7 @@ def agregar_producto(request):
 
 
 @login_required
+@requiere_roles("Producto Terminado","Recursos Humanos")
 def listar_productos(request):
     """
     Muestra un listado agrupado con todas las variaciones de productos
@@ -130,6 +133,7 @@ def listar_productos(request):
     })
 
 @login_required
+@requiere_roles("Producto Terminado")
 def editar_producto(request, pk):
     """
     Permite editar un producto existente y sus variaciones.
@@ -167,7 +171,9 @@ def editar_producto(request, pk):
         'form': form,
         'formset': formset
     })
+
 @login_required
+@requiere_roles("Producto Terminado")
 def eliminar_producto(request, pk):
     """
     Elimina lógicamente un producto cambiando su estado a False.
@@ -180,6 +186,7 @@ def eliminar_producto(request, pk):
 
 
 @login_required
+@requiere_roles("Producto Terminado")
 def registrar_entrada(request):
 
     # =========================================================
@@ -298,6 +305,7 @@ def registrar_entrada(request):
 
 
 @login_required
+@requiere_roles("Producto Terminado")
 def registrar_entrada_especial  (request):
     ##Especiales disponibles
 
@@ -546,6 +554,7 @@ from django.contrib.auth.decorators import login_required
 # (Asegúrate de que tus modelos y formularios estén importados correctamente)
 
 @login_required
+@requiere_roles("Producto Terminado")
 def registrar_salida(request):
     # =========================================================
     # PRODUCTOS NORMALES
@@ -762,6 +771,7 @@ def registrar_salida(request):
 
 
 @login_required
+@requiere_roles("Producto Terminado")
 def registrar_salida_especial(request):
 
     # =========================================================
@@ -1214,20 +1224,14 @@ def registrar_salida_especial(request):
     )
 
 
-
-
-
-
-
-
-
 # View de Presentacio de productos terminados----------------------------------------#
 
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import PresentacionProductoTerminado
 from .forms import PresentacionProductoTerminadoForm
 
-
+@login_required
+@requiere_roles("Recursos Humanos")
 def lista_presentaciones(request):
     mostrar_todos = request.GET.get('mostrar_todos') == '1'
 
@@ -1240,6 +1244,8 @@ def lista_presentaciones(request):
                   {'presentaciones': presentaciones, 'mostrar_todos': mostrar_todos})
 
 
+@login_required
+@requiere_roles("Recursos Humanos")
 def crear_presentacion(request):
     if request.method == 'POST':
         form = PresentacionProductoTerminadoForm(request.POST, request.FILES)
@@ -1251,7 +1257,8 @@ def crear_presentacion(request):
         form = PresentacionProductoTerminadoForm()
     return render(request, 'ProductoTerminado/presentaciones/crear.html', {'form': form})
 
-
+@login_required
+@requiere_roles("Recursos Humanos")
 def editar_presentacion(request, pk):
     presentacion = get_object_or_404(PresentacionProductoTerminado, pk=pk)
     form = PresentacionProductoTerminadoForm(request.POST or None, request.FILES or None, instance=presentacion)
@@ -1261,7 +1268,8 @@ def editar_presentacion(request, pk):
         return redirect('lista_presentaciones')
     return render(request, 'ProductoTerminado/presentaciones/editar.html', {'form': form, 'presentacion': presentacion})
 
-
+@login_required
+@requiere_roles("Recursos Humanos")
 def eliminar_presentacion(request, pk):
     presentacion = get_object_or_404(PresentacionProductoTerminado, pk=pk)
     presentacion.estado = False
@@ -1269,7 +1277,9 @@ def eliminar_presentacion(request, pk):
     messages.success(request, "Presentación desactivada correctamente.")
     return redirect('lista_presentaciones')
 
+
 @login_required
+@requiere_roles("Producto Terminado")
 def historial_entradas(request):
 
     hoy = timezone.localdate()
@@ -1298,6 +1308,7 @@ def historial_entradas(request):
     )
 
 @login_required
+@requiere_roles("Producto Terminado")
 def detalle_entrada(request,entrada_id):
 
     entrada = get_object_or_404(EntradaPTerminado.objects.select_related("usuario"),
@@ -1322,6 +1333,7 @@ def detalle_entrada(request,entrada_id):
 
 
 @login_required
+@requiere_roles("Producto Terminado")
 def historial_salidas(request):
     hoy=timezone.localdate()
 
@@ -1349,6 +1361,7 @@ def historial_salidas(request):
     )
 
 @login_required
+@requiere_roles("Producto Terminado")
 def detalle_salida(request, salida_id):
 
     salida = get_object_or_404(
@@ -1387,6 +1400,28 @@ def detalle_salida(request, salida_id):
     )
 
 
+@login_required
+@requiere_roles("Producto Terminado","Producción")
+def lista_productos_terminados(request):
+    variaciones=ProductoVariacion.objects.filter(
+        producto__estado=True
+
+    ).select_related(
+        'producto',
+        'producto__categoria_producto',
+        'presentacion'
+    ).order_by(
+        'producto__nombre',
+        'presentacion__nombre'
+    )
+
+
+    return render(
+        request,
+        'Produccion/lista_produccion_productoT.html',
+        {'variaciones':variaciones}
+    )
+
 # PARA EL DASSBOAR
 
 
@@ -1409,9 +1444,7 @@ def stock_productos(request):
     return Response(data)
 
 
-def lista_productos_terminados(request):
-    productos = ProductoTerminado.objects.filter(estado=True)
-    return render(request, 'Produccion/lista_produccion_productoT.html', {'productos': productos})
+
 
 
 # ''''''''''''''''''''''''''''''''''''''''''''PARA EL DASHBOARD Graficas
@@ -1467,23 +1500,32 @@ def top_productos_mas_utilizados_terminado(request):
 
     productos_top = (
         DetalleSalidaPTerminado.objects
-        .filter(salida_p_terminado__fecha_salida__date__range=(hace_7_dias, hoy))
-        .values('producto_terminado__nombre', 'producto_terminado__gramaje_producto_terminado__nombre')
+        .filter(
+            salida_p_terminado__fecha_salida__date__range=(hace_7_dias, hoy)
+        )
+        .values(
+            'producto_variacion__producto__nombre',
+            'producto_variacion__presentacion__nombre'
+        )
         .annotate(total_salidas=Sum('cantidad'))
         .order_by('-total_salidas')[:5]
     )
 
     labels = [
-        f"{item['producto_terminado__nombre']} ({item['producto_terminado__gramaje_producto_terminado__nombre']})"
+        f"{item['producto_variacion__producto__nombre']} "
+        f"({item['producto_variacion__presentacion__nombre']})"
         for item in productos_top
     ]
-    data = [float(item['total_salidas']) for item in productos_top]
+
+    data = [
+        float(item['total_salidas'])
+        for item in productos_top
+    ]
 
     return JsonResponse({
         'labels': labels,
         'data': data
     })
-
 
 def indicadores_de_produccion(request):
     hoy = now().date()  # Fecha actual

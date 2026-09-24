@@ -235,6 +235,7 @@
                     <ul class="sub-menu">
 
                         <li><a href="{% url 'listar_turnos' %}" class="sub-menu-link">Turnos</a></li>
+                        <li><a href="{% url 'turnos_asignados' %}" class="sub-menu-link">Asignar Turnos</a></li>
                         <li><a href="{% url 'listar_roles' %}" class="sub-menu-link">Roles</a></li>
                         <li><a href="{% url 'gestionar_usuarios' %}" class="sub-menu-link">Usuarios</a></li>
 
@@ -284,8 +285,10 @@
                         <i class='bx bx-chevron-down'></i>
                     </a>
                     <ul class="sub-menu">
+                        {% if user|has_role:"Administrador,Producto Terminado" %}
                             <li><a href="{% url 'lista_pedidos_reparto' %}" class="sub-menu-link">Pedidos Rutas</a>
                             </li>
+                        {% endif %}
                             <li><a href="{% url 'minibodega_lista' %}" class="sub-menu-link">Bodegas de Rutas</a>
                             </li>
                         <li><a href="{% url 'lista_ventas' %}" class="sub-menu-link">Ventas</a>

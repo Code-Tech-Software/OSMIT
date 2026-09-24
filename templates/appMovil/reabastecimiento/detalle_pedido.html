@@ -1,3 +1,4 @@
+```html
 {% extends 'Base/Sidebar.html' %}
 {% load static %}
 
@@ -18,61 +19,130 @@
 
     <!-- Contenedor Principal -->
     <div class="custom-card">
-        
+
         <!-- Información general del pedido -->
         <div class="row mb-4 align-items-center pb-3 border-bottom">
             <div class="col-md-6">
                 <h5 class="fw-bold text-dark mb-1">Información del Pedido</h5>
-                <p class="mb-0 text-secondary"><strong>Ruta:</strong> {{ pedido.ruta.nombre }}</p>
+                <p class="mb-0 text-secondary">
+                    <strong>Ruta:</strong> {{ pedido.ruta.nombre }}
+                </p>
             </div>
+
             <div class="col-md-6 text-md-end mt-2 mt-md-0">
-                <p class="mb-0 text-secondary"><strong>Fecha:</strong> {{ pedido.fecha }}</p>
+                <p class="mb-0 text-secondary">
+                    <strong>Fecha:</strong> {{ pedido.fecha }}
+                </p>
             </div>
         </div>
 
         <!-- Tabla de Detalles -->
         <div class="table-responsive">
             <table id="detallesTable" class="table table-striped table-bordered">
+
                 <thead>
                     <tr>
                         <th>Producto</th>
                         <th>Presentación</th>
-                        <th style="text-align: center;">Stock Actual (Bodega)</th>
-                        <th style="text-align: center;">Cantidad Pedida</th>
+                        <th style="text-align: center;">
+                            Stock Actual (Bodega)
+                        </th>
+                        <th style="text-align: center;">
+                            Cantidad Pedida
+                        </th>
                     </tr>
                 </thead>
+
                 <tbody>
+
                     {% for detalle in detalles %}
+
                     <tr>
-                        <td>{{ detalle.producto_variacion.producto.nombre }}</td>
-                        <td>{{ detalle.producto_variacion.presentacion }}</td>
-                        <td class="text-center">
-                            {% if detalle.producto_variacion.stock < detalle.cantidad %}
-                                <span class="badge bg-custom-danger" title="Stock insuficiente">{{ detalle.producto_variacion.stock }}</span>
-                            {% else %}
-                                <span class="badge bg-custom-success">{{ detalle.producto_variacion.stock }}</span>
-                            {% endif %}
+
+                        <td>
+                            {{ detalle.producto_variacion.producto.nombre }}
                         </td>
-                        <td class="text-center fw-bold">{{ detalle.cantidad }}</td>
+
+                        <td>
+                            {{ detalle.producto_variacion.presentacion }}
+                        </td>
+
+                        <td class="text-center">
+
+                            {% if detalle.producto_variacion.stock == 0 %}
+
+                                <span
+                                    class="badge bg-custom-danger"
+                                    title="Sin existencia"
+                                >
+                                    {{ detalle.producto_variacion.stock }}
+                                </span>
+
+                            {% elif detalle.producto_variacion.stock < detalle.cantidad %}
+
+                                <span
+                                    class="badge bg-custom-danger"
+                                    title="Stock insuficiente"
+                                >
+                                    {{ detalle.producto_variacion.stock }}
+                                </span>
+
+                            {% else %}
+
+                                <span class="badge bg-custom-success">
+                                    {{ detalle.producto_variacion.stock }}
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+                        <td class="text-center fw-bold">
+                            {{ detalle.cantidad }}
+                        </td>
+
                     </tr>
+
                     {% endfor %}
+
                 </tbody>
+
             </table>
         </div>
 
         <!-- Botones de Acción -->
         <div class="d-flex justify-content-between mt-4 pt-3 border-top">
-            <a href="{% url 'lista_pedidos_reparto' %}" class="btn btn-secondary">
-                <i class="bi bi-arrow-left"></i> Volver atrás
+
+            <a
+                href="{% url 'lista_pedidos_reparto' %}"
+                class="btn btn-secondary"
+            >
+                <i class="bi bi-arrow-left"></i>
+                Volver atrás
             </a>
-            
-            <form id="form-procesar" action="{% url 'procesar_reabastecimiento' pedido.id %}" method="POST" class="d-inline">
+
+            <form
+                id="form-procesar"
+                action="{% url 'procesar_reabastecimiento' pedido.id %}"
+                method="POST"
+                class="d-inline"
+            >
+
                 {% csrf_token %}
-                <button type="button" id="btn-procesar" class="btn btn-custom-success">
-                    <i class="bi bi-check-circle"></i> Aprobar y Procesar
+
+                <button
+                    type="button"
+                    id="btn-procesar"
+                    class="btn btn-custom-success"
+                >
+                    <i class="bi bi-check-circle"></i>
+                    Aprobar y Procesar
                 </button>
+
             </form>
+
         </div>
+
     </div>
 
     <!-- Scripts -->
@@ -82,88 +152,164 @@
 
     <script>
         $(document).ready(function () {
-            // Inicialización de DataTables
+
+            // ---------------------------------------------------------
+            // DataTables
+            // ---------------------------------------------------------
+
             $('#detallesTable').DataTable({
+
                 columnDefs: [
-                    {width: "40%", targets: 0},
-                    {width: "30%", targets: 1},
-                    {width: "15%", targets: 2, className: "text-center"},
-                    {width: "15%", targets: 3, className: "text-center"},
+                    {
+                        width: "40%",
+                        targets: 0
+                    },
+                    {
+                        width: "30%",
+                        targets: 1
+                    },
+                    {
+                        width: "15%",
+                        targets: 2,
+                        className: "text-center"
+                    },
+                    {
+                        width: "15%",
+                        targets: 3,
+                        className: "text-center"
+                    }
                 ],
+
                 language: {
-                    "decimal": "",
-                    "emptyTable": "No hay productos en este pedido",
-                    "info": "Mostrando _START_ a _END_ de _TOTAL_ productos",
-                    "infoEmpty": "Mostrando 0 a 0 de 0 productos",
-                    "infoFiltered": "(filtrado de _MAX_ productos totales)",
-                    "lengthMenu": "Mostrar _MENU_ productos",
-                    "loadingRecords": "Cargando...",
-                    "processing": "Procesando...",
-                    "search": "Buscar:",
-                    "zeroRecords": "No se encontraron coincidencias",
-                    "paginate": {
-                        "first": '<i class="bi bi-rewind-fill"></i>',
-                        "last": '<i class="bi bi-fast-forward-fill"></i>',
-                        "next": '<i class="bi bi-caret-right-fill"></i>',
-                        "previous": '<i class="bi bi-caret-left-fill"></i>'
+                    decimal: "",
+                    emptyTable: "No hay productos en este pedido",
+                    info: "Mostrando _START_ a _END_ de _TOTAL_ productos",
+                    infoEmpty: "Mostrando 0 a 0 de 0 productos",
+                    infoFiltered: "(filtrado de _MAX_ productos totales)",
+                    lengthMenu: "Mostrar _MENU_ productos",
+                    loadingRecords: "Cargando...",
+                    processing: "Procesando...",
+                    search: "Buscar:",
+                    zeroRecords: "No se encontraron coincidencias",
+
+                    paginate: {
+                        first: '<i class="bi bi-rewind-fill"></i>',
+                        last: '<i class="bi bi-fast-forward-fill"></i>',
+                        next: '<i class="bi bi-caret-right-fill"></i>',
+                        previous: '<i class="bi bi-caret-left-fill"></i>'
                     }
                 },
+
                 responsive: true,
-                paging: false, 
-                info: false    
+                paging: false,
+                info: false
             });
 
-            // SweetAlert para confirmación del formulario y Spinner
+
+            // ---------------------------------------------------------
+            // Confirmación antes de procesar
+            // ---------------------------------------------------------
+
             $('#btn-procesar').on('click', function () {
+
                 Swal.fire({
+
                     title: '¿Procesar reabastecimiento?',
-                    text: "Se descontará del stock de bodega y se creará la salida correspondiente.",
+
+                    html: `
+                        <p class="mb-2">
+                            Se descontará del stock de la bodega
+                            la cantidad que esté disponible.
+                        </p>
+
+                        <p class="mb-0 text-secondary">
+                            Si algún producto no tiene suficiente stock,
+                            se surtirá únicamente la cantidad disponible.
+                        </p>
+                    `,
+
                     icon: 'question',
+
                     showCancelButton: true,
-                    confirmButtonColor: '#198754', 
-                    cancelButtonColor: '#6c757d',  
+
+                    confirmButtonColor: '#198754',
+                    cancelButtonColor: '#6c757d',
+
                     confirmButtonText: 'Sí, procesar',
                     cancelButtonText: 'Cancelar'
+
                 }).then((result) => {
+
                     if (result.isConfirmed) {
-                        // Cambiar el estado del botón agregando el spinner y deshabilitándolo
+
                         const btnProcesar = $('#btn-procesar');
+
                         btnProcesar.prop('disabled', true);
-                        btnProcesar.html('<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Procesando...');
-                        
-                        // Enviar el formulario
+
+                        btnProcesar.html(
+                            '<span class="spinner-border spinner-border-sm me-2" ' +
+                            'role="status" aria-hidden="true"></span>' +
+                            'Procesando...'
+                        );
+
                         $('#form-procesar').submit();
                     }
+
                 });
+
             });
+
         });
     </script>
 
     <!-- Notificaciones con Notyf -->
     <script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css"
+        rel="stylesheet"
+    >
 
     {% if messages %}
+
         <script>
+
             const notyf = new Notyf({
                 duration: 3500,
-                position: {x: 'right', y: 'bottom'},
+                position: {
+                    x: 'right',
+                    y: 'bottom'
+                },
                 dismissible: true,
+
                 types: [
                     {type: 'Success'},
                     {type: 'Error'}
                 ]
             });
 
+
             {% for message in messages %}
+
                 {% if message.tags == 'success' %}
+
                     notyf.success("{{ message }}");
+
                 {% elif message.tags == 'error' or 'danger' in message.tags %}
+
                     notyf.error("{{ message }}");
+
                 {% else %}
+
                     notyf.success("{{ message }}");
+
                 {% endif %}
+
             {% endfor %}
+
         </script>
+
     {% endif %}
+
 {% endblock %}
+

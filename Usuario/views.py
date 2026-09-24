@@ -7,8 +7,10 @@ from .forms import RegistroForm, LoginForm, EditarPerfilForm, TurnoUsuarioForm, 
     CustomPasswordChangeForm, TurnoUsuarioFormEditar
 from .models import Usuario, TurnoUsuario, Rol, Turno
 from django.contrib import messages
+from .decorators import solo_administrador,requiere_roles
 
 @login_required
+@requiere_roles("Recursos Humanos")
 def registro(request):
     if request.method == 'POST':
         form = RegistroForm(request.POST, request.FILES)
@@ -86,6 +88,7 @@ def cambiar_contrasena(request):
     return render(request, 'Usuario/cambiar_contrasena.html', {'form': form})
 
 @login_required
+@requiere_roles("Recursos Humanos")
 def listar_roles(request):
     mostrar_todos = request.GET.get('mostrar_todos') == '1'
 
@@ -100,6 +103,7 @@ def listar_roles(request):
     })
 
 @login_required
+@requiere_roles("Recursos Humanos")
 def agregar_rol(request):
     if request.method == 'POST':
         form = RolForm(request.POST)
@@ -112,6 +116,7 @@ def agregar_rol(request):
     return render(request, 'Usuario/roles/agregar_rol.html', {'form': form})
 
 @login_required
+@requiere_roles("Recursos Humanos")
 def editar_rol(request, rol_id):
     rol = get_object_or_404(Rol, id=rol_id)
     if request.method == 'POST':
@@ -125,6 +130,7 @@ def editar_rol(request, rol_id):
     return render(request, 'Usuario/roles/editar_rol.html', {'form': form})
 
 @login_required
+@requiere_roles("Recursos Humanos")
 def eliminar_rol(request, rol_id):
     rol = get_object_or_404(Rol, id=rol_id)
 
@@ -140,6 +146,7 @@ def eliminar_rol(request, rol_id):
 
 # LISTAR TURNOS
 @login_required
+@requiere_roles("Recursos Humanos")
 def listar_turnos(request):
     mostrar_todos = request.GET.get('mostrar_todos') == '1'
     if mostrar_todos:
@@ -151,6 +158,7 @@ def listar_turnos(request):
 
 # CREAR TURNOS
 @login_required
+@requiere_roles("Recursos Humanos")
 def crear_turno(request):
     if request.method == 'POST':
         form = TurnoForm(request.POST)
@@ -164,6 +172,7 @@ def crear_turno(request):
 
 # EDITAR TURNOS
 @login_required
+@requiere_roles("Recursos Humanos")
 def editar_turno(request, turno_id):
     turno = get_object_or_404(Turno, id=turno_id)
     if request.method == 'POST':
@@ -179,6 +188,7 @@ def editar_turno(request, turno_id):
 
 # ELIMINAR (LÓGICO) TURNOS
 @login_required
+@requiere_roles("Recursos Humanos")
 def eliminar_turno(request, turno_id):
     turno = get_object_or_404(Turno, id=turno_id)
     turno.estado = False
@@ -188,6 +198,7 @@ def eliminar_turno(request, turno_id):
 
 # TURNOS A USUARIOS
 @login_required
+@requiere_roles("Recursos Humanos","Producción")
 def asignar_turno(request):
     if request.method == 'POST':
         form = TurnoUsuarioForm(request.POST)
@@ -201,11 +212,13 @@ def asignar_turno(request):
 
 
 @login_required
+@requiere_roles("Recursos Humanos","Producción")
 def turnos_asignados(request):
     turnos_usuario = TurnoUsuario.objects.all()
     return render(request, 'Usuario/turnos/turnos_asignados.html', {'turnos_usuario': turnos_usuario})
 
 @login_required
+@requiere_roles("Recursos Humanos")
 def eliminar_turno_usuario(request, pk):
     turno_usuario = get_object_or_404(TurnoUsuario, pk=pk)
     turno_usuario.delete()
@@ -214,6 +227,7 @@ def eliminar_turno_usuario(request, pk):
 
 
 @login_required
+@requiere_roles("Recursos Humanos")
 def editar_turno_usuario(request, pk):
     turno_usuario = get_object_or_404(TurnoUsuario, pk=pk)
     if request.method == 'POST':
@@ -230,6 +244,7 @@ def editar_turno_usuario(request, pk):
 # gestion de  USUARIOS
 
 @login_required
+@requiere_roles("Recursos Humanos")
 def gestionar_usuarios(request):
     if request.method == 'POST':
         usuario_id = request.POST.get('usuario_id')

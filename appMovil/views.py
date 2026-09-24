@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from decimal import Decimal
 from django.contrib.auth.decorators import login_required
 import secrets
+import json
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.hashers import check_password
 from ProductoTerminado.models import SalidaPTerminado, DetalleSalidaPTerminado, EntradaPTerminado, \
@@ -25,7 +26,7 @@ from .models import (
     
 )
 from .models import Dispositivo
-
+from django.utils.decorators import method_decorator
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
@@ -33,6 +34,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 from .forms import DispositivoForm
 from .autenticacion_dispositivo import DispositivoActivoPermission
+from Usuario.decorators import requiere_roles,solo_administrador
 
 
 # Create your views here.
@@ -277,7 +279,7 @@ def crear_reabastecimiento(request):
 {
   "pedido_id": 1
 }
-"""
+
 @api_view(['POST'])
 def sincronizar_reabastecimiento(request):
     pedido_id = request.data.get("pedido_id")
@@ -327,10 +329,11 @@ def sincronizar_reabastecimiento(request):
         "message": "Stock actualizado y minibodega reactivada"
     })
 
-
+"""
 
 # 1. Ver lista de pedidos pendientes
 @login_required
+@requiere_roles("Producto Terminado")
 def lista_pedidos(request):
     # Filtramos solo los pedidos activos (pendientes) y ordenamos por ID descendente
     pedidos = PedidoReabastecimiento.objects.filter(estado=True).order_by('-id')
@@ -339,116 +342,215 @@ def lista_pedidos(request):
 
 # 2. Ver detalles del pedido
 @login_required
+@requiere_roles("Producto Terminado")
 def detalle_pedido(request, pedido_id):
     pedido = get_object_or_404(PedidoReabastecimiento, id=pedido_id)
     detalles = pedido.pedidoreabastecimientodetalle_set.all()
     return render(request, 'appMovil/reabastecimiento/detalle_pedido.html', {'pedido': pedido, 'detalles': detalles})
 
 
-# 3. Procesar el Reabastecimiento
-
+# 3. Procesar el Reabastecimiento , solo terminado
 @login_required
+@requiere_roles("Producto Terminado")
 def procesar_reabastecimiento(request, pedido_id):
+
     if request.method == 'POST':
-        pedido = get_object_or_404(PedidoReabastecimiento, id=pedido_id, estado=True)
+
+        pedido = get_object_or_404(
+            PedidoReabastecimiento,
+            id=pedido_id,
+            estado=True
+        )
+
         detalles = pedido.pedidoreabastecimientodetalle_set.all()
 
         # Buscar la MiniBodega para esta ruta
-        minibodega = MiniBodega.objects.filter(ruta=pedido.ruta).last()
+        minibodega = MiniBodega.objects.filter(
+            ruta=pedido.ruta
+        ).last()
 
         if not minibodega:
-            messages.error(request, f"No se encontró una MiniBodega para la ruta {pedido.ruta.nombre}.")
-            return redirect('detalle_pedido_reparto', pedido_id=pedido.id)
+            messages.error(
+                request,
+                f"No se encontró una MiniBodega para la ruta "
+                f"{pedido.ruta.nombre}."
+            )
+
+            return redirect(
+                'detalle_pedido_reparto',
+                pedido_id=pedido.id
+            )
 
         try:
-            with transaction.atomic():  # Transacción atómica: Todo o nada
 
-                # 🔥 REACTIVAR PARA EL NUEVO DÍA
+            with transaction.atomic():
+
+                # Reactivar la MiniBodega para el nuevo día
                 minibodega.estado = True
                 minibodega.save()
 
-                # ✅ NUEVO: Actualizar TODO el inventario de la minibodega antes de agregar lo nuevo.
-                # Esto iguala la cantidad_inicial a la cantidad_actual para los productos
-                # que sobraron ayer, aunque hoy no se hayan pedido.
-                MiniBodegaDetalle.objects.filter(mini_bodega=minibodega).update(
+                # Todo lo que ya tenía la MiniBodega pasa a ser
+                # el inventario inicial del nuevo día.
+                MiniBodegaDetalle.objects.filter(
+                    mini_bodega=minibodega
+                ).update(
                     cantidad_inicial=F('cantidad_actual')
                 )
 
-                # 1. Crear el registro de Salida
-                salida = SalidaPTerminado.objects.create(
-                    fecha_salida=timezone.now(),
-                    usuario=request.user,
-                    ruta=pedido.ruta,
-                    destino='opcion1',  # Asumiendo que opcion1 es 'Ruta'
-                    nota=f"Salida generada por reabastecimiento. Pedido #{pedido.id}"
-                )
+                salida = None
+
+                productos_completos = []
+                productos_parciales = []
+                productos_no_surtidos = []
 
                 for item in detalles:
+
                     variacion = item.producto_variacion
                     cantidad_pedida = item.cantidad
 
-                    # 1.1 Verificar si hay stock suficiente en la bodega principal
-                    if variacion.stock < cantidad_pedida:
-                        raise ValueError(
-                            f"Stock insuficiente para {variacion}. Stock actual: {variacion.stock}, Pedido: {cantidad_pedida}")
-
-                    # 2. Descontar del stock principal
-                    variacion.stock -= cantidad_pedida
-                    variacion.save()
-
-                    # 3. Crear Detalle de Salida
-                    DetalleSalidaPTerminado.objects.create(
-                    salida_p_terminado=salida,
-                    producto_variacion=variacion,
-                    cantidad=cantidad_pedida,
-                    precio_unitario=variacion.precio
+                    # Cantidad que realmente se puede surtir.
+                    # Si hay menos stock que lo pedido,
+                    # se entrega todo lo disponible.
+                    cantidad_surtir = min(
+                        variacion.stock,
+                        cantidad_pedida
                     )
 
-                    # 4. Ingresar a la MiniBodega del repartidor
+                    # No hay existencia disponible.
+                    if cantidad_surtir <= 0:
+
+                        productos_no_surtidos.append({
+                            'producto': str(variacion),
+                            'solicitado': float(cantidad_pedida),
+                            'surtido': 0
+                        })
+
+                        continue
+
+                    # Si es el primer producto que realmente se va a surtir,
+                    # creamos la salida.
+                    if salida is None:
+
+                        salida = SalidaPTerminado.objects.create(
+                            fecha_salida=timezone.now(),
+                            usuario=request.user,
+                            ruta=pedido.ruta,
+                            destino='opcion1',
+                            nota=(
+                                f"Salida generada por reabastecimiento. "
+                                f"Pedido #{pedido.id}"
+                            )
+                        )
+
+                    # Descontar del stock central
+                    variacion.stock -= cantidad_surtir
+                    variacion.save()
+
+                    # Registrar solamente lo que realmente se surtió
+                    DetalleSalidaPTerminado.objects.create(
+                        salida_p_terminado=salida,
+                        producto_variacion=variacion,
+                        cantidad=cantidad_surtir,
+                        precio_unitario=variacion.precio
+                    )
+
+                    # Ingresar solamente lo surtido a la MiniBodega
                     mb_detalle, created = MiniBodegaDetalle.objects.get_or_create(
                         mini_bodega=minibodega,
                         producto_variacion=variacion,
                         defaults={
-                            'cantidad_inicial': cantidad_pedida,
-                            'cantidad_actual': cantidad_pedida
+                            'cantidad_inicial': cantidad_surtir,
+                            'cantidad_actual': cantidad_surtir
                         }
                     )
 
                     if not created:
-                        # ✅ MODIFICADO: Sumar la nueva carga a ambas cantidades
-                        # Como ya igualamos inicial = actual antes del bucle,
-                        # ahora solo sumamos la cantidad de reabastecimiento a ambas.
-                        mb_detalle.cantidad_actual += cantidad_pedida
-                        mb_detalle.cantidad_inicial = mb_detalle.cantidad_actual
+
+                        mb_detalle.cantidad_actual += cantidad_surtir
+
+                        # Como la cantidad agregada pertenece al nuevo
+                        # reabastecimiento, pasa a formar parte del inicial.
+                        mb_detalle.cantidad_inicial = (
+                            mb_detalle.cantidad_actual
+                        )
+
                         mb_detalle.save()
 
+                    # Determinar si se surtió completo o parcialmente
+                    if cantidad_surtir == cantidad_pedida:
+
+                        productos_completos.append({
+                            'producto': str(variacion),
+                            'solicitado': float(cantidad_pedida),
+                            'surtido': float(cantidad_surtir)
+                        })
+
+                    else:
+
+                        productos_parciales.append({
+                            'producto': str(variacion),
+                            'solicitado': float(cantidad_pedida),
+                            'surtido': float(cantidad_surtir)
+                        })
+
+                # Eliminar productos que quedaron en cero.
                 MiniBodegaDetalle.objects.filter(
-                mini_bodega=minibodega,
-                cantidad_actual=0
+                    mini_bodega=minibodega,
+                    cantidad_actual=0
                 ).delete()
 
-                # 5. Marcar el pedido como procesado (inactivo)
+                # Marcar el pedido como procesado.
                 pedido.estado = False
                 pedido.save()
 
-            messages.success(request,
-                             f"Pedido #{pedido.id} reabastecido con éxito. Stock actualizado y minibodega reactivada.")
+            # ---------------------------------------------------------
+            # PREPARAR RESULTADO PARA LA MODAL
+            # ---------------------------------------------------------
+
+            resultado = {
+                'completos': productos_completos,
+                'parciales': productos_parciales,
+                'no_surtidos': productos_no_surtidos
+            }
+
+            # Si hubo productos parciales o sin surtir,
+            # mostramos la modal de advertencia.
+            if productos_parciales or productos_no_surtidos:
+
+                messages.warning(
+                    request,
+                    json.dumps(resultado)
+                )
+
+            else:
+
+                # Todo se surtió correctamente.
+                messages.success(
+                    request,
+                    json.dumps(resultado)
+                )
+
             return redirect('lista_pedidos_reparto')
 
-        except ValueError as e:
-            messages.error(request, str(e))
-            return redirect('detalle_pedido_reparto', pedido_id=pedido.id)
         except Exception as e:
-            messages.error(request, f"Ocurrió un error al procesar: {str(e)}")
-            return redirect('detalle_pedido_reparto', pedido_id=pedido.id)
+
+            messages.error(
+                request,
+                f"Ocurrió un error al procesar: {str(e)}"
+            )
+
+            return redirect(
+                'detalle_pedido_reparto',
+                pedido_id=pedido.id
+            )
 
     return redirect('lista_pedidos_reparto')
-from django.shortcuts import render, get_object_or_404
-from .models import MiniBodega
+
 
 
 # Vista para el listado
 @login_required
+@requiere_roles("Producto Terminado","Recursos Humanos")
 def minibodega_list(request):
     # Traemos todas las mini bodegas, ordenadas de la más reciente a la más vieja
     minibodegas = MiniBodega.objects.all().order_by('-fecha', '-id')
@@ -462,6 +564,7 @@ def minibodega_list(request):
 
 # Vista para el detalle
 @login_required
+@requiere_roles("Producto Terminado","Recursos Humanos")
 def minibodega_detail(request, pk):
     # Buscamos la mini bodega por su ID (Primary Key). Si no existe, lanza un 404.
     minibodega = get_object_or_404(MiniBodega, pk=pk)
@@ -480,6 +583,7 @@ from django.contrib.auth.decorators import login_required
 
 
 @login_required
+@requiere_roles("Producto Terminado")
 def abrir_minibodega_manual(request, pk):
 
     if request.method == 'POST':
@@ -525,8 +629,9 @@ def abrir_minibodega_manual(request, pk):
         'message': 'Método no permitido.'
     }, status=405)
 
-import json
+#  ESto solo debe tenerlo producto terminado y admin por defecto
 @login_required
+@requiere_roles("Producto Terminado")
 def regresar_producto_bodega(request, detalle_pk):
     if request.method == 'POST':
         try:
@@ -619,7 +724,8 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from .forms import MiniBodegaForm, FiltroDevolucionesForm
 
-
+@login_required
+@requiere_roles("Producto Terminado","Recursos Humanos")
 def agregar_minibodega(request):
     if request.method == 'POST':
         form = MiniBodegaForm(request.POST)
@@ -1118,6 +1224,9 @@ from django.db.models import Sum
 from .models import Venta
 from .forms import FiltroVentasForm
 
+
+@method_decorator(login_required,'dispatch')
+@method_decorator(requiere_roles("Producto Terminado","Recursos Humanos"), name='dispatch')
 class ListaVentasView(ListView):
     model = Venta
     template_name = 'appMovil/ventas/lista_ventas.html'
@@ -1231,6 +1340,8 @@ class ListaVentasView(ListView):
 from django.views.generic import DetailView
 from .models import Venta
 
+@method_decorator(login_required,'dispatch')
+@method_decorator(requiere_roles("Producto Terminado","Recursos Humanos"), name='dispatch')
 class DetalleVentaView(DetailView):
     model = Venta
     template_name = 'appMovil/ventas/detalle_venta.html'
@@ -1301,6 +1412,8 @@ from django.db.models import Sum, F, FloatField
 from .models import Devolucion
 
 
+@method_decorator(login_required,'dispatch')
+@method_decorator(requiere_roles("Producto Terminado","Recursos Humanos"), name='dispatch')
 class ListaDevolucionesView(ListView):
     model = Devolucion
     template_name = 'appMovil/devoluciones/lista_devoluciones.html'
@@ -1374,6 +1487,8 @@ class ListaDevolucionesView(ListView):
         return context
 
 
+@method_decorator(login_required,'dispatch')
+@method_decorator(requiere_roles("Producto Terminado","Recursos Humanos"), name='dispatch')
 class DetalleDevolucionView(DetailView):
     model = Devolucion
     template_name = 'appMovil/devoluciones/detalle_devolucion.html'
@@ -1400,6 +1515,7 @@ from .models import Cliente, Ruta
 from .forms import CargarCSVForm
 
 @login_required
+@solo_administrador
 def cargar_clientes_csv(request):
     if request.method == 'POST':
         form = CargarCSVForm(request.POST, request.FILES)
@@ -1498,6 +1614,7 @@ from django.db import transaction
 from .models import  ProductoVariacion
 
 @login_required
+@solo_administrador
 def cargar_productos_csv(request):
     if request.method == 'POST':
         form = CargarCSVForm(request.POST, request.FILES)
@@ -1563,6 +1680,7 @@ def cargar_productos_csv(request):
 
 
 @login_required
+@solo_administrador
 def registrar_dispositivo(request):
 
     if request.method == "POST":
@@ -1600,6 +1718,7 @@ def registrar_dispositivo(request):
     )
 
 @login_required
+@solo_administrador
 def lista_dispositivos(request):
     dispositivos = Dispositivo.objects.select_related("repartidor").all()
 
@@ -1613,6 +1732,7 @@ def lista_dispositivos(request):
 
 
 @login_required
+@solo_administrador
 def editar_dispositivo(request, dispositivo_id):
     dispositivo = get_object_or_404(Dispositivo, id=dispositivo_id)
 
@@ -1637,6 +1757,7 @@ def editar_dispositivo(request, dispositivo_id):
     )
 
 @login_required
+@solo_administrador
 def activar_dispositivo(request, dispositivo_id):
     dispositivo = get_object_or_404(Dispositivo, id=dispositivo_id)
     dispositivo.activo = True
@@ -1646,6 +1767,7 @@ def activar_dispositivo(request, dispositivo_id):
 
 
 @login_required
+@solo_administrador
 def desactivar_dispositivo(request, dispositivo_id):
     dispositivo = get_object_or_404(Dispositivo, id=dispositivo_id)
     dispositivo.activo = False
@@ -1655,6 +1777,7 @@ def desactivar_dispositivo(request, dispositivo_id):
 
 
 @login_required
+@solo_administrador
 def eliminar_dispositivo(request, dispositivo_id):
     dispositivo = get_object_or_404(Dispositivo, id=dispositivo_id)
 

@@ -17,11 +17,13 @@ from django.contrib.auth.decorators import login_required
 from .models import ProductoGranel
 from .forms import ProductoGranelForm
 from django.views.decorators.http import require_POST
+from Usuario.decorators import requiere_roles,solo_administrador
 
 
 # REGISTRO DE ENTRADAS
 
 @login_required
+@requiere_roles("Producto a Granel")
 def agregar_producto_granel(request):
     """
     Vista para agregar un nuevo producto a granel.
@@ -60,6 +62,7 @@ def agregar_producto_granel(request):
 
 
 @login_required
+@requiere_roles("Producto a Granel")
 def registrar_entrada(request):
     productos = ProductoGranel.objects.filter(estado=True)
 
@@ -115,6 +118,7 @@ def registrar_entrada(request):
 
 
 @login_required
+@requiere_roles("Producto a Granel")
 def registrar_salida(request):
     """
     Vista para registrar una salida de productos.
@@ -234,6 +238,7 @@ def registrar_salida(request):
 
 
 @login_required
+@requiere_roles("Producción")
 def registrar_pedido_produccion(request):
     """
     Vista para registrar un PedidoProduccion.
@@ -318,6 +323,7 @@ def registrar_pedido_produccion(request):
 
 
 @login_required
+@requiere_roles("Producto a Granel")
 def lista_pedidos(request):
     """
     Vista para listar los pedidos de producción.
@@ -328,6 +334,7 @@ def lista_pedidos(request):
 
 
 @login_required
+@requiere_roles("Producción")
 def lista_pedidos_produccion(request):
     """
     Vista para listar los pedidos de producción.
@@ -457,6 +464,7 @@ def get_pusher_client():
 
 
 @login_required
+@requiere_roles("Producto a Granel")
 def registrar_devolucion(request, salida_id):
     salida = get_object_or_404(SalidaGranel, id=salida_id)
     detalles_salida = salida.detallesalidagranel_set.all()
@@ -572,6 +580,7 @@ def registrar_devolucion(request, salida_id):
 
 
 @login_required
+@requiere_roles("Producto a Granel")
 def lista_salidas(request):
     """
     Vista para listar las salidas de productos a granel.
@@ -585,6 +594,7 @@ def lista_salidas(request):
 
 
 @login_required
+@requiere_roles("Producto a Granel")
 def realizar_corte(request):
     """
     Vista para realizar el corte de inventario.
@@ -654,6 +664,7 @@ def realizar_corte(request):
 
 
 @login_required
+@requiere_roles("Producto a Granel")
 def lista_cortes(request):
     """
     Vista para listar los cortes de inventario.
@@ -669,6 +680,7 @@ def lista_cortes(request):
 
 
 @login_required
+@requiere_roles("Producto a Granel")
 def ajustar_inventario(request, corte_id):
     """
     Vista para ajustar el inventario a partir de un corte de inventario.
@@ -729,6 +741,7 @@ def ajustar_inventario(request, corte_id):
 
 
 @login_required
+@requiere_roles("Producto a Granel")
 def detalle_corte(request, corte_id):
     """
     Vista para mostrar los detalles de un corte de inventario.
@@ -744,6 +757,7 @@ def detalle_corte(request, corte_id):
 
 
 @login_required
+@requiere_roles("Producto a Granel","Recursos Humanos")
 def listar_productos_granel(request):
     """
     Muestra un listado con todos los productos a granel registrados respetando el swich.
@@ -760,6 +774,7 @@ def listar_productos_granel(request):
 
 
 @login_required
+@requiere_roles("Producto a Granel")
 def editar_producto_granel(request, pk):
     """
     Permite editar un producto a granel existente.
