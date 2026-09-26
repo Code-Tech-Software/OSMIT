@@ -1,7 +1,7 @@
 from django import forms
 
 from ProductoGranel.models import CategoriaProducto
-from .models import ProductoTerminado, PresentacionProductoTerminado, ProductoVariacion
+from .models import ProductoTerminado, PresentacionProductoTerminado, ProductoVariacion,CorteInventarioPTerminado
 from django import forms
 from .models import SalidaPTerminado
 from django import forms
@@ -10,7 +10,7 @@ from django.forms.models import BaseInlineFormSet
 from django import forms
 from django.forms.models import BaseInlineFormSet
 from django import forms
-from .models import ProductoVariacion
+
 
 
 class ProductoTerminadoForm(forms.ModelForm):
@@ -95,6 +95,20 @@ class EntradaForm(forms.Form):
 
 
 
+
+
+class CorteInventarioPTerminadoForm(forms.ModelForm):
+    class Meta:
+        model = CorteInventarioPTerminado
+        fields = ['observaciones']
+        widgets = {
+            'observaciones': forms.Textarea(
+                attrs={
+                    'class': 'form-control',
+                    'rows': 3
+                }
+            ),
+        }
 
 
 

@@ -3,12 +3,13 @@
 
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OSMIT SISTEM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.4/dist/css/bootstrap.min.css" rel="stylesheet"
-          integrity="sha384-DQvkBjpPgn7RC31MCQoOeC9TI2kdqa4+BSgNMNj8v77fdC77Kj5zpWFTJaaAoMbC" crossorigin="anonymous">
+        integrity="sha384-DQvkBjpPgn7RC31MCQoOeC9TI2kdqa4+BSgNMNj8v77fdC77Kj5zpWFTJaaAoMbC" crossorigin="anonymous">
     <link rel="stylesheet" href="{% static 'css/base/sidebar.css' %}">
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -43,99 +44,98 @@
     .user-menu:hover .dropdown-menu-user {
         display: block;
     }
-
-
 </style>
+
 <body>
 
 
-<header class="navbar bg-light border-bottom position-fixed top-0 w-100 shadow-sm px-3 d-flex justify-content-end align-items-center gap-3"
+    <header
+        class="navbar bg-light border-bottom position-fixed top-0 w-100 shadow-sm px-3 d-flex justify-content-end align-items-center gap-3"
         style="height: 65px;z-index: 1;">
 
-    <div class="menu-btn sidebar-btn mt-2" id="sidebar-btn">
-        <i class='bx bx-menu'></i>
-        <i class='bx bx-x'></i>
-    </div>
+        <div class="menu-btn sidebar-btn mt-2" id="sidebar-btn">
+            <i class='bx bx-menu'></i>
+            <i class='bx bx-x'></i>
+        </div>
 
 
-    <!-- Icono pantalla completa -->
-    <i id="fullscreenToggle"
-       class="bi bi-arrows-fullscreen fs-5 icon-hover"
-       style="cursor: pointer;"></i>
+        <!-- Icono pantalla completa -->
+        <i id="fullscreenToggle" class="bi bi-arrows-fullscreen fs-5 icon-hover" style="cursor: pointer;"></i>
 
 
-    <!-- Icono de recargar con animación de spinner -->
-    <i class="bi bi-arrow-clockwise fs-5 icon-hover"
-       style="cursor: pointer;"
-       id="reloadIcon"></i>
+        <!-- Icono de recargar con animación de spinner -->
+        <i class="bi bi-arrow-clockwise fs-5 icon-hover" style="cursor: pointer;" id="reloadIcon"></i>
 
 
-    <!-- Icono campana -->
-    <i id="notificationToggle" class="bi fs-5 position-relative icon-hover bi-bell-fill" style="cursor: pointer;"></i>
+        <!-- Icono campana -->
+        <i id="notificationToggle" class="bi fs-5 position-relative icon-hover bi-bell-fill"
+            style="cursor: pointer;"></i>
 
-    <!-- Usuario con menú -->
-    <div class="position-relative user-menu me-5">
-        <div class="d-flex align-items-center user-hover" id="userToggle" style="cursor: pointer;">
-            {% if user.foto %}
+        <!-- Usuario con menú -->
+        <div class="position-relative user-menu me-5">
+            <div class="d-flex align-items-center user-hover" id="userToggle" style="cursor: pointer;">
+                {% if user.foto %}
                 <img src="{{ user.foto.url }}" class="rounded-circle me-2 object-fit-cover" alt="Avatar" width="32"
-                     height="32">
-            {% else %}
-                <img src="{% static 'img/defaltperfil.jpg' %}"
-                     class="rounded-circle me-2" alt="Avatar" width="32" height="32">
-            {% endif %}
-            <div>
-                <span class="fw-bold d-block">Hola! {{ user.first_name }}</span>
-                <small class="text-muted">{{ user.rol.nombre|default:"Sin rol" }}</small>
+                    height="32">
+                {% else %}
+                <img src="{% static 'img/defaltperfil.jpg' %}" class="rounded-circle me-2" alt="Avatar" width="32"
+                    height="32">
+                {% endif %}
+                <div>
+                    <span class="fw-bold d-block">Hola! {{ user.first_name }}</span>
+                    <small class="text-muted">{{ user.rol.nombre|default:"Sin rol" }}</small>
+                </div>
+            </div>
+
+            <!-- Dropdown -->
+            <div class="dropdown-menu-user shadow-sm border rounded bg-white py-2 px-2" id="userDropdown">
+                <a href="{% url 'ver_perfil' %}" class="dropdown-item d-flex align-items-center gap-2 text-dark py-1">
+                    <i class="bi bi-person"></i> Ver perfil
+                </a>
+                <a href="{% url 'logout' %}" class="dropdown-item d-flex align-items-center gap-2 text-dark py-1">
+                    <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                </a>
             </div>
         </div>
 
-        <!-- Dropdown -->
-        <div class="dropdown-menu-user shadow-sm border rounded bg-white py-2 px-2" id="userDropdown">
-            <a href="{% url 'ver_perfil' %}" class="dropdown-item d-flex align-items-center gap-2 text-dark py-1">
-                <i class="bi bi-person"></i> Ver perfil
-            </a>
-            <a href="{% url 'logout' %}" class="dropdown-item d-flex align-items-center gap-2 text-dark py-1">
-                <i class="bi bi-box-arrow-right"></i> Cerrar sesión
-            </a>
-        </div>
+
+    </header>
+
+
+    <div class="dark-mode-btn" id="dark-mode-btn">
     </div>
 
-
-</header>
-
-
-<div class="dark-mode-btn" id="dark-mode-btn">
-</div>
-
-<div class="sidebar" id="sidebar" style="z-index: 1;">
-    <div class="header">
-        <div class="menu-btn" id="menu-btn">
-            <i class='bx bx-chevron-left'></i>
+    <div class="sidebar" id="sidebar" style="z-index: 1;">
+        <div class="header">
+            <div class="menu-btn" id="menu-btn">
+                <i class='bx bx-chevron-left'></i>
+            </div>
+            <div class="brand">
+                <img class="brand-light"
+                    src="https://cdn.shopify.com/s/files/1/0650/9042/0995/files/Logotipo-Osmit-Sombreado.png?height=628&pad_color=fff&v=1655916959&width=1200"
+                    alt="logo">
+                <span>Osmit</span>
+            </div>
         </div>
-        <div class="brand">
-            <img class="brand-light"
-                 src="https://cdn.shopify.com/s/files/1/0650/9042/0995/files/Logotipo-Osmit-Sombreado.png?height=628&pad_color=fff&v=1655916959&width=1200"
-                 alt="logo">
-            <span>Osmit</span>
-        </div>
-    </div>
-    <div class="menu-container">
+        <div class="menu-container">
 
-        <ul class="menu">
+            <ul class="menu">
 
-            <li class="menu-item menu-item-static {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-                <a href="{% url 'dashboard' %}" class="menu-link">
-                    <i class='bx bx-home-alt-2'></i>
-                    <span>Home</span>
-                </a>
-            </li>
+                <li
+                    class="menu-item menu-item-static {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                    <a href="{% url 'dashboard' %}" class="menu-link">
+                        <i class='bx bx-home-alt-2'></i>
+                        <span>Home</span>
+                    </a>
+                </li>
 
 
-            <!-- GRANEL -->
+                <!-- GRANEL -->
 
-            {% if user|has_role:"Administrador,Producto a Granel" %}
+                {% if user|has_role:"Administrador,Producto a Granel" %}
 
-                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'registrar_entrada' or request.resolver_match.url_name == 'registrar_salida' or request.resolver_match.url_name == 'lista_pedidos' or request.resolver_match.url_name == 'lista_salidas' or request.resolver_match.url_name == 'lista_cortes' %}active{% endif %}">
+                <li
+                    class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'registrar_entrada' or request.resolver_match.url_name == 'registrar_salida' or request.resolver_match.url_name == 'lista_pedidos' or request.resolver_match.url_name == 'lista_salidas' or request.resolver_match.url_name == 'lista_cortes' %}active{% endif %}">
                     <a href="#" class="menu-link">
                         <i class='bx bx-cube'></i>
                         <span>Granel</span>
@@ -150,14 +150,15 @@
                     </ul>
                 </li>
 
-            {% endif %}
+                {% endif %}
 
 
 
 
-            <!-- PRODUCCIÓN -->
-            {% if user|has_role:"Administrador,Producción" %}
-                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'registrar_pedido_produccion' or request.resolver_match.url_name == 'turnos_asignados' or request.resolver_match.url_name == 'lista_productos_granel' or request.resolver_match.url_name == 'lista_productos_terminados' or request.resolver_match.url_name == 'lista_pedidos_produccion' %}active{% endif %}">
+                <!-- PRODUCCIÓN -->
+                {% if user|has_role:"Administrador,Producción" %}
+                <li
+                    class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'registrar_pedido_produccion' or request.resolver_match.url_name == 'turnos_asignados' or request.resolver_match.url_name == 'lista_productos_granel' or request.resolver_match.url_name == 'lista_productos_terminados' or request.resolver_match.url_name == 'lista_pedidos_produccion' %}active{% endif %}">
                     <a href="#" class="menu-link">
                         <i class='bx bx-rocket'></i>
                         <span>Producción</span>
@@ -171,17 +172,18 @@
                         <li><a href="{% url 'lista_productos_granel' %}" class="sub-menu-link">Inventario Granel</a>
                         </li>
                         <li><a href="{% url 'lista_productos_terminados' %}" class="sub-menu-link">Inventario
-                            Terminado</a></li>
+                                Terminado</a></li>
                     </ul>
                 </li>
-            {% endif %}
+                {% endif %}
 
 
 
 
-            <!-- TERMINADO -->
-            {% if user|has_role:"Administrador,Producto Terminado" %}
-                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'registrar_entradaPT' or request.resolver_match.url_name == 'registrar_salidaPT'   or request.resolver_match.url_name == 'lista_cortes_producto_terminado' or request.resolver_match.url_name == 'ventas_por_dia' or request.resolver_match.url_name == 'lista_salidas_termindo' or request.resolver_match.url_name == 'lista_entradas_terminado' %}active{% endif %}">
+                <!-- TERMINADO -->
+                {% if user|has_role:"Administrador,Producto Terminado" %}
+                <li
+                    class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'registrar_entradaPT' or request.resolver_match.url_name == 'registrar_salidaPT'   or request.resolver_match.url_name == 'lista_cortes_producto_terminado' or request.resolver_match.url_name == 'ventas_por_dia' or request.resolver_match.url_name == 'lista_salidas_termindo' or request.resolver_match.url_name == 'lista_entradas_terminado' %}active{% endif %}">
                     <a href="#" class="menu-link">
                         <i class='bx bx-box'></i>
                         <span>Terminado</span>
@@ -189,44 +191,32 @@
                     </a>
                     <ul class="sub-menu">
                         <li><a href="{% url 'registrar_entradaPT' %}" class="sub-menu-link">Registrar Entrada</a></li>
-                        <li><a href="{% url 'registrar_entrada_especialPT' %}" class="sub-menu-link">Registrar Entrada Especial</a></li>
+                        <li><a href="{% url 'registrar_entrada_especialPT' %}" class="sub-menu-link">Registrar Entrada
+                                Especial</a></li>
                         <li><a href="{% url 'registrar_salidaPT' %}" class="sub-menu-link">Registrar Salida</a></li>
-                        <li><a href="{% url 'registrar_salida_especialPT' %}" class="sub-menu-link">Registrar Salida Especial</a></li>
+                        <li><a href="{% url 'registrar_salida_especialPT' %}" class="sub-menu-link">Registrar Salida
+                                Especial</a></li>
                         <li><a href="{% url 'historial_entradasPT' %}" class="sub-menu-link">Historial Entradas</a></li>
                         <li><a href="{% url 'historial_salidasPT' %}" class="sub-menu-link">Historial Salidas</a></li>
+                        <li><a href="{% url 'lista_cortes_pt' %}" class="sub-menu-link">Cortes</a></li>
+
 
                     </ul>
                 </li>
-            {% endif %}
-
-
-
-        
-
-            <!-- RUTAS -->
-            {% if user|has_role:"Administrador,Producto a Granel" %}
-                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'listar_vehiculos' or request.resolver_match.url_name == 'listar_rutas' or request.resolver_match.url_name == 'listar_clientes' %}active{% endif %}">
-                    <a href="#" class="menu-link">
-                        <i class='bx bx-map'></i>
-                        <span>Rutas</span>
-                        <i class='bx bx-chevron-down'></i>
-                    </a>
-                    <ul class="sub-menu">
-                        <li><a href="{% url 'listar_vehiculos' %}" class="sub-menu-link">Vehículos</a></li>
-                        <li><a href="{% url 'listar_rutas' %}" class="sub-menu-link">Rutas</a></li>
-                        <li><a href="{% url 'listar_clientes' %}" class="sub-menu-link">Clientes</a></li>
-                    </ul>
-                </li>
-
-            {% endif %}
+                {% endif %}
 
 
 
 
 
-            <!-- ADMINISTRAR -->
-            {% if user|has_role:"Administrador,Recursos Humanos" %}
-                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'listar_turnos' or request.resolver_match.url_name == 'listar_roles' or request.resolver_match.url_name == 'gestionar_usuarios' or request.resolver_match.url_name == 'lista_proveedores' or request.resolver_match.url_name == 'lista_categorias' or request.resolver_match.url_name == 'lista_gramajes' or request.resolver_match.url_name == 'lista_presentaciones' %}active{% endif %}">
+
+
+
+
+                <!-- ADMINISTRAR -->
+                {% if user|has_role:"Administrador,Recursos Humanos" %}
+                <li
+                    class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'listar_turnos' or request.resolver_match.url_name == 'listar_roles' or request.resolver_match.url_name == 'gestionar_usuarios' or request.resolver_match.url_name == 'lista_proveedores' or request.resolver_match.url_name == 'lista_categorias' or request.resolver_match.url_name == 'lista_gramajes' or request.resolver_match.url_name == 'lista_presentaciones' %}active{% endif %}">
                     <a href="#" class="menu-link">
                         <i class='bx bx-wrench'></i>
                         <span>Administrar</span>
@@ -245,15 +235,16 @@
 
                     </ul>
                 </li>
-            {% endif %}
+                {% endif %}
 
 
 
 
 
-            <!-- INVENTARIOS -->
-            {% if user|has_role:"Administrador,Producto Terminado,Producto a Granel,Recursos Humanos" %}
-                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'listar_productos_granel' or request.resolver_match.url_name == 'listar_productosPT' %}active{% endif %}">
+                <!-- INVENTARIOS -->
+                {% if user|has_role:"Administrador,Producto Terminado,Producto a Granel,Recursos Humanos" %}
+                <li
+                    class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'listar_productos_granel' or request.resolver_match.url_name == 'listar_productosPT' %}active{% endif %}">
                     <a href="#" class="menu-link">
                         <i class='bx bx-data'></i>
                         <span>Inventarios</span>
@@ -261,24 +252,41 @@
                     </a>
                     <ul class="sub-menu">
                         {% if user|has_role:"Administrador,Producto a Granel,Recursos Humanos" %}
-                            <li><a href="{% url 'listar_productos_granel' %}" class="sub-menu-link">Producto Granel</a>
-                            </li>
+                        <li><a href="{% url 'listar_productos_granel' %}" class="sub-menu-link">Producto Granel</a>
+                        </li>
                         {% endif %}
                         {% if user|has_role:"Administrador,Producto Terminado,Recursos Humanos" %}
 
-                            <li><a href="{% url 'listar_productosPT' %}" class="sub-menu-link">Producto Terminado</a>
-                            </li>
+                        <li><a href="{% url 'listar_productosPT' %}" class="sub-menu-link">Producto Terminado</a>
+                        </li>
                         {% endif %}
                     </ul>
                 </li>
-            {% endif %}
-        
-        
-        
-        
-                    <!-- REPARTO -->
-            {% if user|has_role:"Administrador,Producto Terminado,Recursos Humanos" %}
-                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'lista_pedidos_reparto' or request.resolver_match.url_name == 'minibodega_lista'  or request.resolver_match.url_name == 'detalle_pedido_reparto'  or request.resolver_match.url_name == 'minibodega_detalle' or request.resolver_match.url_name == 'lista_ventas' or request.resolver_match.url_name == 'detalle_venta' or request.resolver_match.url_name == 'lista_devoluciones' or request.resolver_match.url_name == 'detalle_devolucion'%}active{% endif %}">
+                {% endif %}
+
+                <!-- RUTAS -->
+                {% if user|has_role:"Administrador,Producto a Granel" %}
+                <li
+                    class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'listar_vehiculos' or request.resolver_match.url_name == 'listar_rutas' or request.resolver_match.url_name == 'listar_clientes' %}active{% endif %}">
+                    <a href="#" class="menu-link">
+                        <i class='bx bx-map'></i>
+                        <span>Rutas</span>
+                        <i class='bx bx-chevron-down'></i>
+                    </a>
+                    <ul class="sub-menu">
+                        <li><a href="{% url 'listar_vehiculos' %}" class="sub-menu-link">Vehículos</a></li>
+                        <li><a href="{% url 'listar_rutas' %}" class="sub-menu-link">Rutas</a></li>
+                        <li><a href="{% url 'listar_clientes' %}" class="sub-menu-link">Clientes</a></li>
+                    </ul>
+                </li>
+
+                {% endif %}
+
+
+                <!-- REPARTO -->
+                {% if user|has_role:"Administrador,Producto Terminado,Recursos Humanos" %}
+                <li
+                    class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'lista_pedidos_reparto' or request.resolver_match.url_name == 'minibodega_lista'  or request.resolver_match.url_name == 'detalle_pedido_reparto'  or request.resolver_match.url_name == 'minibodega_detalle' or request.resolver_match.url_name == 'lista_ventas' or request.resolver_match.url_name == 'detalle_venta' or request.resolver_match.url_name == 'lista_devoluciones' or request.resolver_match.url_name == 'detalle_devolucion'%}active{% endif %}">
                     <a href="#" class="menu-link">
                         <i class='bx bxs-truck'></i>
                         <span>Reparto</span>
@@ -286,85 +294,87 @@
                     </a>
                     <ul class="sub-menu">
                         {% if user|has_role:"Administrador,Producto Terminado" %}
-                            <li><a href="{% url 'lista_pedidos_reparto' %}" class="sub-menu-link">Pedidos Rutas</a>
-                            </li>
+                        <li><a href="{% url 'lista_pedidos_reparto' %}" class="sub-menu-link">Pedidos Rutas</a>
+                        </li>
                         {% endif %}
-                            <li><a href="{% url 'minibodega_lista' %}" class="sub-menu-link">Bodegas de Rutas</a>
-                            </li>
+                        <li><a href="{% url 'minibodega_lista' %}" class="sub-menu-link">Bodegas de Rutas</a>
+                        </li>
                         <li><a href="{% url 'lista_ventas' %}" class="sub-menu-link">Ventas</a>
-                            </li>
+                        </li>
                         <li><a href="{% url 'lista_devoluciones' %}" class="sub-menu-link">Devoluciones</a>
-                            </li>
+                        </li>
+                        <li><a href="{% url 'lista_cortes_minibodega' %}" class="sub-menu-link">Cortes</a>
+                        </li>
                     </ul>
                 </li>
-            {% endif %}
+                {% endif %}
 
-            {% if user|has_role:"Administrador" %}
-                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'lista_pedidos_reparto' or request.resolver_match.url_name == 'minibodega_lista'  or request.resolver_match.url_name == 'detalle_pedido_reparto'  or request.resolver_match.url_name == 'minibodega_detalle' or request.resolver_match.url_name == 'lista_ventas' or request.resolver_match.url_name == 'detalle_venta' or request.resolver_match.url_name == 'lista_devoluciones' or request.resolver_match.url_name == 'detalle_devolucion'%}active{% endif %}">
+                {% if user|has_role:"Administrador" %}
+                <li
+                    class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'lista_pedidos_reparto' or request.resolver_match.url_name == 'minibodega_lista'  or request.resolver_match.url_name == 'detalle_pedido_reparto'  or request.resolver_match.url_name == 'minibodega_detalle' or request.resolver_match.url_name == 'lista_ventas' or request.resolver_match.url_name == 'detalle_venta' or request.resolver_match.url_name == 'lista_devoluciones' or request.resolver_match.url_name == 'detalle_devolucion'%}active{% endif %}">
                     <a href="#" class="menu-link">
                         <i class='bx bxs-mobile'></i>
                         <span>Dispositivos moviles</span>
                         <i class='bx bx-chevron-down'></i>
                     </a>
                     <ul class="sub-menu">
-                            <li><a href="{% url 'lista_dispositivos' %}" class="sub-menu-link">Dispositivos</a>
+                        <li><a href="{% url 'lista_dispositivos' %}" class="sub-menu-link">Dispositivos</a>
                     </ul>
                 </li>
-            {% endif %}
+                {% endif %}
 
 
-        </ul>
+            </ul>
+        </div>
+        <div class="footer">
+            <ul class="menu">
+                <li class="menu-item menu-item-static">
+                    <a href="#" class="menu-link">
+                        <i class='bx bx-bell'></i>
+                        <span>Notifications</span>
+                    </a>
+                </li>
+
+                <li class="menu-item menu-item-dropdown">
+                    <a href="#" class="menu-link">
+                        <i class='bx bx-cog'></i>
+                        <span>Settings</span>
+                        <i class='bx bx-chevron-down'></i>
+                    </a>
+
+                    {% if user|has_role:"Administrador,Producto Terminado" %}
+
+                    <ul class="sub-menu">
+                        <li>
+                            <a href="{% url 'cargar_productos' %}" class="sub-menu-link">Carga masiva de productos</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'cargar_clientes_csv' %}" class="sub-menu-link">Carga masiva de clientes</a>
+                        </li>
+                    </ul>
+                    {% endif %}
+                </li>
+
+            </ul>
+
+        </div>
     </div>
-    <div class="footer">
-        <ul class="menu">
-            <li class="menu-item menu-item-static">
-                <a href="#" class="menu-link">
-                    <i class='bx bx-bell'></i>
-                    <span>Notifications</span>
-                </a>
-            </li>
-            
-           <li class="menu-item menu-item-dropdown">
-    <a href="#" class="menu-link">
-        <i class='bx bx-cog'></i>
-        <span>Settings</span>
-        <i class='bx bx-chevron-down'></i>
-    </a>
-
-    {% if user|has_role:"Administrador,Producto Terminado" %}
-
-    <ul class="sub-menu">
-        <li>
-            <a href="{% url 'cargar_productos' %}" class="sub-menu-link">Carga masiva de productos</a>
-        </li>
-        <li>
-            <a href="{% url 'cargar_clientes_csv' %}" class="sub-menu-link">Carga masiva de clientes</a>
-        </li>
-    </ul>
-    {% endif %}
-</li>
-            
-        </ul>
-
-    </div>
-</div>
-<main style="margin-top: 50px;">
-    {% block content %}
+    <main style="margin-top: 50px;">
+        {% block content %}
         <!-- Contenido específico de cada vista -->
-    {% endblock %}
-</main>
+        {% endblock %}
+    </main>
 
 
-<script src="{% static 'js/base/sidebar.js' %}"></script>
+    <script src="{% static 'js/base/sidebar.js' %}"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.4/dist/js/bootstrap.bundle.min.js"
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.4/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YUe2LzesAfftltw+PEaao2tjU/QATaW/rOitAq67e0CT0Zi2VVRL0oC4+gAaeBKu"
         crossorigin="anonymous"></script>
 
-<link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
 
-<!-- Registro de cambios -->
-{% include 'Partials/changelog_modal.html' with changelog_version='2.1.0' changelog_title='Novedades — (19 Ago 2025)' %}
+    <!-- Registro de cambios -->
 
 </body>
 
@@ -379,6 +389,7 @@
         0% {
             transform: rotate(0deg);
         }
+
         100% {
             transform: rotate(360deg);
         }
@@ -401,112 +412,108 @@
 
 {% if user|has_role:"Administrador,Producto a Granel" %}
 
-    <!-- Librerías -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- Librerías -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <script>
-        const notificationSound = new Audio('/static/sounds/notify.mp3');
-        notificationSound.load();
+<script>
+    const notificationSound = new Audio('/static/sounds/notify.mp3');
+    notificationSound.load();
 
-        let notificationsEnabled = JSON.parse(localStorage.getItem('notificationsEnabled')) ?? true;
-        let soundEnabled = JSON.parse(localStorage.getItem('soundEnabled')) ?? true;
+    let notificationsEnabled = JSON.parse(localStorage.getItem('notificationsEnabled')) ?? true;
+    let soundEnabled = JSON.parse(localStorage.getItem('soundEnabled')) ?? true;
 
-        const icon = document.getElementById('notificationToggle');
+    const icon = document.getElementById('notificationToggle');
 
-        function updateIcon() {
-            if (notificationsEnabled && soundEnabled) {
-                icon.className = 'bi fs-5 position-relative icon-hover bi-bell-fill';
-            } else {
-                icon.className = 'bi fs-5 position-relative icon-hover bi-bell-slash-fill text-muted';
-            }
+    function updateIcon() {
+        if (notificationsEnabled && soundEnabled) {
+            icon.className = 'bi fs-5 position-relative icon-hover bi-bell-fill';
+        } else {
+            icon.className = 'bi fs-5 position-relative icon-hover bi-bell-slash-fill text-muted';
         }
+    }
 
-        icon.addEventListener('click', () => {
-            // Alternar el estado
-            const turningOn = !(notificationsEnabled && soundEnabled);
-            notificationsEnabled = turningOn;
-            soundEnabled = turningOn;
+    icon.addEventListener('click', () => {
+        // Alternar el estado
+        const turningOn = !(notificationsEnabled && soundEnabled);
+        notificationsEnabled = turningOn;
+        soundEnabled = turningOn;
 
-            // Guardar en localStorage
-            localStorage.setItem('notificationsEnabled', notificationsEnabled);
-            localStorage.setItem('soundEnabled', soundEnabled);
-            updateIcon();
-
-            // Si se está activando, pedir permiso de audio
-            if (turningOn) {
-                notificationSound.play().catch(e => {
-                    console.warn("Sonido bloqueado, mostrando alerta:", e);
-                    Swal.fire({
-                        title: '🔊 Activa el sonido',
-                        text: 'Haz clic en este mensaje para permitir notificaciones con audio.',
-                        icon: 'info',
-                        confirmButtonText: 'Activar sonido',
-                        background: '#f0f9ff'
-                    }).then(() => {
-                        notificationSound.play().catch(err => console.log("Error persistente:", err));
-                    });
-                });
-            }
-        });
-
+        // Guardar en localStorage
+        localStorage.setItem('notificationsEnabled', notificationsEnabled);
+        localStorage.setItem('soundEnabled', soundEnabled);
         updateIcon();
 
-        // Pusher
-        const pusher = new Pusher('f15154bb7979deba25ba', {
-            cluster: 'us2',
-            encrypted: true
-        });
-
-        const channel = pusher.subscribe('pedidos-channel');
-        channel.bind('nuevo-pedido', function (data) {
-            if (!notificationsEnabled) return;
-
-            const mensaje = `🛒 Nuevo pedido de <strong>${data.usuario}</strong> (ID: ${data.pedido_id})`;
-
-            // Notificación
-            Swal.fire({
-                title: '¡Nuevo pedido!',
-                html: mensaje,
-                icon: 'success',
-                position: 'bottom-end',
-                background: '#343a40',
-                color: '#fff',
-                showConfirmButton: false,
-                timer: 9000,
-                toast: true
-            });
-
-            // Sonido
-            if (soundEnabled) {
-                notificationSound.play().catch(e => {
-                    Swal.fire({
-                        title: '🔔 Activa el sonido',
-                        text: 'Haz clic para permitir notificaciones con audio.',
-                        icon: 'info',
-                        confirmButtonText: 'Entendido'
-                    }).then(() => {
-                        notificationSound.play().catch(err => console.log("Error persistente:", err));
-                    });
+        // Si se está activando, pedir permiso de audio
+        if (turningOn) {
+            notificationSound.play().catch(e => {
+                console.warn("Sonido bloqueado, mostrando alerta:", e);
+                Swal.fire({
+                    title: '🔊 Activa el sonido',
+                    text: 'Haz clic en este mensaje para permitir notificaciones con audio.',
+                    icon: 'info',
+                    confirmButtonText: 'Activar sonido',
+                    background: '#f0f9ff'
+                }).then(() => {
+                    notificationSound.play().catch(err => console.log("Error persistente:", err));
                 });
-            }
+            });
+        }
+    });
+
+    updateIcon();
+
+    // Pusher
+    const pusher = new Pusher('f15154bb7979deba25ba', {
+        cluster: 'us2',
+        encrypted: true
+    });
+
+    const channel = pusher.subscribe('pedidos-channel');
+    channel.bind('nuevo-pedido', function (data) {
+        if (!notificationsEnabled) return;
+
+        const mensaje = `🛒 Nuevo pedido de <strong>${data.usuario}</strong> (ID: ${data.pedido_id})`;
+
+        // Notificación
+        Swal.fire({
+            title: '¡Nuevo pedido!',
+            html: mensaje,
+            icon: 'success',
+            position: 'bottom-end',
+            background: '#343a40',
+            color: '#fff',
+            showConfirmButton: false,
+            timer: 9000,
+            toast: true
         });
-    </script>
 
-    <style>
-        .icon-hover:hover {
-            color: #078bcf;
+        // Sonido
+        if (soundEnabled) {
+            notificationSound.play().catch(e => {
+                Swal.fire({
+                    title: '🔔 Activa el sonido',
+                    text: 'Haz clic para permitir notificaciones con audio.',
+                    icon: 'info',
+                    confirmButtonText: 'Entendido'
+                }).then(() => {
+                    notificationSound.play().catch(err => console.log("Error persistente:", err));
+                });
+            });
         }
+    });
+</script>
 
-        .bi-bell-slash-fill.text-muted {
-            opacity: 0.6;
-        }
-    </style>
+<style>
+    .icon-hover:hover {
+        color: #078bcf;
+    }
+
+    .bi-bell-slash-fill.text-muted {
+        opacity: 0.6;
+    }
+</style>
 {% endif %}
 
 </html>
-
-
-
-

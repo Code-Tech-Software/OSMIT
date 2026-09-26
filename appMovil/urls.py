@@ -37,6 +37,7 @@ urlpatterns = [
     path('pedidos/<int:pedido_id>/procesar/', views.procesar_reabastecimiento, name='procesar_reabastecimiento'),
 
     path('minibodegas/', views.minibodega_list, name='minibodega_lista'),
+    path('minibodegas/cerrar/<int:pk>/',views.cerrar_minibodega,name='cerrar_minibodega'),
 
     # Ruta para el detalle (Llama a la función minibodega_detail pasando el pk)
     path('minibodegas/<int:pk>/', views.minibodega_detail, name='minibodega_detalle'),
@@ -69,6 +70,11 @@ urlpatterns = [
     path('dispositivos/<int:dispositivo_id>/eliminar/', views.eliminar_dispositivo, name='eliminar_dispositivo'),
     path('dispositivos/<int:dispositivo_id>/editar/', views.editar_dispositivo, name='editar_dispositivo'),
     path('dispositivos/activar/',views.activar_dispositivo_api,name="activar_dispositivo_api"),
+
+    path( 'minibodega/cortes/realizar/<int:pk>/', views.realizar_corte_minibodega, name='realizar_corte_minibodega' ),
+    path( 'minibodega/cortes/', views.lista_cortes_minibodega, name='lista_cortes_minibodega' ),
+    path( 'minibodega/cortes/detalle/<int:corte_id>/', views.detalle_corte_minibodegas, name='detalle_corte_minibodega' ),
+    path( 'minibodega/cortes/ajustar/<int:corte_id>/',views.ajustar_inventario_minibodega,name='ajustar_inventario_minibodega'),
 
     #
     path('dashboard/repartidor/api/',views.dashboard_repartidor_api,name='dashboard_repartidor_api'),

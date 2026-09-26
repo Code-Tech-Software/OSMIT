@@ -25,7 +25,7 @@ from .models import (
     MiniBodegaDetalle,
     
 )
-from .models import Dispositivo
+from .models import Dispositivo,CorteInventarioMiniBodega,DetalleCorteInventarioMiniBodega
 from django.utils.decorators import method_decorator
 from django.db import transaction
 from django.db.models import F
@@ -573,14 +573,45 @@ def minibodega_detail(request, pk):
     }
     return render(request, 'appMovil/miniBodegas/minibodega_detail.html', context)
 
+@login_required
+@requiere_roles("Producto Terminado")
+def cerrar_minibodega(request, pk):
 
+    if request.method != 'POST':
+        return JsonResponse({
+            'success': False,
+            'message': 'Método no permitido.'
+        }, status=405)
 
+    try:
+        minibodega = get_object_or_404(
+            MiniBodega,
+            pk=pk
+        )
+
+        if not minibodega.estado:
+            return JsonResponse({
+                'success': False,
+                'message': 'La Mini Bodega ya está cerrada.'
+            })
+
+        minibodega.estado = False
+        minibodega.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'La Mini Bodega ha sido cerrada correctamente.'
+        })
+
+    except Exception as e:
+
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        })
 
 
 from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
-
-
 
 @login_required
 @requiere_roles("Producto Terminado")
@@ -1851,6 +1882,170 @@ def activar_dispositivo_api(request):
         status=status.HTTP_200_OK
     )
 
+
+@login_required
+@requiere_roles("Producto Terminado")
+def realizar_corte_minibodega(request,pk):
+    minibodega=get_object_or_404(MiniBodega,pk=pk)
+
+    detalles=MiniBodegaDetalle.objects.filter(
+        mini_bodega= minibodega
+        ).select_related(
+            'producto_variacion__producto',
+            'producto_variacion__presentacion'
+        )
+
+    if request.method=='POST':
+        observaciones=request.POST.get('observaciones','')
+
+        corte =CorteInventarioMiniBodega.objects.create(
+            mini_bodega=minibodega,
+            usuario=request.user,
+            observaciones=observaciones,
+            estado='correcto'
+        )
+
+        hay_diferencias=False
+
+        for detalle in detalles:
+            stock_teorico=detalle.cantidad_actual
+
+            stock_real=request.POST.get(
+                f'stock_real_{detalle.id}',
+                '0'
+            )
+
+            stock_real=Decimal(stock_real)
+            diferencia=stock_real-stock_teorico
+            ajuste_necesario=diferencia!=Decimal('0')
+            if ajuste_necesario:
+                hay_diferencias=True
+
+            DetalleCorteInventarioMiniBodega.objects.create(
+                corte_inventario=corte,
+                mini_bodega_detalle=detalle,
+                stock_teorico=stock_teorico,
+                stock_real=stock_real,
+                diferencia=diferencia,
+                ajuste_necesario=ajuste_necesario
+            )
+
+        if hay_diferencias:
+            corte.estado='pendiente'
+            corte.save()
+
+        messages.success(
+            request,
+            "Corte de inventario realizado correctamente"
+        )
+
+        return redirect('minibodega_lista')
+    context={
+        'minibodega': minibodega,
+        'detalles': detalles
+    }
+
+    return render( request, 'appMovil/cortes/realizar_corte.html', context )
+
+
+@login_required
+@requiere_roles("Producto Terminado")
+def lista_cortes_minibodega(request):
+    cortes =CorteInventarioMiniBodega.objects.select_related(
+        'mini_bodega',
+        'mini_bodega__ruta',
+        'mini_bodega__vehiculo',
+        'usuario'
+    ).order_by('-fecha', '-id')
+
+    for corte in cortes:
+        corte.requiere_ajustes=corte.estado=='pendiente'
+
+    context={
+        'cortes':cortes
+    }
+
+    return render(
+        request,
+        'appMovil/cortes/lista_cortes.html',
+        context
+    )
+
+
+@login_required
+@requiere_roles("Producto Terminado")
+def detalle_corte_minibodegas(request,corte_id):
+    corte=get_object_or_404(
+        CorteInventarioMiniBodega,
+        id=corte_id
+    )
+
+    detalles=DetalleCorteInventarioMiniBodega.objects.filter(
+        corte_inventario=corte
+    ).select_related(
+        'mini_bodega_detalle__producto_variacion__producto',
+        'mini_bodega_detalle__producto_variacion__presentacion'
+    )
+    context={
+        'corte':corte,
+        'detalles':detalles
+    }
+
+    return render(
+        request,
+        'appMovil/cortes/detalle_corte.html',
+        context
+    )
+
+
+@login_required
+@requiere_roles("Producto Terminado")
+def ajustar_inventario_minibodega(request,corte_id):
+    corte=get_object_or_404(
+        CorteInventarioMiniBodega,
+        id=corte_id
+    )
+    detalles=DetalleCorteInventarioMiniBodega.objects.filter(
+        corte_inventario=corte
+    ).select_related(
+        'mini_bodega_detalle__producto_variacion__producto',
+        'mini_bodega_detalle__producto_variacion__presentacion'
+    )
+
+    if request.method=='POST':
+        for detalle in detalles:
+            if detalle.diferencia !=Decimal('0'):
+                mini_bodega_detalle=detalle.mini_bodega_detalle
+                mini_bodega_detalle.cantidad_actual=detalle.stock_real
+                mini_bodega_detalle.save()
+
+        corte.estado='ajustado'
+        corte.save()
+
+        messages.success(
+            request,
+            "Ajuste de inventario realizado correctamente"
+        )
+
+        return redirect ('lista_cortes_minibodega')
+
+    context = {
+        'corte': corte,
+        'detalles': detalles
+    }
+
+    return render(
+        request,
+        'appMovil/cortes/ajuste_inventario.html',
+        context
+    )
+    
+
+
+
+
+
+###Dasboard
 
 @login_required
 def dashboard_repartidor_api(request):

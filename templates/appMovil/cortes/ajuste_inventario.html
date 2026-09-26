@@ -1,0 +1,199 @@
+{% extends 'Base/Sidebar.html' %}
+
+{% load static %}
+
+{% block content %}
+
+<div class="container-fluid">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>Ajustar inventario</h2>
+            <p class="text-muted mb-0">
+                Corte #{{ corte.id }} -
+                Mini Bodega #{{ corte.mini_bodega.id }}
+            </p>
+        </div>
+    </div>
+
+    <!-- Información del corte -->
+    <div class="card mb-4">
+        <div class="card-body">
+
+            <div class="row">
+
+                <div class="col-md-3">
+                    <strong>Mini Bodega:</strong>
+                    <p>{{ corte.mini_bodega.id }}</p>
+                </div>
+
+                <div class="col-md-3">
+                    <strong>Ruta:</strong>
+                    <p>{{ corte.mini_bodega.ruta.nombre }}</p>
+                </div>
+
+                <div class="col-md-3">
+                    <strong>Fecha:</strong>
+                    <p>{{ corte.fecha|date:"d/m/Y H:i" }}</p>
+                </div>
+
+                <div class="col-md-3">
+                    <strong>Estado:</strong>
+                    <p>
+                        <span class="badge bg-warning text-dark">
+                            Pendiente
+                        </span>
+                    </p>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- Detalles del ajuste -->
+    <form method="POST" id="formAjuste">
+
+        {% csrf_token %}
+
+        <div class="card">
+
+            <div class="card-header">
+                <h5 class="mb-0">
+                    Productos a ajustar
+                </h5>
+            </div>
+
+            <div class="card-body">
+
+                <div class="table-responsive">
+
+                    <table class="table table-striped table-bordered">
+
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Presentación</th>
+                                <th>Stock teórico</th>
+                                <th>Stock real</th>
+                                <th>Diferencia</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                            {% for detalle in detalles %}
+
+                            {% if detalle.diferencia != 0 %}
+
+                            <tr>
+
+                                <td>
+                                    {{ detalle.mini_bodega_detalle.producto_variacion.producto.nombre }}
+                                </td>
+
+                                <td>
+                                    {{ detalle.mini_bodega_detalle.producto_variacion.presentacion.nombre }}
+                                </td>
+
+                                <td>
+                                    {{ detalle.stock_teorico }}
+                                </td>
+
+                                <td>
+                                    {{ detalle.stock_real }}
+                                </td>
+
+                                <td>
+                                    {% if detalle.diferencia > 0 %}
+                                    <span class="text-success">
+                                        +{{ detalle.diferencia }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-danger">
+                                        {{ detalle.diferencia }}
+                                    </span>
+                                    {% endif %}
+                                </td>
+
+                            </tr>
+
+                            {% endif %}
+
+                            {% empty %}
+
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    No hay productos para ajustar.
+                                </td>
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+                <div class="alert alert-warning mt-3 mb-0">
+                    <strong>Importante:</strong>
+                    al confirmar, el stock actual de los productos
+                    se actualizará con el stock real registrado en este corte.
+                </div>
+
+            </div>
+
+            <div class="card-footer d-flex justify-content-end gap-2">
+
+                <a href="{% url 'detalle_corte_minibodega' corte.id %}" class="btn btn-secondary">
+                    Cancelar
+                </a>
+
+                <button type="submit" class="btn btn-warning">
+                    Ajustar inventario
+                </button>
+
+            </div>
+
+        </div>
+
+    </form>
+
+</div>
+
+
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+
+    document.getElementById('formAjuste').addEventListener('submit', function (e) {
+
+        e.preventDefault();
+
+        const form = this;
+
+        Swal.fire({
+            title: '¿Confirmar ajuste?',
+            text: 'El stock actual de la Mini Bodega será actualizado con el stock real del corte.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, ajustar inventario',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#f0ad4e',
+            cancelButtonColor: '#6c757d'
+        }).then((result) => {
+
+            if (result.isConfirmed) {
+                form.submit();
+            }
+
+        });
+
+    });
+
+</script>
+
+{% endblock %}

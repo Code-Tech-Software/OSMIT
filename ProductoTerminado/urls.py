@@ -29,6 +29,11 @@ urlpatterns = [
     path('historial-salidas/', views.historial_salidas, name='historial_salidasPT'),
     path('salida/<int:salida_id>/detalle', views.detalle_salida, name='detalle_salida'),
 
+    path('cortes/realizar/', views.realizar_corte_pt, name='realizar_corte_pt' ),
+    path('cortes/',views.lista_cortes_pt,name='lista_cortes_pt'),
+    path('cortes/ajustar/<int:corte_id>/',views.ajustar_inventario_pt,name='ajustar_inventario_pt'),
+    path('cortes/detalle/<int:corte_id>/',views.detalle_corte_pt,name='detalle_corte_pt'),
+
     # DASBOAR
 
     path('api/stock_productos/', views.stock_productos),

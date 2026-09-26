@@ -167,7 +167,27 @@ class InventarioRuta(models.Model):
 
 
 
+class CorteInventarioPTerminado(models.Model):
+    fecha=models.DateTimeField(auto_now=True)
+    usuario=models.ForeignKey(User,on_delete=models.CASCADE)
+    observaciones=models.TextField(blank=True,null=True)
+    estado=models.CharField(
+        max_length=20,
+        choices=[ ('pendiente', 'Pendiente'), ('correcto', 'Correcto'), ('ajustado', 'Ajustado') ], default='correcto'
+    )
 
+    def __str__(self):
+        return f"Corte Inventario PT {self.id} - Estado: {self.estado}"
 
+class DetalleCorteInventarioPTerminado(models.Model):
+    corte_inventario = models.ForeignKey( CorteInventarioPTerminado, on_delete=models.CASCADE )
+    producto_variacion = models.ForeignKey( ProductoVariacion, on_delete=models.CASCADE )
+    stock_teorico = models.DecimalField( max_digits=10, decimal_places=2 )
+    stock_real = models.DecimalField( max_digits=10, decimal_places=2 )
+    diferencia = models.DecimalField( max_digits=10, decimal_places=2 )
+    ajuste_necesario = models.BooleanField(default=False)
+    
+    def __str__(self):
+        return ( f"Detalle Corte {self.id} - " f"Producto: {self.producto_variacion}" )
 
 

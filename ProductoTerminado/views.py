@@ -23,10 +23,10 @@ import csv
 import datetime
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.db.models import Sum
-from .models import DetalleSalidaPTerminado, ProductoTerminado
+from .models import DetalleSalidaPTerminado, ProductoTerminado,CorteInventarioPTerminado,DetalleCorteInventarioPTerminado
 from django.forms import inlineformset_factory
 from django.db import transaction
-from .forms import ProductoVariacionBaseFormSet
+from .forms import ProductoVariacionBaseFormSet, CorteInventarioPTerminadoForm
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from .models import ProductoTerminado
@@ -1421,6 +1421,261 @@ def lista_productos_terminados(request):
         'Produccion/lista_produccion_productoT.html',
         {'variaciones':variaciones}
     )
+
+
+
+@login_required
+@requiere_roles("Producto Terminado")
+def realizar_corte_pt(request):
+
+    variaciones = ProductoVariacion.objects.filter(
+        producto__estado=True
+    ).select_related(
+        'producto',
+        'presentacion'
+    ).order_by(
+        'producto__nombre',
+        'presentacion__nombre'
+    )
+
+    if request.method == "POST":
+
+        form = CorteInventarioPTerminadoForm(request.POST)
+
+        if form.is_valid():
+
+            # Primero validamos que todos los productos
+            # hayan enviado su stock real.
+            stocks_reales = {}
+
+            for variacion in variaciones:
+
+                stock_real_str = request.POST.get(
+                    f'stock_real_{variacion.id}'
+                )
+
+                if stock_real_str is None or stock_real_str == '':
+                    messages.error(
+                        request,
+                        f"No se recibió el stock real de "
+                        f"{variacion.producto.nombre} - "
+                        f"{variacion.presentacion.nombre}."
+                    )
+
+                    return render(
+                        request,
+                        'ProductoTerminado/cortes/realizar_corte.html',
+                        {
+                            'form': form,
+                            'variaciones': variaciones,
+                        }
+                    )
+
+                try:
+                    stock_real = Decimal(stock_real_str)
+
+                except (InvalidOperation, ValueError):
+                    messages.error(
+                        request,
+                        f"El stock real de "
+                        f"{variacion.producto.nombre} - "
+                        f"{variacion.presentacion.nombre} "
+                        f"no es válido."
+                    )
+
+                    return render(
+                        request,
+                        'ProductoTerminado/cortes/realizar_corte.html',
+                        {
+                            'form': form,
+                            'variaciones': variaciones,
+                        }
+                    )
+
+                if stock_real < Decimal('0'):
+                    messages.error(
+                        request,
+                        f"El stock real de "
+                        f"{variacion.producto.nombre} - "
+                        f"{variacion.presentacion.nombre} "
+                        f"no puede ser negativo."
+                    )
+
+                    return render(
+                        request,
+                        'ProductoTerminado/cortes/realizar_corte.html',
+                        {
+                            'form': form,
+                            'variaciones': variaciones,
+                        }
+                    )
+
+                stocks_reales[variacion.id] = stock_real
+
+            # Si todos los valores son válidos,
+            # ahora sí creamos el corte.
+            with transaction.atomic():
+
+                corte = form.save(commit=False)
+
+                corte.usuario = request.user
+                corte.fecha = timezone.now()
+                corte.estado = 'correcto'
+                corte.save()
+
+                requiere_ajuste = False
+
+                for variacion in variaciones:
+
+                    stock_teorico = variacion.stock
+                    stock_real = stocks_reales[variacion.id]
+
+                    diferencia = stock_real - stock_teorico
+
+                    ajuste_necesario = (
+                        diferencia != Decimal('0')
+                    )
+
+                    if ajuste_necesario:
+                        requiere_ajuste = True
+
+                    DetalleCorteInventarioPTerminado.objects.create(
+                        corte_inventario=corte,
+                        producto_variacion=variacion,
+                        stock_teorico=stock_teorico,
+                        stock_real=stock_real,
+                        diferencia=diferencia,
+                        ajuste_necesario=ajuste_necesario
+                    )
+
+                if requiere_ajuste:
+                    corte.estado = 'pendiente'
+                    corte.save()
+
+            messages.success(
+                request,
+                "Corte de inventario registrado correctamente."
+            )
+
+            return redirect('lista_cortes_pt')
+
+        else:
+
+            messages.error(
+                request,
+                "Corrige los errores del formulario."
+            )
+
+    else:
+
+        form = CorteInventarioPTerminadoForm()
+
+    context = {
+        'form': form,
+        'variaciones': variaciones,
+    }
+
+    return render(
+        request,
+        'ProductoTerminado/cortes/realizar_corte.html',
+        context
+    )
+
+
+
+
+@login_required
+@requiere_roles("Producto Terminado")
+def lista_cortes_pt(request):
+
+    cortes = CorteInventarioPTerminado.objects.all().select_related(
+        'usuario'
+    ).order_by('-fecha')
+
+    return render(
+        request,
+        'ProductoTerminado/cortes/lista_cortes.html',
+        {'cortes': cortes}
+    )
+
+
+@login_required
+@requiere_roles("Producto Terminado")
+def ajustar_inventario_pt(request, corte_id):
+    """
+    Vista para ajustar el inventario a partir de un corte de
+    Producto Terminado.
+    """
+
+    corte = get_object_or_404(
+        CorteInventarioPTerminado,
+        id=corte_id
+    )
+
+    detalles = corte.detallecorteinventariopterminado_set.all()
+
+    if request.method == "POST":
+
+        for detalle in detalles:
+
+            if detalle.diferencia != Decimal('0'):
+
+                variacion = detalle.producto_variacion
+
+                # Actualizar el stock al stock real registrado en el corte
+                variacion.stock = detalle.stock_real
+                variacion.save()
+
+        corte.estado = 'ajustado'
+        corte.save()
+
+        messages.success(
+            request,
+            "Ajuste realizado correctamente."
+        )
+
+        return redirect('lista_cortes_pt')
+
+    context = {
+        'corte': corte,
+        'detalles': detalles,
+    }
+
+    return render(
+        request,
+        'ProductoTerminado/cortes/ajuste_inventario.html',
+        context
+    )
+
+
+
+@login_required
+@requiere_roles("Producto Terminado")
+def detalle_corte_pt(request, corte_id):
+    """
+    Vista para mostrar los detalles de un corte de
+    Producto Terminado.
+    """
+
+    corte = get_object_or_404(
+        CorteInventarioPTerminado,
+        id=corte_id
+    )
+
+    detalles = corte.detallecorteinventariopterminado_set.all()
+
+    context = {
+        'corte': corte,
+        'detalles': detalles,
+    }
+
+    return render(
+        request,
+        'ProductoTerminado/cortes/detalle_corte.html',
+        context
+    )
+
+
 
 # PARA EL DASSBOAR
 

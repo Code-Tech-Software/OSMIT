@@ -1,0 +1,243 @@
+{% extends 'Base/Sidebar.html' %}
+
+{% load static %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+
+<div class="container-fluid py-4">
+
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                Inventario | Corte Producto Terminado
+            </h2>
+            <p class="text-muted mb-0">
+                Registra el stock real de los productos terminados.
+            </p>
+        </div>
+    </div>
+
+    <!-- Formulario -->
+    <form method="POST" id="formCorte">
+
+        {% csrf_token %}
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+
+                <h5 class="fw-semibold mb-3">
+                    Observaciones
+                </h5>
+
+                {{ form.as_p }}
+
+            </div>
+        </div>
+
+
+        <!-- Tabla de productos -->
+        <div class="card shadow-sm">
+
+            <div class="card-body">
+
+                <div class="table-responsive">
+
+                    <table id="tablaCorte" class="table table-hover align-middle w-100">
+
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Presentación</th>
+                                <th>Stock Teórico</th>
+                                <th>Stock Real</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                            {% for variacion in variaciones %}
+
+                            <tr>
+
+                                <!-- Producto -->
+                                <td>
+                                    <span class="fw-semibold">
+                                        {{ variacion.producto.nombre }}
+                                    </span>
+                                </td>
+
+
+                                <!-- Presentación -->
+                                <td>
+                                    {{ variacion.presentacion.nombre }}
+                                </td>
+
+
+                                <!-- Stock teórico -->
+                                <td>
+
+                                    {% if variacion.stock == 0 %}
+
+                                    <span class="text-danger fw-semibold">
+                                        {{ variacion.stock }}
+                                    </span>
+
+                                    <i class="bi bi-x-octagon-fill text-danger ms-1" title="Producto agotado"></i>
+
+                                    {% elif variacion.stock <= variacion.stock_min %} <span class="fw-semibold">
+                                        {{ variacion.stock }}
+                                        </span>
+
+                                        <i class="bi bi-exclamation-triangle-fill text-warning ms-2"
+                                            title="Stock por debajo del mínimo"></i>
+
+                                        {% else %}
+
+                                        <span class="fw-semibold">
+                                            {{ variacion.stock }}
+                                        </span>
+
+                                        {% endif %}
+
+                                </td>
+
+
+                                <!-- Stock real -->
+                                <td>
+
+                                    <input type="number" name="stock_real_{{ variacion.id }}" class="form-control"
+                                        step="0.5" value="{{ variacion.stock }}" min="0" required>
+
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Botones -->
+        <div class="d-flex justify-content-between mt-4">
+
+            <a href="{% url 'lista_cortes_pt' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i>
+                Regresar
+            </a>
+
+            <button type="button" class="btn btn-success" id="btnRegistrarCorte">
+                <i class="bi bi-check-circle"></i>
+                Registrar Corte
+            </button>
+
+        </div>
+
+    </form>
+
+</div>
+
+
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<!-- DataTables -->
+<script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+
+        $('#tablaCorte').DataTable({
+
+            paging: false,
+            responsive: false,
+
+            language: {
+                search: "Buscar:",
+                info: "Mostrando _TOTAL_ registros",
+                infoEmpty: "Mostrando 0 registros",
+                infoFiltered: "(filtrado de _MAX_ registros totales)",
+                zeroRecords: "No se encontraron productos",
+                emptyTable: "No hay productos disponibles"
+            }
+
+        });
+
+    });
+</script>
+
+
+<!-- Confirmación -->
+<script>
+
+    document
+        .getElementById('btnRegistrarCorte')
+        .addEventListener('click', function () {
+
+            Swal.fire({
+                title: '¿Todo correcto?',
+                text: 'Se guardarán los valores del stock actual.',
+                icon: 'question',
+                showCancelButton: true,
+
+                confirmButtonColor: 'var(--success-color)',
+                cancelButtonColor: 'var(--secondary-color)',
+
+                confirmButtonText: 'Sí, registrar',
+                cancelButtonText: 'Cancelar',
+
+                customClass: {
+                    confirmButton: 'swal-btn-text',
+                    cancelButton: 'swal-btn-text'
+                }
+            }).then((result) => {
+
+                if (result.isConfirmed) {
+                    document
+                        .getElementById('formCorte')
+                        .submit();
+                }
+
+            });
+
+        });
+
+</script>
+
+
+<!-- Notyf -->
+<script>
+
+    document.addEventListener("DOMContentLoaded", function () {
+
+        {% if messages %}
+
+        {% for message in messages %}
+
+        new Notyf().{ { message.tags } } (
+            "{{ message }}"
+        );
+
+        {% endfor %}
+
+        {% endif %}
+
+    });
+
+</script>
+
+{% endblock %}

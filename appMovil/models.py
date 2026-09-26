@@ -155,9 +155,7 @@ class MiniBodegaDetalleMerma(models.Model):
 
 class Dispositivo(models.Model):
     codigo = models.CharField(max_length=50, unique=True)
-
     credencial_hash = models.CharField(max_length=255)
-
     repartidor = models.ForeignKey(
         Usuario,
         on_delete=models.SET_NULL,
@@ -165,11 +163,8 @@ class Dispositivo(models.Model):
         blank=True,
         related_name="dispositivos"
     )
-
     activo = models.BooleanField(default=True)
-
     fecha_registro = models.DateTimeField(auto_now_add=True)
-
     ultima_conexion = models.DateTimeField(
         null=True,
         blank=True
@@ -177,3 +172,37 @@ class Dispositivo(models.Model):
 
     def __str__(self):
         return self.codigo
+
+
+class CorteInventarioMiniBodega(models.Model):
+    fecha=models.DateTimeField(auto_now_add=True)
+    mini_bodega=models.ForeignKey(MiniBodega, on_delete=models.CASCADE)
+    usuario=models.ForeignKey(Usuario,on_delete=models.CASCADE)
+    observaciones=models.TextField(blank=True,null=True)
+    estado=models.CharField(max_length=20,
+                            choices=[
+                                ('pendiente','Pendiente'),
+                                ('correcto','Correcto'),
+                                ('ajustado','Ajustado')
+                            ],
+                            default='correcto'
+                            )
+
+    def __str__(self):
+        return (f"Corte MiniBodega {self.id} - "
+            f"MiniBodega: {self.mini_bodega.id} - "
+            f"Estado: {self.estado}")
+
+class DetalleCorteInventarioMiniBodega(models.Model):
+    corte_inventario=models.ForeignKey(CorteInventarioMiniBodega,on_delete=models.CASCADE)
+    mini_bodega_detalle=models.ForeignKey( MiniBodegaDetalle,on_delete=models.CASCADE)
+    stock_teorico=models.DecimalField(max_digits=10,decimal_places=2)
+    stock_real=models.DecimalField(max_digits=10,decimal_places=2)
+    diferencia=models.DecimalField(max_digits=10,decimal_places=2)
+    ajuste_necesario=models.BooleanField(default=False)
+
+    def __str__(self):
+        return (
+            f"Detalle Corte {self.id} - "
+            f"{self.mini_bodega_detalle.producto_variacion}"
+        )
