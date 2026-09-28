@@ -1698,13 +1698,756 @@ def stock_productos(request):
     ))
     return Response(data)
 
+##Reporte semanal
+def reporte_salidas_semanales_pt(request):
 
+    destino = request.GET.get(
+        'destino',
+        'todos'
+    )
+
+    destinos_validos = {
+        'opcion1',
+        'opcion2',
+        'opcion3',
+        'opcion4',
+    }
+
+    if destino not in destinos_validos:
+        destino = 'todos'
+
+
+    semanas_param = request.GET.get(
+        'semanas',
+        ''
+    )
+
+    semanas = []
+
+    if semanas_param:
+
+        for fecha_str in semanas_param.split(','):
+
+            try:
+
+                fecha = datetime.strptime(
+                    fecha_str,
+                    '%Y-%m-%d'
+                ).date()
+
+                semanas.append(fecha)
+
+            except ValueError:
+                continue
+
+
+    # Si no se seleccionó ninguna semana,
+    # usamos la semana actual.
+
+    if not semanas:
+
+        hoy = now().date()
+
+        dias_desde_miercoles = (
+            hoy.weekday() - 2
+        ) % 7
+
+        inicio_semana = (
+            hoy -
+            timedelta(days=dias_desde_miercoles)
+        )
+
+        semanas = [
+            inicio_semana
+        ]
+
+
+    # Construimos todos los rangos seleccionados
+
+    filtros_semana = []
+
+    for inicio_semana in semanas:
+
+        fin_semana = (
+            inicio_semana +
+            timedelta(days=6)
+        )
+
+        domingo = (
+            inicio_semana +
+            timedelta(days=4)
+        )
+
+        filtros_semana.append(
+            Q(
+                salida_p_terminado__fecha_salida__date__range=(
+                    inicio_semana,
+                    fin_semana
+                )
+            )
+            &
+            ~Q(
+                salida_p_terminado__fecha_salida__date=domingo
+            )
+        )
+
+
+    # Combinar todas las semanas con OR
+
+    filtro_semanas = filtros_semana[0]
+
+    for filtro in filtros_semana[1:]:
+
+        filtro_semanas |= filtro
+
+
+    salidas = (
+        DetalleSalidaPTerminado.objects
+        .filter(
+            filtro_semanas,
+            cantidad__gt=0
+        )
+    )
+
+
+    # Filtro de destino
+
+    if destino in destinos_validos:
+
+        salidas = salidas.filter(
+            salida_p_terminado__destino=destino
+        )
+
+
+    productos = (
+        salidas
+        .values(
+            'producto_variacion_id',
+            'producto_variacion__producto__nombre',
+            'producto_variacion__presentacion__nombre'
+        )
+        .annotate(
+            total_salidas=Sum('cantidad')
+        )
+        .order_by(
+            'producto_variacion__producto__nombre',
+            'producto_variacion__presentacion__nombre'
+        )
+    )
+
+
+    datos = []
+
+    for item in productos:
+
+        datos.append({
+            'producto_variacion_id':
+                item['producto_variacion_id'],
+
+            'producto':
+                item[
+                    'producto_variacion__producto__nombre'
+                ],
+
+            'presentacion':
+                item[
+                    'producto_variacion__presentacion__nombre'
+                ],
+
+            'total_salido':
+                float(item['total_salidas']),
+        })
+
+
+    return JsonResponse({
+
+        'semanas': [
+            {
+                'inicio': str(fecha),
+                'fin': str(
+                    fecha + timedelta(days=6)
+                )
+            }
+            for fecha in semanas
+        ],
+
+        'destino': destino,
+
+        'productos': datos,
+    })
+
+
+
+
+@login_required
+@requiere_roles("Producto Terminado")
+def detalle_salida_semanal_pt(
+    request,
+    producto_variacion_id
+):
+
+    destino = request.GET.get(
+        'destino',
+        'opcion1'
+    )
+
+    destinos_validos = {
+        'opcion1',
+        'opcion2',
+        'opcion3',
+        'opcion4',
+    }
+
+    if destino not in destinos_validos:
+        destino = 'opcion1'
+
+
+    semanas_param = request.GET.get(
+        'semanas',
+        ''
+    )
+
+    semanas = []
+
+    if semanas_param:
+
+        for fecha_str in semanas_param.split(','):
+
+            try:
+
+                fecha = datetime.strptime(
+                    fecha_str,
+                    '%Y-%m-%d'
+                ).date()
+
+                semanas.append(fecha)
+
+            except ValueError:
+                continue
+
+
+    # Si no hay semanas, usar la actual
+
+    if not semanas:
+
+        hoy = now().date()
+
+        dias_desde_miercoles = (
+            hoy.weekday() - 2
+        ) % 7
+
+        inicio_semana = (
+            hoy -
+            timedelta(days=dias_desde_miercoles)
+        )
+
+        semanas = [
+            inicio_semana
+        ]
+
+
+    # Construir filtro para todas las semanas
+
+    filtros_semana = []
+
+    for inicio_semana in semanas:
+
+        fin_semana = (
+            inicio_semana +
+            timedelta(days=6)
+        )
+
+        domingo = (
+            inicio_semana +
+            timedelta(days=4)
+        )
+
+        filtros_semana.append(
+            Q(
+                salida_p_terminado__fecha_salida__date__range=(
+                    inicio_semana,
+                    fin_semana
+                )
+            )
+            &
+            ~Q(
+                salida_p_terminado__fecha_salida__date=domingo
+            )
+        )
+
+
+    filtro_semanas = filtros_semana[0]
+
+    for filtro in filtros_semana[1:]:
+
+        filtro_semanas |= filtro
+
+
+    detalles = (
+        DetalleSalidaPTerminado.objects
+        .filter(
+            Q(
+                producto_variacion_id=producto_variacion_id
+            )
+            & filtro_semanas
+            & Q(
+                salida_p_terminado__destino=destino
+            )
+            & Q(
+                cantidad__gt=0
+            )
+        )
+        .select_related(
+            'salida_p_terminado__ruta__usuario'
+        )
+    )
+
+
+    repartidores = {}
+
+
+    for detalle in detalles:
+
+        salida = detalle.salida_p_terminado
+
+        fecha = salida.fecha_salida.date()
+
+        repartidor = None
+
+        if salida.ruta and salida.ruta.usuario:
+
+            repartidor = salida.ruta.usuario
+
+
+        if repartidor is None:
+            continue
+
+
+        repartidor_id = repartidor.id
+
+
+        if repartidor_id not in repartidores:
+
+            repartidores[repartidor_id] = {
+
+                'repartidor_id':
+                    repartidor_id,
+
+                'repartidor': (
+                    repartidor.get_full_name()
+                    or repartidor.username
+                ),
+
+                'miercoles': 0,
+                'jueves': 0,
+                'viernes': 0,
+                'sabado': 0,
+                'lunes': 0,
+                'martes': 0,
+
+                'total': 0,
+            }
+
+
+        cantidad = float(
+            detalle.cantidad
+        )
+
+        dia_semana = fecha.weekday()
+
+
+        if dia_semana == 2:
+
+            repartidores[
+                repartidor_id
+            ]['miercoles'] += cantidad
+
+        elif dia_semana == 3:
+
+            repartidores[
+                repartidor_id
+            ]['jueves'] += cantidad
+
+        elif dia_semana == 4:
+
+            repartidores[
+                repartidor_id
+            ]['viernes'] += cantidad
+
+        elif dia_semana == 5:
+
+            repartidores[
+                repartidor_id
+            ]['sabado'] += cantidad
+
+        elif dia_semana == 0:
+
+            repartidores[
+                repartidor_id
+            ]['lunes'] += cantidad
+
+        elif dia_semana == 1:
+
+            repartidores[
+                repartidor_id
+            ]['martes'] += cantidad
+
+
+        repartidores[
+            repartidor_id
+        ]['total'] += cantidad
+
+
+    return JsonResponse({
+
+        'producto_variacion_id':
+            producto_variacion_id,
+
+        'semanas': [
+            {
+                'inicio': str(fecha),
+                'fin': str(
+                    fecha + timedelta(days=6)
+                )
+            }
+            for fecha in semanas
+        ],
+
+        'destino': destino,
+
+        'repartidores':
+            list(
+                repartidores.values()
+            ),
+    })
+
+
+@login_required
+@requiere_roles("Producto Terminado")
+def resumen_destinos_salida_semanal_pt(
+    request,
+    producto_variacion_id
+):
+
+    semanas_param = request.GET.get(
+        'semanas',
+        ''
+    )
+
+    semanas = []
+
+    if semanas_param:
+
+        for fecha_str in semanas_param.split(','):
+
+            try:
+
+                fecha = datetime.strptime(
+                    fecha_str,
+                    '%Y-%m-%d'
+                ).date()
+
+                semanas.append(fecha)
+
+            except ValueError:
+                continue
+
+
+    # Si no hay semanas, usar la actual
+
+    if not semanas:
+
+        hoy = now().date()
+
+        dias_desde_miercoles = (
+            hoy.weekday() - 2
+        ) % 7
+
+        inicio_semana = (
+            hoy -
+            timedelta(days=dias_desde_miercoles)
+        )
+
+        semanas = [
+            inicio_semana
+        ]
+
+
+    # Filtros de semanas
+
+    filtros_semana = []
+
+    for inicio_semana in semanas:
+
+        fin_semana = (
+            inicio_semana +
+            timedelta(days=6)
+        )
+
+        domingo = (
+            inicio_semana +
+            timedelta(days=4)
+        )
+
+        filtros_semana.append(
+            Q(
+                salida_p_terminado__fecha_salida__date__range=(
+                    inicio_semana,
+                    fin_semana
+                )
+            )
+            &
+            ~Q(
+                salida_p_terminado__fecha_salida__date=domingo
+            )
+        )
+
+
+    filtro_semanas = filtros_semana[0]
+
+    for filtro in filtros_semana[1:]:
+
+        filtro_semanas |= filtro
+
+
+    detalles = (
+        DetalleSalidaPTerminado.objects
+        .filter(
+            Q(
+                producto_variacion_id=producto_variacion_id
+            )
+            & filtro_semanas
+            & Q(
+                cantidad__gt=0
+            )
+        )
+    )
+
+
+    totales = (
+        detalles
+        .values(
+            'salida_p_terminado__destino'
+        )
+        .annotate(
+            total=Sum('cantidad')
+        )
+    )
+
+
+    destinos = {
+        'opcion1': 0,
+        'opcion2': 0,
+        'opcion3': 0,
+        'opcion4': 0,
+    }
+
+
+    for item in totales:
+
+        destino = item[
+            'salida_p_terminado__destino'
+        ]
+
+        if destino in destinos:
+
+            destinos[destino] = float(
+                item['total']
+            )
+
+
+    total = sum(
+        destinos.values()
+    )
+
+
+    return JsonResponse({
+
+        'producto_variacion_id':
+            producto_variacion_id,
+
+        'semanas': [
+            {
+                'inicio': str(fecha),
+                'fin': str(
+                    fecha + timedelta(days=6)
+                )
+            }
+            for fecha in semanas
+        ],
+
+        'destinos': {
+
+            'ruta':
+                destinos['opcion1'],
+
+            'mitsu':
+                destinos['opcion2'],
+
+            'maestro':
+                destinos['opcion3'],
+
+            'otros':
+                destinos['opcion4'],
+        },
+
+        'total': total,
+    })
+
+
+
+@login_required
+@requiere_roles("Producto Terminado")
+def semanas_disponibles_salidas_pt(request):
+
+    primer_detalle = (
+        DetalleSalidaPTerminado.objects
+        .filter(
+            cantidad__gt=0
+        )
+        .order_by(
+            'salida_p_terminado__fecha_salida'
+        )
+        .first()
+    )
+
+    if not primer_detalle:
+
+        return JsonResponse({
+            'semanas': []
+        })
+
+
+    primera_fecha = (
+        primer_detalle
+        .salida_p_terminado
+        .fecha_salida
+        .date()
+    )
+
+
+    hoy = now().date()
+
+
+    # =========================================================
+    # SEMANA OPERATIVA ACTUAL
+    # Miércoles -> Martes
+    # =========================================================
+
+    dias_desde_miercoles = (
+        hoy.weekday() - 2
+    ) % 7
+
+
+    inicio_semana_actual = (
+        hoy - timedelta(
+            days=dias_desde_miercoles
+        )
+    )
+
+
+    # =========================================================
+    # PRIMERA SEMANA CONSIDERADA
+    # =========================================================
+
+    dias_desde_miercoles = (
+        primera_fecha.weekday() - 2
+    ) % 7
+
+
+    fecha_semana = (
+        primera_fecha - timedelta(
+            days=dias_desde_miercoles
+        )
+    )
+
+
+    semanas = []
+
+
+    # =========================================================
+    # RECORRER SEMANAS
+    # =========================================================
+
+    while fecha_semana <= inicio_semana_actual:
+
+        fin_semana = (
+            fecha_semana + timedelta(
+                days=6
+            )
+        )
+
+
+        domingo = (
+            fecha_semana + timedelta(
+                days=4
+            )
+        )
+
+
+        tiene_movimientos = (
+            DetalleSalidaPTerminado.objects
+            .filter(
+                salida_p_terminado__fecha_salida__date__range=(
+                    fecha_semana,
+                    fin_semana
+                ),
+                cantidad__gt=0
+            )
+            .exclude(
+                salida_p_terminado__fecha_salida__date=domingo
+            )
+            .exists()
+        )
+
+
+        if tiene_movimientos:
+
+            semanas.append({
+
+                'inicio': str(
+                    fecha_semana
+                ),
+
+                'fin': str(
+                    fin_semana
+                ),
+
+                'anio': fecha_semana.year,
+
+            })
+
+
+        fecha_semana += timedelta(
+            days=7
+        )
+
+
+    # Más reciente primero
+
+    semanas.reverse()
+
+
+    return JsonResponse({
+
+        'semanas': semanas
+
+    })
+
+
+@login_required
+@requiere_roles("Producto Terminado")
+def reporte_salidas_semanales_pt_html(request):
+    return render(
+        request,
+        'ProductoTerminado/salidas/reporte_salidas_semanales.html'
+    )
 
 
 
 # ''''''''''''''''''''''''''''''''''''''''''''PARA EL DASHBOARD Graficas
 
-from datetime import timedelta
+from datetime import timedelta,datetime
 from django.utils.timezone import now
 from django.db.models.functions import TruncDate
 from django.http import JsonResponse

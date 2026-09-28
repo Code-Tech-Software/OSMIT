@@ -1,0 +1,1861 @@
+```html
+{% extends "Base/Sidebar.html" %}
+
+{% block content %}
+
+<div class="container-fluid">
+
+    <!-- ========================================================= -->
+    <!-- ENCABEZADO -->
+    <!-- ========================================================= -->
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h2>
+                Reporte de salidas de Producto Terminado
+            </h2>
+
+            <p class="text-muted mb-0" id="periodoSemana">
+                Cargando semana...
+            </p>
+
+        </div>
+
+
+        <div class="d-flex align-items-end gap-3">
+
+            <!-- ================================================= -->
+            <!-- SELECTOR DE SEMANAS -->
+            <!-- ================================================= -->
+
+            <div>
+
+                <label class="form-label">
+                    Semanas
+                </label>
+
+                <div class="dropdown">
+
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="btnSemanas"
+                        data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+
+                        Semana actual
+
+                    </button>
+
+
+                    <div class="dropdown-menu p-3" style="width: 350px; max-height: 500px; overflow-y: auto;"
+                        aria-labelledby="btnSemanas">
+
+                        <!-- BUSCADOR -->
+
+                        <div class="mb-3">
+
+                            <input type="text" id="buscarSemana" class="form-control" placeholder="Buscar semana...">
+
+                        </div>
+
+
+                        <!-- LISTA DE SEMANAS -->
+
+                        <div id="listaSemanas">
+
+                            <div class="text-center text-muted">
+                                Cargando semanas...
+                            </div>
+
+                        </div>
+
+
+                        <hr>
+
+
+                        <!-- BOTONES -->
+
+                        <div class="d-flex justify-content-between">
+
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLimpiarSemanas">
+
+                                Limpiar
+
+                            </button>
+
+
+                            <button type="button" class="btn btn-sm btn-primary" id="btnAplicarSemanas">
+
+                                Aplicar
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================================================= -->
+            <!-- FILTRO DESTINO -->
+            <!-- ================================================= -->
+
+            <div>
+
+                <label for="filtroDestino" class="form-label">
+
+                    Destino
+
+                </label>
+
+
+                <select id="filtroDestino" class="form-select">
+
+                    <option value="todos">
+                        Todos
+                    </option>
+
+                    <option value="opcion1">
+                        Ruta
+                    </option>
+
+                    <option value="opcion2">
+                        Mitsu
+                    </option>
+
+                    <option value="opcion3">
+                        Maestro
+                    </option>
+
+                    <option value="opcion4">
+                        Otros
+                    </option>
+
+                </select>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- TABLA PRINCIPAL -->
+    <!-- ========================================================= -->
+
+    <div class="card">
+
+        <div class="card-body">
+
+            <div class="table-responsive">
+
+                <table class="table table-striped table-hover">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Producto
+                            </th>
+
+                            <th>
+                                Presentación
+                            </th>
+
+                            <th>
+                                Total salido
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody id="tablaSalidas">
+
+                        <tr>
+
+                            <td colspan="3" class="text-center">
+
+                                Cargando...
+
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ========================================================= -->
+<!-- MODAL DETALLE RUTA -->
+<!-- ========================================================= -->
+
+<div class="modal fade" id="modalDetalleProducto" tabindex="-1" aria-labelledby="modalDetalleProductoLabel"
+    aria-hidden="true">
+
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <div>
+
+                    <h5 class="modal-title" id="modalDetalleProductoLabel">
+
+                        Detalle del producto
+
+                    </h5>
+
+
+                    <small class="text-muted" id="modalPeriodo">
+
+                    </small>
+
+                </div>
+
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar">
+                </button>
+
+            </div>
+
+
+            <div class="modal-body">
+
+                <div id="modalProductoInfo" class="mb-3">
+
+                </div>
+
+
+                <div class="table-responsive">
+
+                    <table class="table table-bordered table-hover">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    Repartidor
+                                </th>
+
+                                <th>
+                                    Mié
+                                </th>
+
+                                <th>
+                                    Jue
+                                </th>
+
+                                <th>
+                                    Vie
+                                </th>
+
+                                <th>
+                                    Sáb
+                                </th>
+
+                                <th>
+                                    Lun
+                                </th>
+
+                                <th>
+                                    Mar
+                                </th>
+
+                                <th>
+                                    Total
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody id="tablaDetalleProducto">
+
+                            <tr>
+
+                                <td colspan="8" class="text-center">
+
+                                    Cargando...
+
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ========================================================= -->
+<!-- MODAL RESUMEN POR DESTINO -->
+<!-- ========================================================= -->
+
+<div class="modal fade" id="modalResumenDestinos" tabindex="-1" aria-labelledby="modalResumenDestinosLabel"
+    aria-hidden="true">
+
+    <div class="modal-dialog modal-md modal-dialog-centered">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <div>
+
+                    <h5 class="modal-title" id="modalResumenDestinosLabel">
+
+                        Resumen por destino
+
+                    </h5>
+
+
+                    <small class="text-muted" id="modalResumenPeriodo">
+
+                    </small>
+
+                </div>
+
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar">
+                </button>
+
+            </div>
+
+
+            <div class="modal-body">
+
+                <div id="modalResumenProductoInfo" class="mb-3">
+
+                </div>
+
+
+                <div class="table-responsive">
+
+                    <table class="table table-bordered">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    Destino
+                                </th>
+
+                                <th>
+                                    Total
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody id="tablaResumenDestinos">
+
+                            <tr>
+
+                                <td colspan="2" class="text-center">
+
+                                    Cargando...
+
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+
+                        <tfoot>
+
+                            <tr>
+
+                                <th>
+                                    Total
+                                </th>
+
+                                <th id="totalResumenDestinos">
+                                    0
+                                </th>
+
+                            </tr>
+
+                        </tfoot>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+    /* ========================================================= */
+    /* VARIABLES */
+    /* ========================================================= */
+
+    let semanasDisponibles = [];
+
+    let semanasSeleccionadas = [];
+
+
+    /* ========================================================= */
+    /* ELEMENTOS */
+    /* ========================================================= */
+
+    const listaSemanas =
+        document.getElementById(
+            'listaSemanas'
+        );
+
+    const buscarSemana =
+        document.getElementById(
+            'buscarSemana'
+        );
+
+    const btnSemanas =
+        document.getElementById(
+            'btnSemanas'
+        );
+
+    const btnAplicarSemanas =
+        document.getElementById(
+            'btnAplicarSemanas'
+        );
+
+    const btnLimpiarSemanas =
+        document.getElementById(
+            'btnLimpiarSemanas'
+        );
+
+
+    /* ========================================================= */
+    /* FORMATEAR FECHA */
+    /* ========================================================= */
+
+    function formatearFecha(fechaString) {
+
+        if (!fechaString) {
+            return '';
+        }
+
+        const partes =
+            fechaString.split('-');
+
+        if (partes.length !== 3) {
+            return fechaString;
+        }
+
+        const [
+            anio,
+            mes,
+            dia
+        ] = partes;
+
+        return `${dia}/${mes}/${anio}`;
+    }
+
+
+    /* ========================================================= */
+    /* FECHA LOCAL EN FORMATO ISO */
+    /* ========================================================= */
+
+    function fechaLocalISO(fecha) {
+
+        const anio =
+            fecha.getFullYear();
+
+        const mes =
+            String(
+                fecha.getMonth() + 1
+            ).padStart(2, '0');
+
+        const dia =
+            String(
+                fecha.getDate()
+            ).padStart(2, '0');
+
+        return `${anio}-${mes}-${dia}`;
+    }
+
+
+    /* ========================================================= */
+    /* OBTENER SEMANA ACTUAL */
+    /* ========================================================= */
+
+    function obtenerSemanaActual() {
+
+        const hoy =
+            new Date();
+
+        /*
+         * JavaScript:
+         *
+         * Domingo = 0
+         * Lunes = 1
+         * Martes = 2
+         * Miércoles = 3
+         * Jueves = 4
+         * Viernes = 5
+         * Sábado = 6
+         */
+
+        const diaSemana =
+            hoy.getDay();
+
+        const diasDesdeMiercoles =
+            (diaSemana - 3 + 7) % 7;
+
+
+        const inicio =
+            new Date(hoy);
+
+        inicio.setDate(
+            hoy.getDate() -
+            diasDesdeMiercoles
+        );
+
+
+        const fin =
+            new Date(inicio);
+
+        fin.setDate(
+            inicio.getDate() + 6
+        );
+
+
+        return {
+
+            inicio:
+                fechaLocalISO(inicio),
+
+            fin:
+                fechaLocalISO(fin)
+
+        };
+
+    }
+
+
+    /* ========================================================= */
+    /* CARGAR SEMANAS DISPONIBLES */
+    /* ========================================================= */
+
+    async function cargarSemanasDisponibles() {
+
+        listaSemanas.innerHTML = `
+        <div class="text-center text-muted">
+            Cargando semanas...
+        </div>
+    `;
+
+
+        try {
+
+            const response =
+                await fetch(
+                    `{% url 'semanas_disponibles_salidas_pt' %}`
+                );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    'Error al obtener las semanas'
+                );
+
+            }
+
+
+            const data =
+                await response.json();
+
+
+            semanasDisponibles =
+                data.semanas || [];
+
+
+            renderizarSemanas();
+
+
+        } catch (error) {
+
+            console.error(error);
+
+
+            listaSemanas.innerHTML = `
+            <div class="text-center text-danger">
+                No fue posible cargar
+                las semanas.
+            </div>
+        `;
+
+        }
+
+    }
+
+
+    /* ========================================================= */
+    /* RENDERIZAR SEMANAS */
+    /* ========================================================= */
+
+    function renderizarSemanas() {
+
+        const textoBusqueda =
+            buscarSemana.value
+                .toLowerCase()
+                .trim();
+
+
+        listaSemanas.innerHTML = '';
+
+
+        if (
+            semanasDisponibles.length === 0
+        ) {
+
+            listaSemanas.innerHTML = `
+            <div class="text-center text-muted">
+                No hay semanas disponibles.
+            </div>
+        `;
+
+            return;
+
+        }
+
+
+        /*
+         * Filtrar semanas.
+         */
+
+        const semanasFiltradas =
+            semanasDisponibles.filter(
+                semana => {
+
+                    const fechaInicio =
+                        formatearFecha(
+                            semana.inicio
+                        );
+
+                    const fechaFin =
+                        formatearFecha(
+                            semana.fin
+                        );
+
+
+                    const texto =
+                        `
+                    ${semana.inicio}
+                    ${semana.fin}
+                    ${fechaInicio}
+                    ${fechaFin}
+                    ${semana.anio}
+                    `
+                            .toLowerCase();
+
+
+                    return texto.includes(
+                        textoBusqueda
+                    );
+
+                }
+            );
+
+
+        if (
+            semanasFiltradas.length === 0
+        ) {
+
+            listaSemanas.innerHTML = `
+            <div class="text-center text-muted">
+                No se encontraron semanas.
+            </div>
+        `;
+
+            return;
+
+        }
+
+
+        /*
+         * Agrupar por año.
+         */
+
+        const grupos = {};
+
+
+        semanasFiltradas.forEach(
+            semana => {
+
+                if (
+                    !grupos[semana.anio]
+                ) {
+
+                    grupos[semana.anio] = [];
+
+                }
+
+
+                grupos[semana.anio].push(
+                    semana
+                );
+
+            }
+        );
+
+
+        /*
+         * Mostrar años de más reciente
+         * a más antiguo.
+         */
+
+        Object.keys(grupos)
+            .sort(
+                (a, b) => b - a
+            )
+            .forEach(
+                anio => {
+
+                    const tituloAnio =
+                        document.createElement(
+                            'div'
+                        );
+
+
+                    tituloAnio.className =
+                        'fw-bold mt-2 mb-2';
+
+
+                    tituloAnio.textContent =
+                        anio;
+
+
+                    listaSemanas.appendChild(
+                        tituloAnio
+                    );
+
+
+                    grupos[anio].forEach(
+                        semana => {
+
+                            const contenedor =
+                                document.createElement(
+                                    'div'
+                                );
+
+
+                            contenedor.className =
+                                'form-check mb-2';
+
+
+                            const checkbox =
+                                document.createElement(
+                                    'input'
+                                );
+
+
+                            checkbox.type =
+                                'checkbox';
+
+
+                            checkbox.className =
+                                'form-check-input';
+
+
+                            checkbox.value =
+                                semana.inicio;
+
+
+                            checkbox.id =
+                                `semana-${semana.inicio}`;
+
+
+                            checkbox.checked =
+                                semanasSeleccionadas.includes(
+                                    semana.inicio
+                                );
+
+
+                            checkbox.addEventListener(
+                                'change',
+                                actualizarSeleccionSemanas
+                            );
+
+
+                            const label =
+                                document.createElement(
+                                    'label'
+                                );
+
+
+                            label.className =
+                                'form-check-label';
+
+
+                            label.htmlFor =
+                                checkbox.id;
+
+
+                            label.textContent =
+                                `Semana del ${formatearFecha(semana.inicio)} al ${formatearFecha(semana.fin)}`;
+
+
+                            contenedor.appendChild(
+                                checkbox
+                            );
+
+
+                            contenedor.appendChild(
+                                label
+                            );
+
+
+                            listaSemanas.appendChild(
+                                contenedor
+                            );
+
+                        }
+                    );
+
+                }
+            );
+
+    }
+
+
+    /* ========================================================= */
+    /* ACTUALIZAR SELECCIÓN */
+    /* ========================================================= */
+
+    function actualizarSeleccionSemanas() {
+
+        const checkboxes =
+            listaSemanas.querySelectorAll(
+                'input[type="checkbox"]'
+            );
+
+
+        checkboxes.forEach(
+            checkbox => {
+
+                if (
+                    checkbox.checked &&
+                    !semanasSeleccionadas.includes(
+                        checkbox.value
+                    )
+                ) {
+
+                    semanasSeleccionadas.push(
+                        checkbox.value
+                    );
+
+                }
+
+
+                if (
+                    !checkbox.checked
+                ) {
+
+                    semanasSeleccionadas =
+                        semanasSeleccionadas.filter(
+                            fecha =>
+                                fecha !==
+                                checkbox.value
+                        );
+
+                }
+
+            }
+        );
+
+
+        actualizarTextoBotonSemanas();
+
+    }
+
+
+    /* ========================================================= */
+    /* TEXTO DEL BOTÓN DE SEMANAS */
+    /* ========================================================= */
+
+    function actualizarTextoBotonSemanas() {
+
+        if (
+            semanasSeleccionadas.length === 0
+        ) {
+
+            btnSemanas.textContent =
+                'Semana actual';
+
+            return;
+
+        }
+
+
+        if (
+            semanasSeleccionadas.length === 1
+        ) {
+
+            const semana =
+                semanasDisponibles.find(
+                    item =>
+                        item.inicio ===
+                        semanasSeleccionadas[0]
+                );
+
+
+            if (semana) {
+
+                btnSemanas.textContent =
+                    `Semana del ${formatearFecha(semana.inicio)} al ${formatearFecha(semana.fin)}`;
+
+            } else {
+
+                btnSemanas.textContent =
+                    '1 semana seleccionada';
+
+            }
+
+            return;
+
+        }
+
+
+        btnSemanas.textContent =
+            `${semanasSeleccionadas.length} semanas seleccionadas`;
+
+    }
+
+
+    /* ========================================================= */
+    /* APLICAR SEMANAS */
+    /* ========================================================= */
+
+    btnAplicarSemanas.addEventListener(
+        'click',
+        () => {
+
+            cargarReporte();
+
+
+            const dropdown =
+                bootstrap.Dropdown.getInstance(
+                    btnSemanas
+                );
+
+
+            if (dropdown) {
+
+                dropdown.hide();
+
+            }
+
+        }
+    );
+
+
+    /* ========================================================= */
+    /* LIMPIAR SEMANAS */
+    /* ========================================================= */
+
+    btnLimpiarSemanas.addEventListener(
+        'click',
+        () => {
+
+            semanasSeleccionadas = [];
+
+
+            renderizarSemanas();
+
+
+            actualizarTextoBotonSemanas();
+
+        }
+    );
+
+
+    /* ========================================================= */
+    /* BUSCAR SEMANAS */
+    /* ========================================================= */
+
+    buscarSemana.addEventListener(
+        'input',
+        () => {
+
+            renderizarSemanas();
+
+        }
+    );
+
+
+    /* ========================================================= */
+    /* OBTENER PARÁMETRO DE SEMANAS */
+    /* ========================================================= */
+
+    function obtenerParametroSemanas() {
+
+        if (
+            semanasSeleccionadas.length === 0
+        ) {
+
+            return '';
+
+        }
+
+
+        return semanasSeleccionadas.join(',');
+
+    }
+
+
+    /* ========================================================= */
+    /* CARGAR REPORTE PRINCIPAL */
+    /* ========================================================= */
+
+    async function cargarReporte() {
+
+        const destino =
+            document.getElementById(
+                'filtroDestino'
+            ).value;
+
+
+        const tabla =
+            document.getElementById(
+                'tablaSalidas'
+            );
+
+
+        tabla.innerHTML = `
+        <tr>
+
+            <td
+                colspan="3"
+                class="text-center">
+
+                Cargando...
+
+            </td>
+
+        </tr>
+    `;
+
+
+        try {
+
+            let url =
+                `{% url 'reporte_salidas_semanales_pt' %}?destino=${destino}`;
+
+
+            const semanas =
+                obtenerParametroSemanas();
+
+
+            if (semanas) {
+
+                url +=
+                    `&semanas=${encodeURIComponent(semanas)}`;
+
+            }
+
+
+            const response =
+                await fetch(url);
+
+
+            console.log(
+                "URL reporte:",
+                url
+            );
+
+            console.log(
+                "Status:",
+                response.status
+            );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    'Error al obtener el reporte'
+                );
+
+            }
+
+
+            const data =
+                await response.json();
+
+
+            /*
+             * Mostrar periodo.
+             */
+
+            if (
+                semanasSeleccionadas.length === 0
+            ) {
+
+                const semanaActual =
+                    obtenerSemanaActual();
+
+
+                document.getElementById(
+                    'periodoSemana'
+                ).textContent =
+                    `Semana del ${formatearFecha(semanaActual.inicio)} al ${formatearFecha(semanaActual.fin)}`;
+
+            } else {
+
+                document.getElementById(
+                    'periodoSemana'
+                ).textContent =
+                    `${semanasSeleccionadas.length} semanas seleccionadas`;
+
+            }
+
+
+            tabla.innerHTML = '';
+
+
+            if (
+                !data.productos ||
+                data.productos.length === 0
+            ) {
+
+                tabla.innerHTML = `
+                <tr>
+
+                    <td
+                        colspan="3"
+                        class="text-center">
+
+                        No hubo salidas durante
+                        el periodo seleccionado.
+
+                    </td>
+
+                </tr>
+            `;
+
+                return;
+
+            }
+
+
+            data.productos.forEach(
+                item => {
+
+                    const fila =
+                        document.createElement(
+                            'tr'
+                        );
+
+
+                    fila.innerHTML = `
+                    <td>
+                        ${item.producto}
+                    </td>
+
+                    <td>
+                        ${item.presentacion}
+                    </td>
+
+                    <td>
+                        ${item.total_salido}
+                    </td>
+                `;
+
+
+                    const destinoActual =
+                        document.getElementById(
+                            'filtroDestino'
+                        ).value;
+
+
+                    /*
+                     * Ruta:
+                     * abrir detalle por repartidor.
+                     */
+
+                    if (
+                        destinoActual ===
+                        'opcion1'
+                    ) {
+
+                        fila.style.cursor =
+                            'pointer';
+
+
+                        fila.addEventListener(
+                            'click',
+                            () => {
+
+                                abrirDetalleProducto(
+                                    item
+                                );
+
+                            }
+                        );
+
+                    }
+
+
+                    /*
+                     * Todos:
+                     * abrir resumen por destino.
+                     */
+
+                    else if (
+                        destinoActual ===
+                        'todos'
+                    ) {
+
+                        fila.style.cursor =
+                            'pointer';
+
+
+                        fila.addEventListener(
+                            'click',
+                            () => {
+
+                                abrirResumenDestinos(
+                                    item
+                                );
+
+                            }
+                        );
+
+                    }
+
+
+                    tabla.appendChild(
+                        fila
+                    );
+
+                }
+            );
+
+
+        } catch (error) {
+
+            console.error(error);
+
+
+            tabla.innerHTML = `
+            <tr>
+
+                <td
+                    colspan="3"
+                    class="text-center text-danger">
+
+                    No fue posible cargar
+                    el reporte.
+
+                </td>
+
+            </tr>
+        `;
+
+        }
+
+    }
+
+
+    /* ========================================================= */
+    /* MODAL DETALLE RUTA */
+    /* ========================================================= */
+
+    async function abrirDetalleProducto(
+        item
+    ) {
+
+        const modalTitulo =
+            document.getElementById(
+                'modalDetalleProductoLabel'
+            );
+
+
+        const modalPeriodo =
+            document.getElementById(
+                'modalPeriodo'
+            );
+
+
+        const modalProductoInfo =
+            document.getElementById(
+                'modalProductoInfo'
+            );
+
+
+        const tablaDetalle =
+            document.getElementById(
+                'tablaDetalleProducto'
+            );
+
+
+        const destino =
+            document.getElementById(
+                'filtroDestino'
+            ).value;
+
+
+        /*
+         * Información del producto.
+         */
+
+        modalTitulo.textContent =
+            `${item.producto} - ${item.presentacion}`;
+
+
+        modalProductoInfo.innerHTML = `
+        <strong>Producto:</strong>
+        ${item.producto}
+
+        <br>
+
+        <strong>Presentación:</strong>
+        ${item.presentacion}
+    `;
+
+
+        /*
+         * Mostrar cargando.
+         */
+
+        tablaDetalle.innerHTML = `
+        <tr>
+
+            <td
+                colspan="8"
+                class="text-center">
+
+                Cargando...
+
+            </td>
+
+        </tr>
+    `;
+
+
+        /*
+         * Abrir modal.
+         */
+
+        const modalElement =
+            document.getElementById(
+                'modalDetalleProducto'
+            );
+
+
+        const modal =
+            new bootstrap.Modal(
+                modalElement
+            );
+
+
+        modal.show();
+
+
+        try {
+
+            let url =
+                `{% url 'detalle_salida_semanal_pt' producto_variacion_id=0 %}`
+                    .replace(
+                        '/0/',
+                        `/${item.producto_variacion_id}/`
+                    )
+                + `?destino=${destino}`;
+
+
+            const semanas =
+                obtenerParametroSemanas();
+
+
+            if (semanas) {
+
+                url +=
+                    `&semanas=${encodeURIComponent(semanas)}`;
+
+            }
+
+
+            console.log(
+                "URL detalle:",
+                url
+            );
+
+
+            const response =
+                await fetch(url);
+
+
+            console.log(
+                "Status detalle:",
+                response.status
+            );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    'Error al obtener el detalle'
+                );
+
+            }
+
+
+            const data =
+                await response.json();
+
+
+            /*
+             * Periodo.
+             */
+
+            if (
+                semanasSeleccionadas.length === 0
+            ) {
+
+                const semanaActual =
+                    obtenerSemanaActual();
+
+
+                modalPeriodo.textContent =
+                    `Semana del ${formatearFecha(semanaActual.inicio)} al ${formatearFecha(semanaActual.fin)}`;
+
+            } else {
+
+                modalPeriodo.textContent =
+                    `${semanasSeleccionadas.length} semanas seleccionadas`;
+
+            }
+
+
+            tablaDetalle.innerHTML = '';
+
+
+            if (
+                !data.repartidores ||
+                data.repartidores.length === 0
+            ) {
+
+                tablaDetalle.innerHTML = `
+                <tr>
+
+                    <td
+                        colspan="8"
+                        class="text-center">
+
+                        No hay movimientos de Ruta
+                        para este producto durante
+                        las semanas seleccionadas.
+
+                    </td>
+
+                </tr>
+            `;
+
+                return;
+
+            }
+
+
+            data.repartidores.forEach(
+                repartidor => {
+
+                    const fila =
+                        document.createElement(
+                            'tr'
+                        );
+
+
+                    fila.innerHTML = `
+
+                    <td>
+                        ${repartidor.repartidor}
+                    </td>
+
+                    <td>
+                        ${repartidor.miercoles}
+                    </td>
+
+                    <td>
+                        ${repartidor.jueves}
+                    </td>
+
+                    <td>
+                        ${repartidor.viernes}
+                    </td>
+
+                    <td>
+                        ${repartidor.sabado}
+                    </td>
+
+                    <td>
+                        ${repartidor.lunes}
+                    </td>
+
+                    <td>
+                        ${repartidor.martes}
+                    </td>
+
+                    <td>
+
+                        <strong>
+                            ${repartidor.total}
+                        </strong>
+
+                    </td>
+
+                `;
+
+
+                    tablaDetalle.appendChild(
+                        fila
+                    );
+
+                }
+            );
+
+
+        } catch (error) {
+
+            console.error(error);
+
+
+            tablaDetalle.innerHTML = `
+            <tr>
+
+                <td
+                    colspan="8"
+                    class="text-center text-danger">
+
+                    No fue posible cargar
+                    el detalle.
+
+                </td>
+
+            </tr>
+        `;
+
+        }
+
+    }
+
+
+    /* ========================================================= */
+    /* MODAL RESUMEN POR DESTINO */
+    /* ========================================================= */
+
+    async function abrirResumenDestinos(
+        item
+    ) {
+
+        const modalPeriodo =
+            document.getElementById(
+                'modalResumenPeriodo'
+            );
+
+
+        const modalProductoInfo =
+            document.getElementById(
+                'modalResumenProductoInfo'
+            );
+
+
+        const tabla =
+            document.getElementById(
+                'tablaResumenDestinos'
+            );
+
+
+        const total =
+            document.getElementById(
+                'totalResumenDestinos'
+            );
+
+
+        /*
+         * Información del producto.
+         */
+
+        modalProductoInfo.innerHTML = `
+        <strong>Producto:</strong>
+        ${item.producto}
+
+        <br>
+
+        <strong>Presentación:</strong>
+        ${item.presentacion}
+    `;
+
+
+        /*
+         * Mostrar cargando.
+         */
+
+        tabla.innerHTML = `
+        <tr>
+
+            <td
+                colspan="2"
+                class="text-center">
+
+                Cargando...
+
+            </td>
+
+        </tr>
+    `;
+
+
+        total.textContent =
+            '0';
+
+
+        /*
+         * Abrir modal.
+         */
+
+        const modalElement =
+            document.getElementById(
+                'modalResumenDestinos'
+            );
+
+
+        const modal =
+            new bootstrap.Modal(
+                modalElement
+            );
+
+
+        modal.show();
+
+
+        try {
+
+            let url =
+                `{% url 'resumen_destinos_salida_semanal_pt' producto_variacion_id=0 %}`
+                    .replace(
+                        '/0/',
+                        `/${item.producto_variacion_id}/`
+                    );
+
+
+            const semanas =
+                obtenerParametroSemanas();
+
+
+            if (semanas) {
+
+                url +=
+                    `?semanas=${encodeURIComponent(semanas)}`;
+
+            }
+
+
+            console.log(
+                "URL resumen:",
+                url
+            );
+
+
+            const response =
+                await fetch(url);
+
+
+            console.log(
+                "Status resumen:",
+                response.status
+            );
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    'Error al obtener el resumen'
+                );
+
+            }
+
+
+            const data =
+                await response.json();
+
+
+            /*
+             * Periodo.
+             */
+
+            if (
+                semanasSeleccionadas.length === 0
+            ) {
+
+                const semanaActual =
+                    obtenerSemanaActual();
+
+
+                modalPeriodo.textContent =
+                    `Semana del ${formatearFecha(semanaActual.inicio)} al ${formatearFecha(semanaActual.fin)}`;
+
+            } else {
+
+                modalPeriodo.textContent =
+                    `${semanasSeleccionadas.length} semanas seleccionadas`;
+
+            }
+
+
+            /*
+             * Crear tabla.
+             */
+
+            tabla.innerHTML = '';
+
+
+            const destinos = [
+
+                {
+                    nombre: 'Ruta',
+                    valor: data.destinos.ruta
+                },
+
+                {
+                    nombre: 'Mitsu',
+                    valor: data.destinos.mitsu
+                },
+
+                {
+                    nombre: 'Maestro',
+                    valor: data.destinos.maestro
+                },
+
+                {
+                    nombre: 'Otros',
+                    valor: data.destinos.otros
+                }
+
+            ];
+
+
+            destinos.forEach(
+                destino => {
+
+                    const fila =
+                        document.createElement(
+                            'tr'
+                        );
+
+
+                    fila.innerHTML = `
+
+                    <td>
+                        ${destino.nombre}
+                    </td>
+
+                    <td>
+                        ${destino.valor}
+                    </td>
+
+                `;
+
+
+                    tabla.appendChild(
+                        fila
+                    );
+
+                }
+            );
+
+
+            total.textContent =
+                data.total;
+
+
+        } catch (error) {
+
+            console.error(error);
+
+
+            tabla.innerHTML = `
+            <tr>
+
+                <td
+                    colspan="2"
+                    class="text-center text-danger">
+
+                    No fue posible cargar
+                    el resumen.
+
+                </td>
+
+            </tr>
+        `;
+
+        }
+
+    }
+
+
+    /* ========================================================= */
+    /* INICIALIZACIÓN */
+    /* ========================================================= */
+
+    document.getElementById(
+        'filtroDestino'
+    ).addEventListener(
+        'change',
+        cargarReporte
+    );
+
+
+    /*
+     * Cargar semanas disponibles.
+     */
+
+    cargarSemanasDisponibles();
+
+
+    /*
+     * Cargar reporte inicial.
+     */
+
+    cargarReporte();
+
+</script>
+
+{% endblock %}

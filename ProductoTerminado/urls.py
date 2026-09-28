@@ -34,6 +34,12 @@ urlpatterns = [
     path('cortes/ajustar/<int:corte_id>/',views.ajustar_inventario_pt,name='ajustar_inventario_pt'),
     path('cortes/detalle/<int:corte_id>/',views.detalle_corte_pt,name='detalle_corte_pt'),
 
+    path('reportes/salidas-semanales-pt/',views.reporte_salidas_semanales_pt,name='reporte_salidas_semanales_pt'),
+    path('reportes/salidas-semanales-pt/pagina/',views.reporte_salidas_semanales_pt_html,name='reporte_salidas_semanales_pt_html'),
+    path('reportes/salidas-semanales-pt/<int:producto_variacion_id>/detalle/',views.detalle_salida_semanal_pt, name='detalle_salida_semanal_pt'),
+    path('reportes/salidas-semanales-pt/<int:producto_variacion_id>/resumen-destinos/',views.resumen_destinos_salida_semanal_pt,name='resumen_destinos_salida_semanal_pt'),
+    path('reportes/salidas-semanales-pt/semanas/',views.semanas_disponibles_salidas_pt,name='semanas_disponibles_salidas_pt'),
+
     # DASBOAR
 
     path('api/stock_productos/', views.stock_productos),
