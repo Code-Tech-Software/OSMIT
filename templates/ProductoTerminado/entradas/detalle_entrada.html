@@ -1,4 +1,3 @@
-```html
 {% extends "Base/Sidebar.html" %}
 {% load static %}
 
@@ -15,7 +14,7 @@
         background: #fff;
         border-radius: 10px;
         padding: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
 </style>
 
@@ -29,10 +28,7 @@
             Inventario | Detalle de Entrada
         </h2>
 
-        <a
-            href="{% url 'historial_entradasPT' %}"
-            class="btn btn-secondary"
-        >
+        <a href="{% url 'historial_entradasPT' %}" class="btn btn-secondary">
             Regresar
         </a>
 
@@ -94,11 +90,7 @@
 
         <div class="table-responsive">
 
-            <table
-                id="detalleEntradaTable"
-                class="table table-hover align-middle text-center"
-                style="width:100%"
-            >
+            <table id="detalleEntradaTable" class="table table-hover align-middle text-center" style="width:100%">
 
                 <thead>
                     <tr>
@@ -112,29 +104,29 @@
 
                     {% for detalle in detalles %}
 
-                        <tr>
+                    <tr>
 
-                            <td class="text-start fw-semibold">
-                                {{ detalle.producto_variacion.producto.nombre }}
-                            </td>
+                        <td class="text-start fw-semibold">
+                            {{ detalle.producto_variacion.producto.nombre }}
+                        </td>
 
-                            <td>
-                                {{ detalle.producto_variacion.presentacion.nombre }}
-                            </td>
+                        <td>
+                            {{ detalle.producto_variacion.presentacion.nombre }}
+                        </td>
 
-                            <td>
-                                {{ detalle.cantidad }}
-                            </td>
+                        <td>
+                            {{ detalle.cantidad }}
+                        </td>
 
-                        </tr>
+                    </tr>
 
                     {% empty %}
 
-                        <tr>
-                            <td colspan="3" class="text-muted py-4">
-                                No hay productos registrados en esta entrada.
-                            </td>
-                        </tr>
+                    <tr>
+                        <td colspan="3" class="text-muted py-4">
+                            No hay productos registrados en esta entrada.
+                        </td>
+                    </tr>
 
                     {% endfor %}
 
@@ -151,10 +143,7 @@
 
 <!-- DATATABLES -->
 
-<link
-    rel="stylesheet"
-    href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css"
->
+<link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
 
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 

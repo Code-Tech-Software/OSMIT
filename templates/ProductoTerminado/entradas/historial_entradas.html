@@ -1,4 +1,3 @@
-```html
 {% extends "Base/Sidebar.html" %}
 {% load static %}
 
@@ -14,14 +13,14 @@
         background: #fff;
         border-radius: 10px;
         padding: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
 
     .tabla-card {
         background: #fff;
         border-radius: 10px;
         padding: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
 </style>
 
@@ -43,13 +42,7 @@
                     Desde
                 </label>
 
-                <input
-                    type="date"
-                    id="desde"
-                    name="desde"
-                    class="form-control"
-                    value="{{ desde|default:'' }}"
-                >
+                <input type="date" id="desde" name="desde" class="form-control" value="{{ desde|default:'' }}">
             </div>
 
             <div class="col-md-4">
@@ -57,28 +50,16 @@
                     Hasta
                 </label>
 
-                <input
-                    type="date"
-                    id="hasta"
-                    name="hasta"
-                    class="form-control"
-                    value="{{ hasta|default:'' }}"
-                >
+                <input type="date" id="hasta" name="hasta" class="form-control" value="{{ hasta|default:'' }}">
             </div>
 
             <div class="col-md-4 d-flex gap-2">
 
-                <button
-                    type="submit"
-                    class="btn btn-primary"
-                >
+                <button type="submit" class="btn btn-primary">
                     Buscar
                 </button>
 
-                <a
-                    href="{% url 'historial_entradasPT' %}"
-                    class="btn btn-secondary"
-                >
+                <a href="{% url 'historial_entradasPT' %}" class="btn btn-secondary">
                     Limpiar
                 </a>
 
@@ -93,11 +74,7 @@
 
         <div class="table-responsive">
 
-            <table
-                id="entradasTable"
-                class="table table-hover align-middle text-center"
-                style="width:100%"
-            >
+            <table id="entradasTable" class="table table-hover align-middle text-center" style="width:100%">
 
                 <thead>
                     <tr>
@@ -113,34 +90,31 @@
 
                     {% for entrada in entradas %}
 
-                        <tr>
+                    <tr>
 
-                            <td>
-                                {{ entrada.id }}
-                            </td>
+                        <td>
+                            {{ entrada.id }}
+                        </td>
 
-                            <td>
-                                {{ entrada.fecha_entrada|date:"d/m/Y H:i" }}
-                            </td>
+                        <td>
+                            {{ entrada.fecha_entrada|date:"d/m/Y H:i" }}
+                        </td>
 
-                            <td>
-                                {{ entrada.usuario.username }}
-                            </td>
+                        <td>
+                            {{ entrada.usuario.username }}
+                        </td>
 
-                            <td class="text-start">
-                                {{ entrada.nota|default:"-" }}
-                            </td>
+                        <td class="text-start">
+                            {{ entrada.nota|default:"-" }}
+                        </td>
 
-                            <td>
-                                <a
-                                    href="{% url 'detalle_entrada' entrada.id %}"
-                                    class="btn btn-sm btn-primary"
-                                >
-                                    Ver detalle
-                                </a>
-                            </td>
+                        <td>
+                            <a href="{% url 'detalle_entrada' entrada.id %}" class="btn btn-sm btn-primary">
+                                Ver detalle
+                            </a>
+                        </td>
 
-                        </tr>
+                    </tr>
 
                     {% endfor %}
 
@@ -157,10 +131,7 @@
 
 <!-- DATATABLES -->
 
-<link
-    rel="stylesheet"
-    href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css"
->
+<link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
 
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
@@ -200,4 +171,3 @@
 </script>
 
 {% endblock %}
-

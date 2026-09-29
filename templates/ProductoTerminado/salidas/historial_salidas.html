@@ -1,4 +1,3 @@
-```html
 {% extends "Base/Sidebar.html" %}
 {% load static %}
 
@@ -14,14 +13,14 @@
         background: #fff;
         border-radius: 10px;
         padding: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
 
     .tabla-card {
         background: #fff;
         border-radius: 10px;
         padding: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
 </style>
 
@@ -48,13 +47,7 @@
                     Desde
                 </label>
 
-                <input
-                    type="date"
-                    id="desde"
-                    name="desde"
-                    class="form-control"
-                    value="{{ desde|default:'' }}"
-                >
+                <input type="date" id="desde" name="desde" class="form-control" value="{{ desde|default:'' }}">
 
             </div>
 
@@ -65,30 +58,18 @@
                     Hasta
                 </label>
 
-                <input
-                    type="date"
-                    id="hasta"
-                    name="hasta"
-                    class="form-control"
-                    value="{{ hasta|default:'' }}"
-                >
+                <input type="date" id="hasta" name="hasta" class="form-control" value="{{ hasta|default:'' }}">
 
             </div>
 
 
             <div class="col-md-4 d-flex gap-2">
 
-                <button
-                    type="submit"
-                    class="btn btn-primary"
-                >
+                <button type="submit" class="btn btn-primary">
                     Buscar
                 </button>
 
-                <a
-                    href="{% url 'historial_salidasPT' %}"
-                    class="btn btn-secondary"
-                >
+                <a href="{% url 'historial_salidasPT' %}" class="btn btn-secondary">
                     Limpiar
                 </a>
 
@@ -105,11 +86,7 @@
 
         <div class="table-responsive">
 
-            <table
-                id="salidasTable"
-                class="table table-hover align-middle text-center"
-                style="width:100%"
-            >
+            <table id="salidasTable" class="table table-hover align-middle text-center" style="width:100%">
 
                 <thead>
 
@@ -130,62 +107,59 @@
 
                     {% for salida in salidas %}
 
-                        <tr>
+                    <tr>
 
-                            <td>
-                                {{ salida.id }}
-                            </td>
-
-
-                            <td>
-                                {{ salida.fecha_salida|date:"d/m/Y H:i" }}
-                            </td>
+                        <td>
+                            {{ salida.id }}
+                        </td>
 
 
-                            <td>
-                                {{ salida.usuario.username }}
-                            </td>
+                        <td>
+                            {{ salida.fecha_salida|date:"d/m/Y H:i" }}
+                        </td>
 
 
-                            <td>
-                                {{ salida.get_destino_display }}
-                            </td>
+                        <td>
+                            {{ salida.usuario.username }}
+                        </td>
 
 
-                            <td>
-
-                                {% if salida.ruta %}
-                                    {{ salida.ruta }}
-                                {% else %}
-                                    -
-                                {% endif %}
-
-                            </td>
+                        <td>
+                            {{ salida.get_destino_display }}
+                        </td>
 
 
-                            <td class="text-start">
+                        <td>
 
-                                {% if salida.nota %}
-                                    {{ salida.nota }}
-                                {% else %}
-                                    -
-                                {% endif %}
+                            {% if salida.ruta %}
+                            {{ salida.ruta }}
+                            {% else %}
+                            -
+                            {% endif %}
 
-                            </td>
+                        </td>
 
 
-                            <td>
+                        <td class="text-start">
 
-                                <a
-                                    href="{% url 'detalle_salida' salida.id %}"
-                                    class="btn btn-sm btn-primary"
-                                >
-                                    Ver detalle
-                                </a>
+                            {% if salida.nota %}
+                            {{ salida.nota }}
+                            {% else %}
+                            -
+                            {% endif %}
 
-                            </td>
+                        </td>
 
-                        </tr>
+
+                        <td>
+
+                            <a href="{% url 'detalle_salida' salida.id %}" class="btn btn-sm btn-primary">
+                                Ver detalle
+                            </a>
+
+                        </td>
+
+                    </tr>
 
                     {% endfor %}
 
@@ -202,10 +176,7 @@
 
 <!-- DATATABLES -->
 
-<link
-    rel="stylesheet"
-    href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css"
->
+<link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
 
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 

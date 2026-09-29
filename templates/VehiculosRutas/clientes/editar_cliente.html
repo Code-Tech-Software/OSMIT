@@ -1,4 +1,3 @@
-```django
 {% extends "Base/Sidebar.html" %}
 {% load static %}
 
@@ -18,19 +17,19 @@
         <div class="row">
 
             {% for field in form %}
-                <div class="col-md-6 mb-3">
-                    <label for="{{ field.id_for_label }}" class="form-label">
-                        {{ field.label }}
-                    </label>
+            <div class="col-md-6 mb-3">
+                <label for="{{ field.id_for_label }}" class="form-label">
+                    {{ field.label }}
+                </label>
 
-                    {{ field }}
+                {{ field }}
 
-                    {% if field.errors %}
-                        <div class="text-danger small">
-                            {{ field.errors|striptags }}
-                        </div>
-                    {% endif %}
+                {% if field.errors %}
+                <div class="text-danger small">
+                    {{ field.errors|striptags }}
                 </div>
+                {% endif %}
+            </div>
             {% endfor %}
 
             <!-- DÍA DE VISITA -->
@@ -42,9 +41,9 @@
                 {{ dias_form.dia }}
 
                 {% if dias_form.dia.errors %}
-                    <div class="text-danger small">
-                        {{ dias_form.dia.errors|striptags }}
-                    </div>
+                <div class="text-danger small">
+                    {{ dias_form.dia.errors|striptags }}
+                </div>
                 {% endif %}
             </div>
 
@@ -55,8 +54,7 @@
                 <i class="bi bi-save me-1"></i>Guardar Cambios
             </button>
 
-            <a href="{% url 'listar_clientes' %}"
-               class="btn btn-custom-secondary btn-sm">
+            <a href="{% url 'listar_clientes' %}" class="btn btn-custom-secondary btn-sm">
                 <i class="bi bi-arrow-return-left me-1"></i>Volver al listado
             </a>
         </div>
@@ -65,4 +63,3 @@
 </div>
 
 {% endblock %}
-
