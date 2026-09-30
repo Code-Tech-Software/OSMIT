@@ -6,7 +6,7 @@ from ProductoGranel.models import User, PedidoProduccion
 from appMovil.models import MiniBodega, MiniBodegaDetalle, PedidoReabastecimiento
 from . import models
 from .forms import ProductoTerminadoForm, EntradaForm, ProductoVariacionForm
-from .models import PresentacionProductoTerminado, ProductoTerminado, EntradaPTerminado, DetalleEntradaPTerminado, ProductoVariacion, InventarioRuta
+from .models import PresentacionProductoTerminado, ProductoTerminado, EntradaPTerminado, DetalleEntradaPTerminado, ProductoVariacion, CorreccionPTerminado
 from decimal import Decimal
 from django.contrib import messages
 from django.shortcuts import render, redirect
@@ -36,7 +36,7 @@ from django.shortcuts import render
 from django.db.models import Q
 from django.urls import reverse
 from Usuario.decorators import requiere_roles,solo_administrador
-
+from django.views.decorators.http import require_POST
 
 
 
@@ -1224,6 +1224,1505 @@ def registrar_salida_especial(request):
     )
 
 
+
+##Corecciones posibles
+@login_required
+@require_POST
+@requiere_roles("Producto Terminado")
+def corregir_detalle_entrada(request, detalle_id):
+
+    with transaction.atomic():
+
+        detalle = get_object_or_404(
+            DetalleEntradaPTerminado.objects
+            .select_for_update()
+            .select_related(
+                "entrada_p_terminado",
+                "producto_variacion",
+                "producto_variacion__producto",
+                "producto_variacion__presentacion"
+            ),
+            id=detalle_id
+        )
+
+        entrada = detalle.entrada_p_terminado
+
+        # =========================================================
+        # SOLO SE PUEDEN CORREGIR ENTRADAS DEL DÍA ACTUAL
+        # =========================================================
+
+        if entrada.fecha_entrada.date() != timezone.localdate():
+
+            messages.error(
+                request,
+                "Solo se pueden corregir entradas del día actual."
+            )
+
+            return redirect(
+                "detalle_entrada",
+                entrada_id=entrada.id
+            )
+
+        tipo = request.POST.get("tipo_correccion")
+
+
+        # =========================================================
+        # DETERMINAR CATÁLOGO DE LA ENTRADA
+        # =========================================================
+
+        prefijos_especiales = [
+            "ML ",
+            "Y ",
+            "YML ",
+            "YV ",
+            "JP ",
+            "N ",
+        ]
+
+        prefijo_especial = None
+
+        detalles_entrada = (
+            DetalleEntradaPTerminado.objects
+            .select_related(
+                "producto_variacion__producto",
+                "producto_variacion__presentacion"
+            )
+            .filter(
+                entrada_p_terminado=entrada
+            )
+        )
+
+        for detalle_entrada in detalles_entrada:
+
+            nombre_producto = (
+                detalle_entrada
+                .producto_variacion
+                .producto
+                .nombre
+            )
+
+            for prefijo in prefijos_especiales:
+
+                if nombre_producto.startswith(prefijo):
+
+                    prefijo_especial = prefijo
+                    break
+
+            if prefijo_especial:
+                break
+
+
+        # =========================================================
+        # PRESENTACIONES PERMITIDAS
+        # =========================================================
+
+        presentaciones_normales = [
+            "Minis",
+            "Chico",
+            "Mediano",
+            "Grande",
+            "250g",
+            "500g",
+            "1kg",
+            "Grande 150g",
+            "Grande 140g",
+            "Pieza",
+            "Kiosko",
+        ]
+
+
+        presentaciones_especiales = {
+
+            "ML ": [
+                "250g",
+                "230g",
+                "60g",
+                "50g",
+                "150g",
+                "40g",
+            ],
+
+            "Y ": [
+                "200g",
+                "180g",
+                "150g",
+                "120g",
+                "60g",
+                "220g",
+                "250g",
+                "100g",
+                "700g",
+                "650g",
+            ],
+
+            "YML ": [
+                "20g",
+                "70g",
+                "80g",
+                "60g",
+                "65g",
+                "100g",
+                "50g",
+                "45g",
+                "40g",
+                "200g",
+                "150g",
+                "180g",
+                "220g",
+                "500g",
+            ],
+
+            "YV ": [
+                "200g",
+                "180g",
+                "150g",
+                "220g",
+                "60g",
+                "100g",
+                "250g",
+                "700g",
+                "650g",
+            ],
+
+            "JP ": [
+                "750g",
+                "250g",
+                "150g",
+            ],
+
+            "N ": [
+                "620g",
+                "600g",
+            ],
+        }
+
+
+        # =========================================================
+        # PRODUCTO INCORRECTO
+        # =========================================================
+
+        if tipo == "producto":
+
+            producto_nuevo_id = request.POST.get(
+                "producto_nuevo_id"
+            )
+
+            if not producto_nuevo_id:
+
+                messages.error(
+                    request,
+                    "Debe seleccionar el producto y presentación correctos."
+                )
+
+                return redirect(
+                    "detalle_entrada",
+                    entrada_id=entrada.id
+                )
+
+
+            try:
+
+                producto_nuevo_id = int(
+                    producto_nuevo_id
+                )
+
+            except (ValueError, TypeError):
+
+                messages.error(
+                    request,
+                    "La variación seleccionada no es válida."
+                )
+
+                return redirect(
+                    "detalle_entrada",
+                    entrada_id=entrada.id
+                )
+
+
+            # =====================================================
+            # OBTENER LA NUEVA VARIACIÓN
+            # =====================================================
+
+            producto_nuevo = get_object_or_404(
+                ProductoVariacion.objects
+                .select_for_update()
+                .select_related(
+                    "producto",
+                    "presentacion"
+                ),
+                id=producto_nuevo_id,
+                producto__estado=True,
+                presentacion__estado=True
+            )
+
+
+            # =====================================================
+            # NO PUEDE SER LA MISMA VARIACIÓN
+            # =====================================================
+
+            if producto_nuevo.id == detalle.producto_variacion_id:
+
+                messages.error(
+                    request,
+                    "El producto y presentación seleccionados son los mismos actuales."
+                )
+
+                return redirect(
+                    "detalle_entrada",
+                    entrada_id=entrada.id
+                )
+
+
+            # =====================================================
+            # VALIDAR QUE PERTENEZCA AL CATÁLOGO DE LA ENTRADA
+            # =====================================================
+
+            nombre_producto_nuevo = producto_nuevo.producto.nombre
+            nombre_presentacion_nueva = producto_nuevo.presentacion.nombre
+
+
+            if prefijo_especial:
+
+                # La entrada es especial.
+                # Debe pertenecer al mismo especial.
+
+                if not nombre_producto_nuevo.startswith(
+                    prefijo_especial
+                ):
+
+                    messages.error(
+                        request,
+                        "El producto seleccionado no pertenece al tipo de entrada."
+                    )
+
+                    return redirect(
+                        "detalle_entrada",
+                        entrada_id=entrada.id
+                    )
+
+
+                presentaciones_permitidas = (
+                    presentaciones_especiales[
+                        prefijo_especial
+                    ]
+                )
+
+                if nombre_presentacion_nueva not in (
+                    presentaciones_permitidas
+                ):
+
+                    messages.error(
+                        request,
+                        "La presentación seleccionada no pertenece al tipo de entrada."
+                    )
+
+                    return redirect(
+                        "detalle_entrada",
+                        entrada_id=entrada.id
+                    )
+
+            else:
+
+                # La entrada es normal.
+                # No puede cambiarse a un producto especial.
+
+                for prefijo in prefijos_especiales:
+
+                    if nombre_producto_nuevo.startswith(
+                        prefijo
+                    ):
+
+                        messages.error(
+                            request,
+                            "No se puede seleccionar un producto especial en una entrada normal."
+                        )
+
+                        return redirect(
+                            "detalle_entrada",
+                            entrada_id=entrada.id
+                        )
+
+
+                if nombre_presentacion_nueva not in (
+                    presentaciones_normales
+                ):
+
+                    messages.error(
+                        request,
+                        "La presentación seleccionada no pertenece al catálogo normal."
+                    )
+
+                    return redirect(
+                        "detalle_entrada",
+                        entrada_id=entrada.id
+                    )
+
+
+            # =====================================================
+            # PRODUCTO ANTERIOR
+            # =====================================================
+
+            producto_anterior = (
+                ProductoVariacion.objects
+                .select_for_update()
+                .get(
+                    id=detalle.producto_variacion_id
+                )
+            )
+
+            cantidad = detalle.cantidad
+
+
+            # =====================================================
+            # VERIFICAR SI YA EXISTE LA NUEVA VARIACIÓN
+            # EN LA MISMA ENTRADA
+            # =====================================================
+
+            detalle_existente = (
+                DetalleEntradaPTerminado.objects
+                .select_for_update()
+                .filter(
+                    entrada_p_terminado=entrada,
+                    producto_variacion=producto_nuevo
+                )
+                .exclude(
+                    id=detalle.id
+                )
+                .first()
+            )
+
+
+            # =====================================================
+            # AJUSTAR STOCK
+            # =====================================================
+
+            # Quitamos la cantidad del producto que estaba
+            # registrada originalmente.
+
+            producto_anterior.stock -= cantidad
+
+            producto_anterior.save(
+                update_fields=["stock"]
+            )
+
+
+            # Agregamos la cantidad al producto correcto.
+
+            producto_nuevo.stock += cantidad
+
+            producto_nuevo.save(
+                update_fields=["stock"]
+            )
+
+
+            # =====================================================
+            # SI YA EXISTE LA VARIACIÓN, COMBINAR CANTIDADES
+            # =====================================================
+
+            if detalle_existente:
+
+                cantidad_anterior_existente = (
+                    detalle_existente.cantidad
+                )
+
+                detalle_existente.cantidad += cantidad
+
+                detalle_existente.save(
+                    update_fields=["cantidad"]
+                )
+
+                detalle.delete()
+
+                detalle_corregido = detalle_existente
+
+                cantidad_nueva = (
+                    detalle_existente.cantidad
+                )
+
+            else:
+
+                # No existe otro detalle con esa variación.
+                # Simplemente cambiamos la variación.
+
+                detalle.producto_variacion = producto_nuevo
+
+                detalle.save(
+                    update_fields=["producto_variacion"]
+                )
+
+                detalle_corregido = detalle
+
+                cantidad_nueva = cantidad
+
+
+            # =====================================================
+            # REGISTRAR CORRECCIÓN
+            # =====================================================
+
+            CorreccionPTerminado.objects.create(
+
+                entrada=entrada,
+
+                detalle_entrada=detalle_corregido,
+
+                tipo_correccion="producto",
+
+                producto_anterior=producto_anterior,
+
+                producto_nuevo=producto_nuevo,
+
+                cantidad_anterior=cantidad,
+
+                cantidad_nueva=cantidad_nueva,
+
+                usuario=request.user
+            )
+
+
+            messages.success(
+                request,
+                "Producto y presentación corregidos correctamente."
+            )
+
+
+        # =========================================================
+        # CANTIDAD INCORRECTA
+        # =========================================================
+
+        elif tipo == "cantidad":
+
+            cantidad_nueva = request.POST.get(
+                "cantidad_nueva"
+            )
+
+
+            try:
+
+                cantidad_nueva = Decimal(
+                    cantidad_nueva
+                )
+
+                if cantidad_nueva <= 0:
+                    raise ValueError
+
+            except (
+                TypeError,
+                ValueError,
+                InvalidOperation
+            ):
+
+                messages.error(
+                    request,
+                    "La cantidad indicada no es válida."
+                )
+
+                return redirect(
+                    "detalle_entrada",
+                    entrada_id=entrada.id
+                )
+
+
+            cantidad_anterior = detalle.cantidad
+
+            diferencia = (
+                cantidad_nueva
+                - cantidad_anterior
+            )
+
+
+            producto = (
+                ProductoVariacion.objects
+                .select_for_update()
+                .get(
+                    id=detalle.producto_variacion_id
+                )
+            )
+
+
+            # Ajustamos únicamente la diferencia.
+
+            producto.stock += diferencia
+
+            producto.save(
+                update_fields=["stock"]
+            )
+
+
+            detalle.cantidad = cantidad_nueva
+
+            detalle.save(
+                update_fields=["cantidad"]
+            )
+
+
+            CorreccionPTerminado.objects.create(
+
+                entrada=entrada,
+
+                detalle_entrada=detalle,
+
+                tipo_correccion="cantidad",
+
+                producto_anterior=producto,
+
+                producto_nuevo=producto,
+
+                cantidad_anterior=cantidad_anterior,
+
+                cantidad_nueva=cantidad_nueva,
+
+                usuario=request.user
+            )
+
+
+            messages.success(
+                request,
+                "Cantidad corregida correctamente."
+            )
+
+
+        # =========================================================
+        # ELIMINAR PRODUCTO
+        # =========================================================
+
+        elif tipo == "eliminar":
+
+            producto = (
+                ProductoVariacion.objects
+                .select_for_update()
+                .get(
+                    id=detalle.producto_variacion_id
+                )
+            )
+
+
+            cantidad_anterior = detalle.cantidad
+
+
+            # Revertimos completamente
+            # la cantidad que había agregado la entrada.
+
+            producto.stock -= cantidad_anterior
+
+            producto.save(
+                update_fields=["stock"]
+            )
+
+
+            CorreccionPTerminado.objects.create(
+
+                entrada=entrada,
+
+                detalle_entrada=None,
+
+                tipo_correccion="eliminar",
+
+                producto_anterior=producto,
+
+                producto_nuevo=None,
+
+                cantidad_anterior=cantidad_anterior,
+
+                cantidad_nueva=Decimal("0.00"),
+
+                usuario=request.user
+            )
+
+
+            detalle.delete()
+
+
+            messages.success(
+                request,
+                "Producto eliminado de la entrada correctamente."
+            )
+
+
+        # =========================================================
+        # TIPO NO VÁLIDO
+        # =========================================================
+
+        else:
+
+            messages.error(
+                request,
+                "Tipo de corrección no válido."
+            )
+
+
+    return redirect(
+        "detalle_entrada",
+        entrada_id=entrada.id
+    )
+
+@login_required
+@requiere_roles("Producto Terminado")
+@require_POST
+def corregir_detalle_salida(request, detalle_id):
+
+    especiales = {
+        "ML": {
+            "nombre": "Mega Lupita",
+            "presentaciones": [
+                "250g", "230g", "60g", "50g", "150g", "40g"
+            ]
+        },
+        "Y": {
+            "nombre": "Yeos",
+            "presentaciones": [
+                "200g", "180g", "150g", "120g", "60g",
+                "220g", "250g", "100g", "700g", "650g"
+            ]
+        },
+        "YML": {
+            "nombre": "Super la merced",
+            "presentaciones": [
+                "20g", "70g", "80g", "60g", "65g",
+                "100g", "50g", "45g", "40g", "200g",
+                "150g", "180g", "220g", "500g"
+            ]
+        },
+        "YV": {
+            "nombre": "Yeos Victoria",
+            "presentaciones": [
+                "200g", "180g", "150g", "220g",
+                "60g", "100g", "250g", "700g", "650g"
+            ]
+        },
+        "JP": {
+            "nombre": "Juaquin Perez",
+            "presentaciones": [
+                "750g", "250g", "150g"
+            ]
+        },
+        "N": {
+            "nombre": "Norma",
+            "presentaciones": [
+                "620g", "600g"
+            ]
+        },
+    }
+
+    presentaciones_normales = [
+        "Minis",
+        "Chico",
+        "Mediano",
+        "Grande",
+        "250g",
+        "500g",
+        "1kg",
+        "Grande 150g",
+        "Grande 140g",
+        "Pieza",
+        "Kiosko",
+    ]
+
+    try:
+
+        with transaction.atomic():
+
+            # =====================================================
+            # OBTENER DETALLE
+            # =====================================================
+
+            detalle = (
+                DetalleSalidaPTerminado.objects
+                .select_for_update()
+                .select_related(
+                    "producto_variacion",
+                    "producto_variacion__producto",
+                    "producto_variacion__presentacion",
+                )
+                .get(id=detalle_id)
+            )
+
+            # =====================================================
+            # OBTENER SALIDA
+            # =====================================================
+
+            salida = (
+                SalidaPTerminado.objects
+                .select_for_update()
+                .get(id=detalle.salida_p_terminado_id)
+            )
+
+            # =====================================================
+            # SOLO SE PUEDEN CORREGIR SALIDAS DE HOY
+            # =====================================================
+
+            if timezone.localtime(salida.fecha_salida).date() != timezone.localdate():
+
+                messages.error(
+                    request,
+                    "Solo se pueden corregir salidas del día actual."
+                )
+
+                return redirect(
+                    "detalle_salida",
+                    salida_id=salida.id
+                )
+
+            # =====================================================
+            # DATOS ORIGINALES
+            # =====================================================
+
+            tipo_correccion = request.POST.get("tipo_correccion")
+
+            variacion_anterior_id = detalle.producto_variacion_id
+            cantidad_anterior = detalle.cantidad
+
+            # =====================================================
+            # DETERMINAR SI ES UNA SALIDA A RUTA
+            # =====================================================
+
+            es_ruta = salida.destino == "opcion1"
+
+            minibodega = None
+
+            if es_ruta:
+
+                if not salida.ruta_id:
+
+                    messages.error(
+                        request,
+                        "La salida está marcada como Ruta, pero no tiene una ruta asignada."
+                    )
+
+                    return redirect(
+                        "detalle_salida",
+                        salida_id=salida.id
+                    )
+
+                try:
+
+                    minibodega = (
+                        MiniBodega.objects
+                        .select_for_update()
+                        .get(ruta_id=salida.ruta_id)
+                    )
+
+                except MiniBodega.DoesNotExist:
+
+                    messages.error(
+                        request,
+                        "No se encontró la MiniBodega correspondiente a esta ruta."
+                    )
+
+                    return redirect(
+                        "detalle_salida",
+                        salida_id=salida.id
+                    )
+
+            # =====================================================
+            # CORRECCIÓN DE PRODUCTO
+            # =====================================================
+
+            if tipo_correccion == "producto":
+
+                producto_nuevo_id = request.POST.get(
+                    "producto_nuevo_id"
+                )
+
+                if not producto_nuevo_id:
+
+                    messages.error(
+                        request,
+                        "Debes seleccionar el nuevo producto."
+                    )
+
+                    return redirect(
+                        "detalle_salida",
+                        salida_id=salida.id
+                    )
+
+                try:
+
+                    producto_nuevo_id = int(producto_nuevo_id)
+
+                except (TypeError, ValueError):
+
+                    messages.error(
+                        request,
+                        "El producto seleccionado no es válido."
+                    )
+
+                    return redirect(
+                        "detalle_salida",
+                        salida_id=salida.id
+                    )
+
+                # =================================================
+                # OBTENER VARIACIÓN NUEVA
+                # =================================================
+
+                try:
+
+                    variacion_nueva = (
+                        ProductoVariacion.objects
+                        .select_for_update()
+                        .select_related(
+                            "producto",
+                            "presentacion"
+                        )
+                        .get(
+                            id=producto_nuevo_id,
+                            producto__estado=True,
+                            presentacion__estado=True
+                        )
+                    )
+
+                except ProductoVariacion.DoesNotExist:
+
+                    messages.error(
+                        request,
+                        "El producto seleccionado no existe o está inactivo."
+                    )
+
+                    return redirect(
+                        "detalle_salida",
+                        salida_id=salida.id
+                    )
+
+                # =================================================
+                # OBTENER VARIACIÓN ANTERIOR BLOQUEADA
+                # =================================================
+
+                variacion_anterior = (
+                    ProductoVariacion.objects
+                    .select_for_update()
+                    .select_related(
+                        "producto",
+                        "presentacion"
+                    )
+                    .get(id=variacion_anterior_id)
+                )
+
+                # =================================================
+                # VALIDAR MISMO CATÁLOGO
+                # =================================================
+
+                nombre_anterior = (
+                    variacion_anterior.producto.nombre
+                )
+
+                nombre_nuevo = (
+                    variacion_nueva.producto.nombre
+                )
+
+                prefijo_anterior = None
+                prefijo_nuevo = None
+
+                for prefijo in especiales.keys():
+
+                    if nombre_anterior.startswith(prefijo + " "):
+                        prefijo_anterior = prefijo
+
+                    if nombre_nuevo.startswith(prefijo + " "):
+                        prefijo_nuevo = prefijo
+
+                if prefijo_anterior != prefijo_nuevo:
+
+                    messages.error(
+                        request,
+                        "No puedes cambiar un producto por otro de un catálogo diferente."
+                    )
+
+                    return redirect(
+                        "detalle_salida",
+                        salida_id=salida.id
+                    )
+
+                # =================================================
+                # VALIDAR PRESENTACIÓN
+                # =================================================
+
+                presentacion_nueva = (
+                    variacion_nueva.presentacion.nombre
+                )
+
+                if prefijo_nuevo:
+
+                    presentaciones_permitidas = especiales[
+                        prefijo_nuevo
+                    ]["presentaciones"]
+
+                else:
+
+                    presentaciones_permitidas = presentaciones_normales
+
+                if presentacion_nueva not in presentaciones_permitidas:
+
+                    messages.error(
+                        request,
+                        "La presentación seleccionada no pertenece a este catálogo."
+                    )
+
+                    return redirect(
+                        "detalle_salida",
+                        salida_id=salida.id
+                    )
+
+                # =================================================
+                # MISMO PRODUCTO
+                # =================================================
+
+                if variacion_anterior.id == variacion_nueva.id:
+
+                    messages.warning(
+                        request,
+                        "El producto seleccionado es el mismo que ya tenía."
+                    )
+
+                    return redirect(
+                        "detalle_salida",
+                        salida_id=salida.id
+                    )
+
+                # =================================================
+                # VALIDAR STOCK DEL PRODUCTO NUEVO
+                # =================================================
+
+                if variacion_nueva.stock < cantidad_anterior:
+
+                    messages.error(
+                        request,
+                        "No hay suficiente stock del nuevo producto para realizar la corrección."
+                    )
+
+                    return redirect(
+                        "detalle_salida",
+                        salida_id=salida.id
+                    )
+
+                # =================================================
+                # BUSCAR SI YA EXISTE EN LA MISMA SALIDA
+                # =================================================
+
+                detalle_existente = (
+                    DetalleSalidaPTerminado.objects
+                    .select_for_update()
+                    .filter(
+                        salida_p_terminado=salida,
+                        producto_variacion=variacion_nueva
+                    )
+                    .exclude(id=detalle.id)
+                    .first()
+                )
+
+                # =================================================
+                # STOCK PRINCIPAL
+                # =================================================
+
+                variacion_anterior.stock += cantidad_anterior
+
+                variacion_anterior.save(
+                    update_fields=["stock"]
+                )
+
+                variacion_nueva.stock -= cantidad_anterior
+
+                variacion_nueva.save(
+                    update_fields=["stock"]
+                )
+
+                # =================================================
+                # MINIBODEGA
+                # =================================================
+
+                if minibodega:
+
+                    detalle_mb_anterior = (
+                        MiniBodegaDetalle.objects
+                        .select_for_update()
+                        .filter(
+                            mini_bodega=minibodega,
+                            producto_variacion=variacion_anterior
+                        )
+                        .first()
+                    )
+
+                    if not detalle_mb_anterior:
+
+                        messages.error(
+                            request,
+                            "No se encontró el producto anterior en la MiniBodega."
+                        )
+
+                        raise ValueError(
+                            "Detalle de MiniBodega no encontrado."
+                        )
+
+                    if (
+                        detalle_mb_anterior.cantidad_actual
+                        < cantidad_anterior
+                    ):
+
+                        messages.error(
+                            request,
+                            "No se puede corregir porque la cantidad disponible en la MiniBodega es menor."
+                        )
+
+                        raise ValueError(
+                            "Cantidad insuficiente en MiniBodega."
+                        )
+
+                    # ---------------------------------------------
+                    # QUITAR DEL PRODUCTO ANTERIOR
+                    # ---------------------------------------------
+
+                    detalle_mb_anterior.cantidad_actual -= (
+                        cantidad_anterior
+                    )
+
+                    detalle_mb_anterior.cantidad_inicial = (
+                        detalle_mb_anterior.cantidad_actual
+                    )
+
+                    if detalle_mb_anterior.cantidad_actual == 0:
+
+                        detalle_mb_anterior.delete()
+
+                    else:
+
+                        detalle_mb_anterior.save(
+                            update_fields=[
+                                "cantidad_actual",
+                                "cantidad_inicial"
+                            ]
+                        )
+
+                    # ---------------------------------------------
+                    # AGREGAR AL PRODUCTO NUEVO
+                    # ---------------------------------------------
+
+                    detalle_mb_nuevo, creado = (
+                        MiniBodegaDetalle.objects
+                        .select_for_update()
+                        .get_or_create(
+                            mini_bodega=minibodega,
+                            producto_variacion=variacion_nueva,
+                            defaults={
+                                "cantidad_inicial": Decimal("0"),
+                                "cantidad_actual": Decimal("0"),
+                            }
+                        )
+                    )
+
+                    detalle_mb_nuevo.cantidad_actual += (
+                        cantidad_anterior
+                    )
+
+                    detalle_mb_nuevo.cantidad_inicial = (
+                        detalle_mb_nuevo.cantidad_actual
+                    )
+
+                    detalle_mb_nuevo.save(
+                        update_fields=[
+                            "cantidad_actual",
+                            "cantidad_inicial"
+                        ]
+                    )
+
+                # =================================================
+                # REGISTRAR CORRECCIÓN
+                # =================================================
+
+                if detalle_existente:
+
+                    detalle_existente.cantidad += cantidad_anterior
+
+                    detalle_existente.precio_unitario = (
+                        variacion_nueva.precio
+                    )
+
+                    detalle_existente.save(
+                        update_fields=[
+                            "cantidad",
+                            "precio_unitario"
+                        ]
+                    )
+
+                    CorreccionPTerminado.objects.create(
+                        salida=salida,
+                        detalle_salida=detalle_existente,
+                        tipo_correccion="producto",
+                        producto_anterior=variacion_anterior,
+                        producto_nuevo=variacion_nueva,
+                        cantidad_anterior=cantidad_anterior,
+                        cantidad_nueva=cantidad_anterior,
+                        usuario=request.user,
+                    )
+
+                    detalle.delete()
+
+                else:
+
+                    detalle.producto_variacion = variacion_nueva
+                    detalle.precio_unitario = variacion_nueva.precio
+
+                    detalle.save(
+                        update_fields=[
+                            "producto_variacion",
+                            "precio_unitario"
+                        ]
+                    )
+
+                    CorreccionPTerminado.objects.create(
+                        salida=salida,
+                        detalle_salida=detalle,
+                        tipo_correccion="producto",
+                        producto_anterior=variacion_anterior,
+                        producto_nuevo=variacion_nueva,
+                        cantidad_anterior=cantidad_anterior,
+                        cantidad_nueva=cantidad_anterior,
+                        usuario=request.user,
+                    )
+
+                messages.success(
+                    request,
+                    "Producto corregido correctamente."
+                )
+
+            # =====================================================
+            # CORRECCIÓN DE CANTIDAD
+            # =====================================================
+
+            elif tipo_correccion == "cantidad":
+
+                cantidad_nueva_raw = request.POST.get(
+                    "cantidad_nueva"
+                )
+
+                try:
+
+                    cantidad_nueva = Decimal(
+                        cantidad_nueva_raw
+                    )
+
+                except (TypeError, ValueError, InvalidOperation):
+
+                    messages.error(
+                        request,
+                        "La cantidad indicada no es válida."
+                    )
+
+                    return redirect(
+                        "detalle_salida",
+                        salida_id=salida.id
+                    )
+
+                if cantidad_nueva <= 0:
+
+                    messages.error(
+                        request,
+                        "La cantidad debe ser mayor que cero."
+                    )
+
+                    return redirect(
+                        "detalle_salida",
+                        salida_id=salida.id
+                    )
+
+                diferencia = (
+                    cantidad_nueva - cantidad_anterior
+                )
+
+                variacion_bloqueada = (
+                    ProductoVariacion.objects
+                    .select_for_update()
+                    .get(id=variacion_anterior_id)
+                )
+
+                # =================================================
+                # AUMENTAR CANTIDAD
+                # =================================================
+
+                if diferencia > 0:
+
+                    if variacion_bloqueada.stock < diferencia:
+
+                        messages.error(
+                            request,
+                            "No hay suficiente stock para aumentar la cantidad de la salida."
+                        )
+
+                        return redirect(
+                            "detalle_salida",
+                            salida_id=salida.id
+                        )
+
+                    # Stock principal disminuye
+                    variacion_bloqueada.stock -= diferencia
+
+                    variacion_bloqueada.save(
+                        update_fields=["stock"]
+                    )
+
+                    # MiniBodega aumenta
+                    if minibodega:
+
+                        detalle_mb = (
+                            MiniBodegaDetalle.objects
+                            .select_for_update()
+                            .filter(
+                                mini_bodega=minibodega,
+                                producto_variacion=variacion_bloqueada
+                            )
+                            .first()
+                        )
+
+                        if not detalle_mb:
+
+                            messages.error(
+                                request,
+                                "No se encontró el producto en la MiniBodega."
+                            )
+
+                            raise ValueError(
+                                "Detalle de MiniBodega no encontrado."
+                            )
+
+                        detalle_mb.cantidad_actual += diferencia
+
+                        detalle_mb.cantidad_inicial = (
+                            detalle_mb.cantidad_actual
+                        )
+
+                        detalle_mb.save(
+                            update_fields=[
+                                "cantidad_actual",
+                                "cantidad_inicial"
+                            ]
+                        )
+
+                # =================================================
+                # DISMINUIR CANTIDAD
+                # =================================================
+
+                elif diferencia < 0:
+
+                    diferencia_reduccion = abs(diferencia)
+
+                    # MiniBodega disminuye
+                    if minibodega:
+
+                        detalle_mb = (
+                            MiniBodegaDetalle.objects
+                            .select_for_update()
+                            .filter(
+                                mini_bodega=minibodega,
+                                producto_variacion=variacion_bloqueada
+                            )
+                            .first()
+                        )
+
+                        if not detalle_mb:
+
+                            messages.error(
+                                request,
+                                "No se encontró el producto en la MiniBodega."
+                            )
+
+                            raise ValueError(
+                                "Detalle de MiniBodega no encontrado."
+                            )
+
+                        if (
+                            detalle_mb.cantidad_actual
+                            < diferencia_reduccion
+                        ):
+
+                            messages.error(
+                                request,
+                                "No se puede reducir la salida porque la cantidad disponible en la MiniBodega es menor."
+                            )
+
+                            raise ValueError(
+                                "Cantidad insuficiente en MiniBodega."
+                            )
+
+                        detalle_mb.cantidad_actual -= (
+                            diferencia_reduccion
+                        )
+
+                        detalle_mb.cantidad_inicial = (
+                            detalle_mb.cantidad_actual
+                        )
+
+                        if detalle_mb.cantidad_actual == 0:
+
+                            detalle_mb.delete()
+
+                        else:
+
+                            detalle_mb.save(
+                                update_fields=[
+                                    "cantidad_actual",
+                                    "cantidad_inicial"
+                                ]
+                            )
+
+                    # Stock principal aumenta
+                    variacion_bloqueada.stock += (
+                        diferencia_reduccion
+                    )
+
+                    variacion_bloqueada.save(
+                        update_fields=["stock"]
+                    )
+
+                # =================================================
+                # GUARDAR NUEVA CANTIDAD
+                # =================================================
+
+                detalle.cantidad = cantidad_nueva
+
+                detalle.save(
+                    update_fields=["cantidad"]
+                )
+
+                # =================================================
+                # REGISTRAR CORRECCIÓN
+                # =================================================
+
+                CorreccionPTerminado.objects.create(
+                    salida=salida,
+                    detalle_salida=detalle,
+                    tipo_correccion="cantidad",
+                    producto_anterior=variacion_bloqueada,
+                    cantidad_anterior=cantidad_anterior,
+                    cantidad_nueva=cantidad_nueva,
+                    usuario=request.user,
+                )
+
+                messages.success(
+                    request,
+                    "Cantidad corregida correctamente."
+                )
+
+            # =====================================================
+            # ELIMINAR PRODUCTO
+            # =====================================================
+
+            elif tipo_correccion == "eliminar":
+
+                variacion_bloqueada = (
+                    ProductoVariacion.objects
+                    .select_for_update()
+                    .get(id=variacion_anterior_id)
+                )
+
+                # =================================================
+                # DEVOLVER AL STOCK PRINCIPAL
+                # =================================================
+
+                variacion_bloqueada.stock += cantidad_anterior
+
+                variacion_bloqueada.save(
+                    update_fields=["stock"]
+                )
+
+                # =================================================
+                # MINIBODEGA
+                # =================================================
+
+                if minibodega:
+
+                    detalle_mb = (
+                        MiniBodegaDetalle.objects
+                        .select_for_update()
+                        .filter(
+                            mini_bodega=minibodega,
+                            producto_variacion=variacion_bloqueada
+                        )
+                        .first()
+                    )
+
+                    if not detalle_mb:
+
+                        messages.error(
+                            request,
+                            "No se encontró el producto en la MiniBodega."
+                        )
+
+                        raise ValueError(
+                            "Detalle de MiniBodega no encontrado."
+                        )
+
+                    if (
+                        detalle_mb.cantidad_actual
+                        < cantidad_anterior
+                    ):
+
+                        messages.error(
+                            request,
+                            "No se puede eliminar porque la cantidad disponible en la MiniBodega es menor."
+                        )
+
+                        raise ValueError(
+                            "Cantidad insuficiente en MiniBodega."
+                        )
+
+                    detalle_mb.cantidad_actual -= cantidad_anterior
+
+                    detalle_mb.cantidad_inicial = (
+                        detalle_mb.cantidad_actual
+                    )
+
+                    if detalle_mb.cantidad_actual == 0:
+
+                        detalle_mb.delete()
+
+                    else:
+
+                        detalle_mb.save(
+                            update_fields=[
+                                "cantidad_actual",
+                                "cantidad_inicial"
+                            ]
+                        )
+
+                # =================================================
+                # REGISTRAR CORRECCIÓN
+                # =================================================
+
+                CorreccionPTerminado.objects.create(
+                    salida=salida,
+                    detalle_salida=detalle,
+                    tipo_correccion="eliminar",
+                    producto_anterior=variacion_bloqueada,
+                    cantidad_anterior=cantidad_anterior,
+                    cantidad_nueva=Decimal("0.00"),
+                    usuario=request.user,
+                )
+
+                # =================================================
+                # ELIMINAR DETALLE DE LA SALIDA
+                # =================================================
+
+                detalle.delete()
+
+                messages.success(
+                    request,
+                    "Producto eliminado correctamente."
+                )
+
+            else:
+
+                messages.error(
+                    request,
+                    "Tipo de corrección no válido."
+                )
+
+    except ValueError:
+        pass
+
+    return redirect(
+        "detalle_salida",
+        salida_id=salida.id
+    )
+
+
 # View de Presentacio de productos terminados----------------------------------------#
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -1309,17 +2808,104 @@ def historial_entradas(request):
 
 @login_required
 @requiere_roles("Producto Terminado")
-def detalle_entrada(request,entrada_id):
+def detalle_entrada(request, entrada_id):
 
-    entrada = get_object_or_404(EntradaPTerminado.objects.select_related("usuario"),
-                                 id=entrada_id)
-    detalles=(DetalleEntradaPTerminado.objects.filter(entrada_p_terminado=entrada)
-              .select_related(
+    entrada = get_object_or_404(
+        EntradaPTerminado.objects.select_related("usuario"),
+        id=entrada_id
+    )
+
+    detalles = (
+        DetalleEntradaPTerminado.objects
+        .filter(entrada_p_terminado=entrada)
+        .select_related(
             "producto_variacion",
             "producto_variacion__producto",
-            "producto_variacion__presentacion")
-            .order_by("id")
+            "producto_variacion__presentacion"
+        )
+        .order_by("id")
     )
+
+    es_hoy = (
+        entrada.fecha_entrada.date() == timezone.localdate()
+    )
+
+    # =========================================================
+    # DETERMINAR CATÁLOGO DE LA ENTRADA
+    # =========================================================
+
+    prefijos_especiales = [
+        "ML ",
+        "Y ",
+        "YML ",
+        "YV ",
+        "JP ",
+        "N ",
+    ]
+
+    prefijo_especial = None
+
+    for detalle in detalles:
+        nombre_producto = detalle.producto_variacion.producto.nombre
+
+        for prefijo in prefijos_especiales:
+            if nombre_producto.startswith(prefijo):
+                prefijo_especial = prefijo
+                break
+
+        if prefijo_especial:
+            break
+
+    # =========================================================
+    # OBTENER VARIACIONES PERMITIDAS
+    # =========================================================
+
+    if prefijo_especial:
+
+        # Entrada especial
+        variaciones = (
+            ProductoVariacion.objects
+            .filter(
+                producto__estado=True,
+                producto__nombre__startswith=prefijo_especial,
+                presentacion__estado=True
+            )
+            .select_related(
+                "producto",
+                "presentacion"
+            )
+            .order_by(
+                "producto__nombre",
+                "presentacion__nombre"
+            )
+        )
+
+    else:
+
+        # Entrada normal
+        variaciones = (
+            ProductoVariacion.objects
+            .filter(
+                producto__estado=True,
+                presentacion__estado=True
+            )
+            .exclude(
+                Q(producto__nombre__startswith="ML ") |
+                Q(producto__nombre__startswith="Y ") |
+                Q(producto__nombre__startswith="YML ") |
+                Q(producto__nombre__startswith="YV ") |
+                Q(producto__nombre__startswith="JP ") |
+                Q(producto__nombre__startswith="N ")
+            )
+            .select_related(
+                "producto",
+                "presentacion"
+            )
+            .order_by(
+                "producto__nombre",
+                "presentacion__nombre"
+            )
+        )
 
     return render(
         request,
@@ -1327,6 +2913,8 @@ def detalle_entrada(request,entrada_id):
         {
             "entrada": entrada,
             "detalles": detalles,
+            "es_hoy": es_hoy,
+            "variaciones": variaciones,
         }
     )
 
@@ -1389,6 +2977,101 @@ def detalle_salida(request, salida_id):
         Decimal("0.00")
     )
 
+    # Saber si la salida es de hoy
+    es_hoy = (
+        timezone.localtime(salida.fecha_salida).date()
+        == timezone.localdate()
+    )
+
+     # TEMPORAL: comprobar por qué aparece/no aparece el botón
+    
+    # print("CANTIDAD DE DETALLES:", detalles.count())
+    # print("ES HOY:", es_hoy)
+
+    # print("SALIDA:", salida.id)
+    # print("FECHA SALIDA:", salida.fecha_salida)
+    # print("LOCALTIME:", timezone.localtime(salida.fecha_salida))
+    # print("FECHA LOCAL:", timezone.localtime(salida.fecha_salida).date())
+    # print("LOCALDATE:", timezone.localdate())
+    # print("TIMEZONE ACTUAL:", timezone.get_current_timezone())
+
+    # print(
+    # "COMPARACION:",
+    # timezone.localtime(salida.fecha_salida).date() == timezone.localdate())
+
+    # Detectar si la salida pertenece a un catálogo especial
+    prefijos_especiales = [
+        "ML ",
+        "Y ",
+        "YML ",
+        "YV ",
+        "JP ",
+        "N ",
+    ]
+
+    prefijo_especial = None
+
+    for detalle in detalles:
+
+        nombre_producto = detalle.producto_variacion.producto.nombre
+
+        for prefijo in prefijos_especiales:
+
+            if nombre_producto.startswith(prefijo):
+                prefijo_especial = prefijo
+                break
+
+        if prefijo_especial:
+            break
+
+    # Obtener las variaciones que se podrán seleccionar
+    if prefijo_especial:
+
+        variaciones = (
+            ProductoVariacion.objects
+            .filter(
+                producto__estado=True,
+                producto__nombre__startswith=prefijo_especial,
+                presentacion__estado=True
+            )
+            .select_related(
+                "producto",
+                "presentacion"
+            )
+            .order_by(
+                "producto__nombre",
+                "presentacion__nombre"
+            )
+        )
+
+    else:
+
+        variaciones = (
+            ProductoVariacion.objects
+            .filter(
+                producto__estado=True,
+                presentacion__estado=True
+            )
+            .exclude(
+                Q(producto__nombre__startswith="ML ") |
+                Q(producto__nombre__startswith="Y ") |
+                Q(producto__nombre__startswith="YML ") |
+                Q(producto__nombre__startswith="YV ") |
+                Q(producto__nombre__startswith="JP ") |
+                Q(producto__nombre__startswith="N ")
+            )
+            .select_related(
+                "producto",
+                "presentacion"
+            )
+            .order_by(
+                "producto__nombre",
+                "presentacion__nombre"
+            )
+        )
+
+        
+
     return render(
         request,
         "ProductoTerminado/salidas/detalle_salida.html",
@@ -1396,9 +3079,10 @@ def detalle_salida(request, salida_id):
             "salida": salida,
             "detalles": detalles,
             "total_salida": total_salida,
+            "es_hoy": es_hoy,
+            "variaciones": variaciones,
         }
     )
-
 
 @login_required
 @requiere_roles("Producto Terminado","Producción")

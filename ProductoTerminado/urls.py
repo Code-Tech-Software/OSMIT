@@ -17,6 +17,9 @@ urlpatterns = [
     path('productos/editar/<int:pk>/', views.editar_producto, name='editar_productoPT'),
     path('productos/eliminar/<int:pk>/', views.eliminar_producto, name='eliminar_productoPT'),
 
+    path("entradas/detalle/<int:detalle_id>/corregir/",views.corregir_detalle_entrada,name="corregir_detalle_entrada"),
+    path("salidas/detalle/<int:detalle_id>/corregir/",views.corregir_detalle_salida,name="corregir_detalle_salida"),
+
     # Ruras para presentacion de producto terminado
     path('listaPresentacionPT/', views.lista_presentaciones, name='lista_presentaciones'),
     path('crearPresentacionPT/', views.crear_presentacion, name='crear_presentacion'),

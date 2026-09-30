@@ -97,6 +97,10 @@
                         <th>Producto</th>
                         <th>Presentación</th>
                         <th>Cantidad</th>
+
+                        {% if es_hoy %}
+                        <th>Acciones</th>
+                        {% endif %}
                     </tr>
                 </thead>
 
@@ -117,6 +121,17 @@
                         <td>
                             {{ detalle.cantidad }}
                         </td>
+                        {% if es_hoy %}
+                        <td>
+                            <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal"
+                                data-bs-target="#modalCorreccion" data-detalle-id="{{ detalle.id }}"
+                                data-producto="{{ detalle.producto_variacion.producto.nombre }}"
+                                data-presentacion="{{ detalle.producto_variacion.presentacion.nombre }}"
+                                data-cantidad="{{ detalle.cantidad }}">
+                                Corregir
+                            </button>
+                        </td>
+                        {% endif %}
 
                     </tr>
 
@@ -139,6 +154,257 @@
     </div>
 
 </div>
+
+{% if es_hoy %}
+
+<div class="modal fade" id="modalCorreccion" tabindex="-1" aria-labelledby="modalCorreccionLabel" aria-hidden="true">
+
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <!-- ENCABEZADO -->
+
+            <div class="modal-header">
+
+                <h5 class="modal-title" id="modalCorreccionLabel">
+                    Corregir producto
+                </h5>
+
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar">
+                </button>
+
+            </div>
+
+
+            <!-- CUERPO -->
+
+            <div class="modal-body">
+
+                <!-- INFORMACIÓN DEL PRODUCTO ACTUAL -->
+
+                <div class="mb-3">
+
+                    <strong>Producto:</strong>
+                    <span id="correccionProducto"></span>
+
+                    <br>
+
+                    <strong>Presentación:</strong>
+                    <span id="correccionPresentacion"></span>
+
+                    <br>
+
+                    <strong>Cantidad actual:</strong>
+                    <span id="correccionCantidad"></span>
+
+                </div>
+
+
+                <hr>
+
+
+                <!-- OPCIONES PRINCIPALES -->
+
+                <div id="opcionesCorreccion">
+
+                    <p class="fw-semibold">
+                        ¿Qué desea corregir?
+                    </p>
+
+                    <div class="d-grid gap-2">
+
+                        <button type="button" class="btn btn-outline-primary" id="btnCorregirProducto">
+
+                            Producto incorrecto
+
+                        </button>
+
+                        <button type="button" class="btn btn-outline-warning" id="btnCorregirCantidad">
+
+                            Cantidad incorrecta
+
+                        </button>
+
+                        <button type="button" class="btn btn-outline-danger" id="btnEliminarProducto">
+
+                            Eliminar producto
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- CORRECCIÓN DE PRODUCTO -->
+
+                <div id="correccionProductoContainer" class="d-none">
+
+                    <p class="fw-semibold mb-3">
+                        Seleccione el producto correcto
+                    </p>
+
+                    <form id="formCorreccionProducto" method="POST">
+
+                        {% csrf_token %}
+
+                        <input type="hidden" name="tipo_correccion" value="producto">
+
+                        <div class="mb-3">
+
+                            <label for="productoNuevoSelect" class="form-label">
+                                Producto y presentación
+                            </label>
+
+                            <select id="productoNuevoSelect" name="producto_nuevo_id" class="form-select" required>
+
+                                <option value="">
+                                    Seleccione una opción
+                                </option>
+
+                                {% for variacion in variaciones %}
+
+                                <option value="{{ variacion.id }}">
+                                    {{ variacion.producto.nombre }}
+                                    — {{ variacion.presentacion.nombre }}
+                                </option>
+
+                                {% endfor %}
+
+                            </select>
+
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+
+                            <button type="button" class="btn btn-secondary" id="btnVolverCorrecciones">
+
+                                Regresar
+
+                            </button>
+
+                            <button type="submit" class="btn btn-primary" id="btnConfirmarProducto">
+
+                                Corregir producto
+
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+
+                <!-- CORRECCIÓN DE CANTIDAD -->
+
+                <!-- CORRECCIÓN DE CANTIDAD -->
+
+                <div id="correccionCantidadContainer" class="d-none">
+
+                    <p class="fw-semibold mb-3">
+                        Modificar cantidad
+                    </p>
+
+                    <form id="formCorreccionCantidad" method="POST">
+
+                        {% csrf_token %}
+
+                        <input type="hidden" name="tipo_correccion" value="cantidad">
+
+                        <div class="mb-3">
+
+                            <label for="cantidadNuevaInput" class="form-label">
+
+                                Nueva cantidad
+
+                            </label>
+
+                            <input type="number" id="cantidadNuevaInput" name="cantidad_nueva" class="form-control"
+                                min="0.01" step="0.01" required>
+
+                        </div>
+
+
+                        <div class="d-flex justify-content-between">
+
+                            <button type="button" class="btn btn-secondary" id="btnVolverCantidad">
+
+                                Regresar
+
+                            </button>
+
+                            <button type="submit" class="btn btn-warning">
+
+                                Corregir cantidad
+
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+
+                <!-- CORRECCIÓN PARA ELIMINAR -->
+
+                <!-- ELIMINAR PRODUCTO -->
+
+                <div id="eliminarProductoContainer" class="d-none">
+
+                    <p class="mb-3">
+                        ¿Está seguro de que desea eliminar este producto
+                        de la entrada?
+                    </p>
+
+                    <div class="alert alert-warning">
+
+                        Esta acción devolverá al stock la cantidad registrada
+                        en este movimiento.
+
+                    </div>
+
+
+                    <form id="formEliminarProducto" method="POST">
+
+                        {% csrf_token %}
+
+                        <input type="hidden" name="tipo_correccion" value="eliminar">
+
+
+                        <div class="d-flex justify-content-between">
+
+                            <button type="button" class="btn btn-secondary" id="btnVolverEliminar">
+
+                                Regresar
+
+                            </button>
+
+                            <button type="submit" class="btn btn-danger">
+
+                                Eliminar producto
+
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endif %}
 
 
 <!-- DATATABLES -->
@@ -179,6 +445,237 @@
         });
 
     });
+
+
+    // =========================================================
+    // MODAL DE CORRECCIONES
+    // =========================================================
+
+    let detalleIdActual = null;
+    let cantidadActual = null;
+
+
+    // ---------------------------------------------------------
+    // ELEMENTOS DEL MODAL
+    // ---------------------------------------------------------
+
+    const opcionesCorreccion =
+        document.getElementById("opcionesCorreccion");
+
+    const correccionProductoContainer =
+        document.getElementById("correccionProductoContainer");
+
+    const correccionCantidadContainer =
+        document.getElementById("correccionCantidadContainer");
+
+    const eliminarProductoContainer =
+        document.getElementById("eliminarProductoContainer");
+
+
+    // ---------------------------------------------------------
+    // MOSTRAR EL MENÚ PRINCIPAL
+    // ---------------------------------------------------------
+
+    function mostrarOpcionesCorreccion() {
+
+        opcionesCorreccion.classList.remove("d-none");
+
+        correccionProductoContainer.classList.add("d-none");
+        correccionCantidadContainer.classList.add("d-none");
+        eliminarProductoContainer.classList.add("d-none");
+    }
+
+
+    // ---------------------------------------------------------
+    // BOTÓN: PRODUCTO INCORRECTO
+    // ---------------------------------------------------------
+
+    document.getElementById("btnCorregirProducto")
+        .addEventListener("click", function () {
+
+            opcionesCorreccion.classList.add("d-none");
+
+            correccionProductoContainer.classList.remove("d-none");
+
+        });
+
+
+    // ---------------------------------------------------------
+    // BOTÓN: CANTIDAD INCORRECTA
+    // ---------------------------------------------------------
+
+    document.getElementById("btnCorregirCantidad")
+        .addEventListener("click", function () {
+
+            opcionesCorreccion.classList.add("d-none");
+
+            correccionCantidadContainer.classList.remove("d-none");
+
+            document.getElementById("cantidadNuevaInput").value =
+                cantidadActual;
+
+        });
+
+
+    // ---------------------------------------------------------
+    // BOTÓN: ELIMINAR PRODUCTO
+    // ---------------------------------------------------------
+
+    document.getElementById("btnEliminarProducto")
+        .addEventListener("click", function () {
+
+            opcionesCorreccion.classList.add("d-none");
+
+            eliminarProductoContainer.classList.remove("d-none");
+
+        });
+
+
+    // ---------------------------------------------------------
+    // REGRESAR DESDE PRODUCTO
+    // ---------------------------------------------------------
+
+    document.getElementById("btnVolverCorrecciones")
+        .addEventListener("click", function () {
+
+            mostrarOpcionesCorreccion();
+
+        });
+
+
+    // ---------------------------------------------------------
+    // REGRESAR DESDE CANTIDAD
+    // ---------------------------------------------------------
+
+    document.getElementById("btnVolverCantidad")
+        .addEventListener("click", function () {
+
+            mostrarOpcionesCorreccion();
+
+        });
+
+
+    // ---------------------------------------------------------
+    // REGRESAR DESDE ELIMINAR
+    // ---------------------------------------------------------
+
+    document.getElementById("btnVolverEliminar")
+        .addEventListener("click", function () {
+
+            mostrarOpcionesCorreccion();
+
+        });
+
+
+    // ---------------------------------------------------------
+    // AL ABRIR EL MODAL
+    // ---------------------------------------------------------
+
+    document
+        .getElementById("modalCorreccion")
+        .addEventListener("show.bs.modal", function (event) {
+
+            const button = event.relatedTarget;
+
+            detalleIdActual =
+                button.getAttribute("data-detalle-id");
+
+            cantidadActual =
+                button.getAttribute("data-cantidad");
+
+            document.getElementById("correccionProducto").textContent =
+                button.getAttribute("data-producto");
+
+            document.getElementById("correccionPresentacion").textContent =
+                button.getAttribute("data-presentacion");
+
+            document.getElementById("correccionCantidad").textContent =
+                cantidadActual;
+
+            // Reiniciar el modal cada vez que se abre
+            mostrarOpcionesCorreccion();
+
+            // Limpiar selección de producto
+            document.getElementById("productoNuevoSelect").value = "";
+
+            // Restaurar cantidad
+            document.getElementById("cantidadNuevaInput").value =
+                cantidadActual;
+
+        });
+
+
+    document
+        .getElementById("formCorreccionProducto")
+        .addEventListener("submit", function (event) {
+
+            event.preventDefault();
+
+            if (!detalleIdActual) {
+                alert("No se pudo identificar el producto a corregir.");
+                return;
+            }
+
+            this.action =
+                "{% url 'corregir_detalle_entrada' 0 %}"
+                    .replace("/0/", "/" + detalleIdActual + "/");
+
+            this.submit();
+
+        });
+
+    // =========================================================
+    // FORMULARIO DE CORRECCIÓN DE CANTIDAD
+    // =========================================================
+
+    document
+        .getElementById("formCorreccionCantidad")
+        .addEventListener("submit", function (event) {
+
+            event.preventDefault();
+
+            if (!detalleIdActual) {
+                alert("No se pudo identificar el producto a corregir.");
+                return;
+            }
+
+            this.action =
+                "{% url 'corregir_detalle_entrada' 0 %}"
+                    .replace(
+                        "/0/",
+                        "/" + detalleIdActual + "/"
+                    );
+
+            this.submit();
+
+        });
+
+
+    // =========================================================
+    // FORMULARIO PARA ELIMINAR PRODUCTO
+    // =========================================================
+
+    document
+        .getElementById("formEliminarProducto")
+        .addEventListener("submit", function (event) {
+
+            event.preventDefault();
+
+            if (!detalleIdActual) {
+                alert("No se pudo identificar el producto a corregir.");
+                return;
+            }
+
+            this.action =
+                "{% url 'corregir_detalle_entrada' 0 %}"
+                    .replace(
+                        "/0/",
+                        "/" + detalleIdActual + "/"
+                    );
+
+            this.submit();
+
+        });
 
 </script>
 

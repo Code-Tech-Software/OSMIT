@@ -2,81 +2,80 @@
 {% load static %}
 
 {% block content %}
-    <!-- Estilos personalizados y DataTables -->
-    <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
-    <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+<!-- Estilos personalizados y DataTables -->
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+<link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
 
-    <style>
+<style>
+    .truncate-text {
+        max-width: 150px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 
-        .truncate-text {
-            max-width: 150px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+    .filtros label {
+        font-weight: bold;
+        margin-right: 0.5rem;
+    }
 
-        .filtros label {
-            font-weight: bold;
-            margin-right: 0.5rem;
-        }
-
-        .filtros select {
-            margin-right: 1rem;
-        }
-
-
-    </style>
+    .filtros select {
+        margin-right: 1rem;
+    }
+</style>
 
 
-    <div>
-        <span class="fw-bold text-dark">Gestionar Clientes</span>
-        <span class="mx-2 text-dark">|</span>
-        <span class="text-secondary">Listado de Clientes</span>
-    </div>
+<div>
+    <span class="fw-bold text-dark">Gestionar Clientes</span>
+    <span class="mx-2 text-dark">|</span>
+    <span class="text-secondary">Listado de Clientes</span>
+</div>
 
 
 
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-2 mt-4">
-        <form method="get" class="filtros d-flex flex-wrap align-items-center">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-2 mt-4">
+    <form method="get" class="filtros d-flex flex-wrap align-items-center">
 
-            <div class="me-3 mb-2">
-                <label for="ruta">Ruta:</label>
-                <select name="ruta" id="ruta" class="form-select d-inline w-auto" onchange="this.form.submit()">
-                    <option value="" {% if not selected_ruta %}selected{% endif %}>Todas</option>
-                    <option value="sin_ruta" {% if selected_ruta == "sin_ruta" %}selected{% endif %}>Sin Ruta</option>
-                    {% for ruta in rutas %}
-                        <option value="{{ ruta.id }}"
-                                {% if selected_ruta == ruta.id|stringformat:"s" %}selected{% endif %}>
-                            {{ ruta.nombre }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
+        <div class="me-3 mb-2">
+            <label for="ruta">Ruta:</label>
+            <select name="ruta" id="ruta" class="form-select d-inline w-auto" onchange="this.form.submit()">
+                <option value="" {% if not selected_ruta %}selected{% endif %}>Todas</option>
 
+                <option value="sin_ruta" {% if selected_ruta == "sin_ruta" %}selected{% endif %}>
+                    Sin Ruta
+                </option>
 
-            <div class="mb-2">
-                <label for="dia">Día visita:</label>
-                <select name="dia" id="dia" class="form-select d-inline w-auto" onchange="this.form.submit()">
-                    <option value="" {% if not selected_dia %}selected{% endif %}>Todos</option>
-                    <option value="sin_dia" {% if selected_dia == "sin_dia" %}selected{% endif %}>Sin día</option>
-                    {% for clave, etiqueta in dias %}
-                        <option value="{{ clave }}"
-                                {% if selected_dia == clave %}selected{% endif %}>{{ etiqueta }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </form>
-        <div class="mb-2">
-            <a href="{% url 'agregar_cliente' %}" class="btn btn-custom-success">
-                <i class="bi bi-plus-circle"></i> Agregar Nuevo Cliente
-            </a>
+                {% for ruta in rutas %}
+                <option value="{{ ruta.id }}" {% if selected_ruta == ruta.id|stringformat:"s" %}selected{% endif %}>
+                    {{ ruta.nombre }}
+                </option>
+                {% endfor %}
+            </select>
         </div>
-    </div>
 
-    <div class="custom-card">
-        <div class="table-responsive">
-            <table id="clientesTable" class="table table-striped table-bordered">
-                <thead>
+
+        <div class="mb-2">
+            <label for="dia">Día visita:</label>
+            <select name="dia" id="dia" class="form-select d-inline w-auto" onchange="this.form.submit()">
+                <option value="" {% if not selected_dia %}selected{% endif %}>Todos</option>
+                <option value="sin_dia" {% if selected_dia == "sin_dia" %}selected{% endif %}>Sin día</option>
+                {% for clave, etiqueta in dias %}
+                <option value="{{ clave }}" {% if selected_dia == clave %}selected{% endif %}>{{ etiqueta }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+    <div class="mb-2">
+        <a href="{% url 'agregar_cliente' %}" class="btn btn-custom-success">
+            <i class="bi bi-plus-circle"></i> Agregar Nuevo Cliente
+        </a>
+    </div>
+</div>
+
+<div class="custom-card">
+    <div class="table-responsive">
+        <table id="clientesTable" class="table table-striped table-bordered">
+            <thead>
                 <tr>
                     <th>Nombre</th>
                     <th>Negocio</th>
@@ -87,108 +86,106 @@
                     <th>Estado</th>
                     <th>Acciones</th>
                 </tr>
-                </thead>
-                <tbody>
+            </thead>
+            <tbody>
                 {# DataTables llenará esto vía AJAX #}
-                </tbody>
-            </table>
+            </tbody>
+        </table>
 
 
-            <a href="{% url 'descargar_clientes_pdf' %}?{% if selected_ruta != None %}ruta={{ selected_ruta }}{% endif %}
+        <a href="{% url 'descargar_clientes_pdf' %}?{% if selected_ruta != None %}ruta={{ selected_ruta }}{% endif %}
 {% if selected_dia != None %}{% if selected_ruta != None %}&{% endif %}dia={{ selected_dia }}{% endif %}
 {% if mostrar_todos %}{% if selected_ruta or selected_dia %}&{% endif %}mostrar_todos=1{% endif %}"
-               class="btn btn-custom-info"
-               target="_blank">
-                <i class="bi bi-download me-2"></i> Descargar PDF
-            </a>
+            class="btn btn-custom-info" target="_blank">
+            <i class="bi bi-download me-2"></i> Descargar PDF
+        </a>
 
 
-            <!-- Switch mostrar todos -->
-            <div class="form-check form-switch mt-4">
-                <input class="form-check-input" type="checkbox" id="toggleEstado"
-                       {% if mostrar_todos %}checked{% endif %}>
-                <label class="form-check-label text-dark" for="toggleEstado">Mostrar todos los clientes</label>
-            </div>
-
-
+        <!-- Switch mostrar todos -->
+        <div class="form-check form-switch mt-4">
+            <input class="form-check-input" type="checkbox" id="toggleEstado" {% if mostrar_todos %}checked{% endif %}>
+            <label class="form-check-label text-dark" for="toggleEstado">Mostrar todos los clientes</label>
         </div>
+
+
     </div>
+</div>
 
-    <!-- Scripts: jQuery, DataTables, SweetAlert y Notyf -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
+<!-- Scripts: jQuery, DataTables, SweetAlert y Notyf -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
 
-    <script>
-        $(document).ready(function () {
-            const table = $('#clientesTable').DataTable({
-                processing: true,
-                serverSide: true,
-                ajax: {
-                    url: '{% url "clientes_data" %}',
-                    data: function (d) {
-                        // Incluimos los filtros actuales
-                        d.ruta = $('#ruta').val();
-                        d.dia = $('#dia').val();
-                        d.mostrar_todos = $('#toggleEstado').is(':checked') ? '1' : '';
-                    }
-                },
-                columns: [
-                    {data: 'nombre'},
-                    {data: 'nombre_negocio'},
-                    {data: 'direccion'},
-                    {data: 'telefono'},
-                    {data: 'ruta'},
-                    {data: 'dias_visita'},
-                    {data: 'estado', orderable: false, searchable: false},
-                    {data: 'acciones', orderable: false, searchable: false}
-                ],
-                language: {
+<script>
+    $(document).ready(function () {
+        const table = $('#clientesTable').DataTable({
+            processing: true,
+            serverSide: true,
+            ajax: {
+                url: '{% url "clientes_data" %}',
+                data: function (d) {
+                    // Incluimos los filtros actuales
+                    d.ruta = $('#ruta').val();
+                    d.dia = $('#dia').val();
+                    d.mostrar_todos = $('#toggleEstado').is(':checked') ? '1' : '';
+                }
+            },
+            columns: [
+                { data: 'nombre' },
+                { data: 'nombre_negocio' },
+                { data: 'direccion' },
+                { data: 'telefono' },
+                { data: 'ruta' },
+                { data: 'dias_visita' },
+                { data: 'estado', orderable: false, searchable: false },
+                { data: 'acciones', orderable: false, searchable: false }
+            ],
+            language: {
 
 
-                    emptyTable: "No hay datos disponibles",
-                    info: "Mostrando _START_ a _END_ de _TOTAL_ clientes",
-                    infoEmpty: "Mostrando 0 a 0 de 0 clientes",
-                    lengthMenu: "Mostrar _MENU_ clientes",
-                    search: "Buscar:",
-                    paginate: {
-                        first: '<i class="bi bi-rewind-fill"></i>',
-                        last: '<i class="bi bi-fast-forward-fill"></i>',
-                        next: '<i class="bi bi-caret-right-fill"></i>',
-                        previous: '<i class="bi bi-caret-left-fill"></i>'
-                    }
-                },
-                responsive: true,
-            });
+                emptyTable: "No hay datos disponibles",
+                info: "Mostrando _START_ a _END_ de _TOTAL_ clientes",
+                infoEmpty: "Mostrando 0 a 0 de 0 clientes",
+                lengthMenu: "Mostrar _MENU_ clientes",
+                search: "Buscar:",
+                paginate: {
+                    first: '<i class="bi bi-rewind-fill"></i>',
+                    last: '<i class="bi bi-fast-forward-fill"></i>',
+                    next: '<i class="bi bi-caret-right-fill"></i>',
+                    previous: '<i class="bi bi-caret-left-fill"></i>'
+                }
+            },
+            responsive: true,
+        });
 
-            // Refrescar tabla al cambiar filtros
-            $('#ruta, #dia').on('change', function () {
-                table.ajax.reload();
-            });
-            $('#toggleEstado').on('change', function () {
-                table.ajax.reload();
-            });
+        // Refrescar tabla al cambiar filtros
+        $('#ruta, #dia').on('change', function () {
+            table.ajax.reload();
+        });
+        $('#toggleEstado').on('change', function () {
+            table.ajax.reload();
+        });
 
-            // Confirmación de borrado (delegación de evento)
-            $('#clientesTable').on('click', '.btn-delete', function (e) {
-                e.preventDefault();
-                const url = $(this).attr('href');
-                Swal.fire({
-                    title: '¿Estás seguro?',
-                    text: "Esta acción desactivará el cliente.",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: 'var(--danger-color)',
-                    cancelButtonColor: 'var(--secondary-color)',
-                    confirmButtonText: 'Sí, desactivar',
-                    cancelButtonText: 'Cancelar'
-                }).then(result => {
-                    if (result.isConfirmed) window.location.href = url;
-                });
+        // Confirmación de borrado (delegación de evento)
+        $('#clientesTable').on('click', '.btn-delete', function (e) {
+            e.preventDefault();
+            const url = $(this).attr('href');
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: "Esta acción desactivará el cliente.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: 'var(--danger-color)',
+                cancelButtonColor: 'var(--secondary-color)',
+                confirmButtonText: 'Sí, desactivar',
+                cancelButtonText: 'Cancelar'
+            }).then(result => {
+                if (result.isConfirmed) window.location.href = url;
             });
         });
-    </script>
+    });
+</script>
 
 {% endblock %}

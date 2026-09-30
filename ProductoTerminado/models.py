@@ -191,3 +191,23 @@ class DetalleCorteInventarioPTerminado(models.Model):
         return ( f"Detalle Corte {self.id} - " f"Producto: {self.producto_variacion}" )
 
 
+class CorreccionPTerminado(models.Model):
+    TIPO_CORRECCION_CHOICES = (
+        ("producto", "Producto incorrecto"),
+        ("cantidad", "Cantidad incorrecta"),
+        ("eliminar", "Eliminar producto"),
+    )
+    entrada = models.ForeignKey(EntradaPTerminado,on_delete=models.CASCADE,null=True,blank=True,related_name="correcciones")
+    salida = models.ForeignKey(SalidaPTerminado,on_delete=models.CASCADE,null=True,blank=True,related_name="correcciones")
+    detalle_entrada = models.ForeignKey(DetalleEntradaPTerminado,on_delete=models.SET_NULL,null=True,blank=True,related_name="correcciones")
+    detalle_salida = models.ForeignKey(DetalleSalidaPTerminado,on_delete=models.SET_NULL,null=True,blank=True,related_name="correcciones")
+    tipo_correccion = models.CharField(max_length=20,choices=TIPO_CORRECCION_CHOICES)
+    producto_anterior = models.ForeignKey(ProductoVariacion,on_delete=models.SET_NULL,null=True,blank=True,related_name="correcciones_como_anterior")
+    producto_nuevo = models.ForeignKey(ProductoVariacion,on_delete=models.SET_NULL,null=True,blank=True,related_name="correcciones_como_nuevo")
+    cantidad_anterior = models.DecimalField(max_digits=10,decimal_places=2,null=True,blank=True)
+    cantidad_nueva = models.DecimalField(max_digits=10,decimal_places=2,null=True,blank=True)
+    usuario = models.ForeignKey(User,on_delete=models.SET_NULL,null=True)
+    fecha_correccion = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Corrección {self.id}"
