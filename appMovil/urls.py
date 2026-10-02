@@ -46,6 +46,8 @@ urlpatterns = [
     path('sync/ventas/', sync_ventas),
     path('sync/abonos/', sync_abonos),
     path('sync/devoluciones/', sync_devoluciones),
+    path('sync/cancelaciones/', sync_cancelaciones),
+
     path('movil/ventas/', get_ventas),
     path('movil/abonos/', get_abonos),
     path('movil/devoluciones/', get_devoluciones),

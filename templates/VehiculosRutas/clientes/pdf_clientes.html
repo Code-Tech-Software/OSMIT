@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
 
-
 <style>
 
     @page {
@@ -14,21 +13,60 @@
         font-size: 7px;
     }
 
-    table, th, td {
-        border: 1px solid black;
+    /* Tabla */
+    table {
         border-collapse: collapse;
-        table-layout: fixed; /* Muy importante para que los anchos fijos funcionen */
+        table-layout: fixed;
         width: 100%;
     }
 
-    th, td {
-        padding: 2px 0px 0px 2px; /* top → right → bottom → left*/
+    th,
+    td {
+        border: 1px solid black;
+        padding: 2px 0px 0px 2px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
 
+    /* Ancho de las columnas */
+    .col-nombre {
+        width: 14%;
+    }
 
+    .col-negocio {
+        width: 14%;
+    }
+
+    .col-giro {
+        width: 10%;
+    }
+
+    .col-direccion {
+        width: 18%;
+    }
+
+    .col-localidad {
+        width: 9%;
+    }
+
+    .col-colonia {
+        width: 9%;
+    }
+
+    .col-telefono {
+        width: 9%;
+    }
+
+    .col-exhibidor {
+        width: 5%;
+    }
+
+    .col-ventas {
+        width: 12%;
+    }
+
+    /* Footer */
     footer {
         background-color: #eaeaea;
         text-align: center;
@@ -41,22 +79,12 @@
         padding-top: 5px;
     }
 
+    /* Título */
     h2 {
         font-size: 16px;
         text-align: center;
     }
 
-    .col-giro {
-        width: 50%; /* ajusta según necesites */
-    }
-
-    .col-exhibidor {
-        width: 50% /* ajusta según necesites */
-    }
-
-    .col-telefono {
-        width: 50% /* ajusta según necesites */
-    }
 </style>
 
 <body>
@@ -64,45 +92,85 @@
 <h2>Listado de Clientes</h2>
 
 <div style="font-size: 12px">
-    <span><strong>Ruta:</strong> {{ ruta|default:"Todas" }}</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-    <span><strong>Día:</strong> {{ dia|default:"Todos" }}</span>
+    <span>
+        <strong>Ruta:</strong> {{ ruta|default:"Todas" }}
+    </span>
 
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+    <span>
+        <strong>Día:</strong> {{ dia|default:"Todos" }}
+    </span>
 </div>
+
 <table>
     <thead>
     <tr>
-        <th>Nombre</th>
-        <th>Negocio</th>
+        <th class="col-nombre">Nombre</th>
+        <th class="col-negocio">Negocio</th>
         <th class="col-giro">Giro</th>
-        <th>Dirección</th>
-        <th>Localidad</th>
-        <th>Colonia</th>
+        <th class="col-direccion">Dirección</th>
+        <th class="col-localidad">Localidad</th>
+        <th class="col-colonia">Colonia</th>
         <th class="col-telefono">Teléfono</th>
         <th class="col-exhibidor">Exhibidor</th>
-
-
+        <th class="col-ventas">Ventas</th>
     </tr>
     </thead>
+
     <tbody>
+
     {% for cliente in clientes %}
+
         <tr>
-            <td>{{ cliente.nombre }}</td>
-            <td>{{ cliente.nombre_negocio }}</td>
-            <td class="col-giro">{{ cliente.giro }}</td>
-            <td>{{ cliente.direccion }}</td>
-            <td>{{ cliente.localidad }}</td>
-            <td>{{ cliente.colonia }}</td>
-            <td class="col-telefono">{{ cliente.telefono }}</td>
-            <td class="col-exhibidor">{{ cliente.tipo_exhibidor }}</td>
+            <td class="col-nombre">
+                {{ cliente.nombre }}
+            </td>
 
+            <td class="col-negocio">
+                {{ cliente.nombre_negocio }}
+            </td>
 
+            <td class="col-giro">
+                {{ cliente.giro }}
+            </td>
+
+            <td class="col-direccion">
+                {{ cliente.direccion }}
+            </td>
+
+            <td class="col-localidad">
+                {{ cliente.localidad }}
+            </td>
+
+            <td class="col-colonia">
+                {{ cliente.colonia }}
+            </td>
+
+            <td class="col-telefono">
+                {{ cliente.telefono }}
+            </td>
+
+            <td class="col-exhibidor">
+                {{ cliente.tipo_exhibidor }}
+            </td>
+
+            <td class="col-ventas">
+                -
+            </td>
         </tr>
+
     {% endfor %}
+
     </tbody>
 </table>
-<div style="text-align: right; padding-top: 10px;"><strong>Número de Clientes:</strong> {{ clientes|length }}</div>
+
+<div style="text-align: left; padding-top: 10px; white-space: nowrap;">
+    <strong>Número de Clientes:</strong> {{ clientes|length }}
+</div>
+
 <footer>
-    <p class="foo">&copy; 2025 OSMIT SISTEM</p>
+    <p class="foo">&copy; 2026 OSMIT SISTEM</p>
 </footer>
 
 </body>

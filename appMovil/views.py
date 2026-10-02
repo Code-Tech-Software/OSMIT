@@ -1157,6 +1157,80 @@ def sync_devoluciones(request):
     })
 
 
+@api_view(['POST'])
+@permission_classes([DispositivoActivoPermission])
+def sync_cancelaciones(request):
+    data = request.data
+    cancelaciones = data.get('cancelaciones', [])
+    detalles = data.get('detalles', [])
+
+    with transaction.atomic():
+        for c in cancelaciones:
+            if CancelacionVenta.objects.filter(uuid=c['uuid']).exists():
+                continue
+
+            usuario = Usuario.objects.filter(id=c['usuario_id']).first()
+            if not usuario:
+                continue
+
+            mini_bodega = MiniBodega.objects.filter(id=c['mini_bodega_id']).first()
+            if not mini_bodega:
+                continue
+
+            fecha_str = c.get('fecha')
+            if fecha_str:
+                try:
+                    fecha = datetime.fromisoformat(fecha_str)
+                    if timezone.is_naive(fecha):
+                        fecha = timezone.make_aware(
+                            fecha,
+                            timezone.get_current_timezone()
+                        )
+                except:
+                    fecha = timezone.now()
+            else:
+                fecha = timezone.now()
+
+            CancelacionVenta.objects.create(
+                uuid=c['uuid'],
+                venta_uuid=c['venta_uuid'],
+                usuario=usuario,
+                mini_bodega=mini_bodega,
+                fecha=fecha,
+                total=c['total'],
+                motivo=c.get('motivo', '')
+            )
+
+        for detalle in detalles:
+            if CancelacionVentaDetalle.objects.filter(uuid=detalle['uuid']).exists():
+                continue
+
+            cancelacion = CancelacionVenta.objects.get(
+                uuid=detalle['cancelacion_uuid']
+            )
+
+            producto_variacion = ProductoVariacion.objects.filter(
+                id=detalle['producto_variacion_id']
+            ).first()
+
+            if not producto_variacion:
+                continue
+
+            CancelacionVentaDetalle.objects.create(
+                uuid=detalle['uuid'],
+                cancelacion=cancelacion,
+                cancelacion_uuid=detalle['cancelacion_uuid'],
+                producto_variacion=producto_variacion,
+                nombre_producto=detalle['nombre_producto'],
+                cantidad=detalle['cantidad'],
+                precio_unitario=detalle.get('precio_unitario', 0)
+            )
+
+    return Response({
+        "message": "Cancelaciones sincronizadas correctamente"
+    })
+
+
 ##Solo para revisar
 @api_view(['GET'])
 def get_ventas(request):
@@ -2089,7 +2163,10 @@ def dashboard_repartidor_api(request):
         ).select_related(
             'producto_variacion__producto',
             'producto_variacion__presentacion'
-        )
+        ).order_by(
+            'producto_variacion__producto__nombre',
+            'producto_variacion__presentacion__nombre'
+)
 
         for detalle in detalles:
 
