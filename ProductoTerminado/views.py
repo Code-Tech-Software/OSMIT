@@ -37,6 +37,7 @@ from django.db.models import Q
 from django.urls import reverse
 from Usuario.decorators import requiere_roles,solo_administrador
 from django.views.decorators.http import require_POST
+from django.db.models import Exists, OuterRef
 
 
 
@@ -2787,14 +2788,20 @@ def historial_entradas(request):
     hasta = request.GET.get("hasta") or hoy.strftime("%Y-%m-%d")
 
     entradas = (
-        EntradaPTerminado.objects
-        .select_related("usuario")
-        .filter(
-            fecha_entrada__date__gte=desde,
-            fecha_entrada__date__lte=hasta
+    EntradaPTerminado.objects
+    .select_related("usuario")
+    .annotate(
+        fue_corregida=Exists(
+            CorreccionPTerminado.objects.filter(
+                entrada=OuterRef("pk")
+            )
         )
-        .order_by("-fecha_entrada")
     )
+    .filter(
+        fecha_entrada__date__gte=desde,
+        fecha_entrada__date__lte=hasta
+    )
+    .order_by("-fecha_entrada"))
 
     return render(
         request,
@@ -2928,9 +2935,16 @@ def historial_salidas(request):
     desde=request.GET.get("desde") or hoy.strftime("%Y-%m-%d")
     hasta=request.GET.get("hasta") or hoy.strftime("%Y-%m-%d")
 
-    salidas=(
+    salidas = (
         SalidaPTerminado.objects
-        .select_related("usuario","ruta")
+        .select_related("usuario", "ruta")
+        .annotate(
+            fue_corregida=Exists(
+                CorreccionPTerminado.objects.filter(
+                    salida=OuterRef("pk")
+                )
+            )
+        )
         .filter(
             fecha_salida__date__gte=desde,
             fecha_salida__date__lte=hasta

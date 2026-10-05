@@ -234,3 +234,18 @@ class CancelacionVentaDetalle(models.Model):
 
     def __str__(self):
         return f"{self.nombre_producto} - {self.cantidad}"
+
+
+class DevolucionSustitucion(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False)
+    devolucion = models.ForeignKey(Devolucion,on_delete=models.CASCADE)
+    devolucion_detalle = models.ForeignKey(DevolucionDetalle,on_delete=models.CASCADE)
+    producto_sustituto = models.ForeignKey(ProductoVariacion,on_delete=models.CASCADE)
+    cantidad = models.DecimalField(max_digits=10,decimal_places=2)
+    precio_unitario = models.DecimalField(max_digits=10,decimal_places=2,default=0)
+    sincronizado = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def subtotal(self):
+        return self.cantidad * self.precio_unitario

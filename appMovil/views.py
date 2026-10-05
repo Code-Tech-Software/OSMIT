@@ -1034,14 +1034,12 @@ def sync_abonos(request):
   "devoluciones": [
     {
       "uuid": "11111111-1111-1111-1111-111111111111",
-      "tipo": "DEVOLUCION_VENTA",
+      "tipo": "Devolución de cliente",
       "cliente_id": 10,
-
       "usuario_id": 3,
       "mini_bodega_id": 1,
-
-      "fecha": "2026-05-21T14:30:00",
-      "descripcion": "Producto en mal estado"
+      "fecha": "2026-10-03T14:30:00",
+      "descripcion": ""
     }
   ],
   "detalles": [
@@ -1050,7 +1048,7 @@ def sync_abonos(request):
       "devolucion_uuid": "11111111-1111-1111-1111-111111111111",
       "producto_variacion_id": 5,
       "cantidad": 2,
-      "precio_unitario": 15.50
+      "precio_unitario": 20.00
     }
   ],
   "mermas": [
@@ -1060,6 +1058,16 @@ def sync_abonos(request):
       "producto_variacion_id": 5,
       "cantidad": 2,
       "devolucion_uuid": "11111111-1111-1111-1111-111111111111"
+    }
+  ],
+  "sustituciones": [
+    {
+      "uuid": "44444444-4444-4444-4444-444444444444",
+      "devolucion_uuid": "11111111-1111-1111-1111-111111111111",
+      "devolucion_detalle_uuid": "22222222-2222-2222-2222-222222222222",
+      "producto_variacion_id": 8,
+      "cantidad": 1,
+      "precio_unitario": 40.00
     }
   ]
 }
@@ -1072,14 +1080,17 @@ def sync_devoluciones(request):
     devoluciones = data.get('devoluciones', [])
     detalles = data.get('detalles', [])
     mermas = data.get('mermas', [])
+    sustituciones = data.get('sustituciones', [])
 
     with transaction.atomic():
 
+        # =========================
         # 🔹 1. DEVOLUCIONES
+        # =========================
         for d in devoluciones:
 
             if Devolucion.objects.filter(uuid=d['uuid']).exists():
-                continue  # evitar duplicados
+                continue
 
             if not Usuario.objects.filter(id=d['usuario_id']).exists():
                 continue
@@ -1093,9 +1104,11 @@ def sync_devoluciones(request):
                 try:
                     fecha = datetime.fromisoformat(fecha_str)
 
-                 # 🔥 convertir a timezone si viene sin zona
                     if timezone.is_naive(fecha):
-                        fecha = timezone.make_aware(fecha, timezone.get_current_timezone())
+                        fecha = timezone.make_aware(
+                            fecha,
+                            timezone.get_current_timezone()
+                        )
 
                 except:
                     fecha = timezone.now()
@@ -1106,17 +1119,16 @@ def sync_devoluciones(request):
                 uuid=d['uuid'],
                 tipo=d['tipo'],
                 cliente_id=d.get('cliente_id'),
-
-                # 🔥 ahora vienen directo de la app
                 usuario_id=d['usuario_id'],
                 mini_bodega_id=d['mini_bodega_id'],
-
                 fecha=fecha,
                 descripcion=d.get('descripcion', ''),
                 sincronizado=True
-    )
+            )
 
+        # =========================
         # 🔹 2. DETALLES
+        # =========================
         for det in detalles:
 
             if DevolucionDetalle.objects.filter(uuid=det['uuid']).exists():
@@ -1133,7 +1145,9 @@ def sync_devoluciones(request):
                 precio_unitario=det.get('precio_unitario', 0)
             )
 
+        # =========================
         # 🔹 3. MERMAS
+        # =========================
         for m in mermas:
 
             if MiniBodegaDetalleMerma.objects.filter(uuid=m['uuid']).exists():
@@ -1150,6 +1164,76 @@ def sync_devoluciones(request):
                 cantidad=m['cantidad'],
                 devolucion=devolucion,
                 devolucion_uuid=m.get('devolucion_uuid')
+            )
+
+        # =========================
+        # 🔹 4. SUSTITUCIONES
+        # =========================
+        for s in sustituciones:
+
+            if DevolucionSustitucion.objects.filter(
+                uuid=s['uuid']
+            ).exists():
+                continue
+
+            devolucion = Devolucion.objects.get(
+                uuid=s['devolucion_uuid']
+            )
+
+            detalle = DevolucionDetalle.objects.get(
+                uuid=s['devolucion_detalle_uuid']
+            )
+
+            cantidad = Decimal(str(s.get('cantidad', 0)))
+            precio = Decimal(str(s.get('precio_unitario', 0)))
+
+            if cantidad <= 0:
+                raise Exception(
+                    f"Cantidad inválida en sustitución {s['uuid']}"
+                )
+
+            # =========================
+            # 🔥 BUSCAR STOCK
+            # =========================
+            mini_bodega_detalle = MiniBodegaDetalle.objects.filter(
+                mini_bodega_id=devolucion.mini_bodega_id,
+                producto_variacion_id=s['producto_variacion_id']
+            ).first()
+
+            if not mini_bodega_detalle:
+                raise Exception(
+                    f"No existe el producto sustituto "
+                    f"{s['producto_variacion_id']} "
+                    f"en la MiniBodega "
+                    f"{devolucion.mini_bodega_id}"
+                )
+
+            # =========================
+            # 🔥 VALIDAR STOCK
+            # =========================
+            if mini_bodega_detalle.cantidad_actual < cantidad:
+                raise Exception(
+                    f"Stock insuficiente para el producto sustituto "
+                    f"{s['producto_variacion_id']}"
+                )
+
+            # =========================
+            # 🔥 DESCONTAR SUSTITUTO
+            # =========================
+            mini_bodega_detalle.cantidad_actual -= cantidad
+            mini_bodega_detalle.save()
+
+            # =========================
+            # 🔥 GUARDAR SUSTITUCIÓN
+            # =========================
+            DevolucionSustitucion.objects.create(
+                uuid=s['uuid'],
+                devolucion=devolucion,
+                devolucion_detalle=detalle,
+                producto_sustituto_id=s['producto_variacion_id'],
+                cantidad=cantidad,
+                precio_unitario=precio,
+                sincronizado=True
             )
 
     return Response({

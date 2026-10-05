@@ -97,6 +97,7 @@
                         <th>Destino</th>
                         <th>Ruta</th>
                         <th>Nota</th>
+                        <th>Corregida</th>
                         <th>Detalle</th>
                     </tr>
 
@@ -152,6 +153,19 @@
 
 
                         <td>
+                            {% if salida.fue_corregida %}
+                                <span class="badge bg-warning text-dark">
+                                    Sí
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">
+                                    No
+                                </span>
+                            {% endif %}
+                        </td>
+
+
+                        <td>
 
                             <a href="{% url 'detalle_salida' salida.id %}" class="btn btn-sm btn-primary">
                                 Ver detalle
@@ -166,6 +180,7 @@
                 </tbody>
 
             </table>
+
 
         </div>
 

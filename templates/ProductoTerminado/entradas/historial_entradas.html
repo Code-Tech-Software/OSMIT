@@ -82,6 +82,7 @@
                         <th>Fecha</th>
                         <th>Usuario</th>
                         <th>Nota</th>
+                        <th>Corregida</th>
                         <th>Detalle</th>
                     </tr>
                 </thead>
@@ -106,6 +107,18 @@
 
                         <td class="text-start">
                             {{ entrada.nota|default:"-" }}
+                        </td>
+
+                        <td>
+                            {% if entrada.fue_corregida %}
+                                <span class="badge bg-warning text-dark">
+                                    Sí
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">
+                                    No
+                                </span>
+                            {% endif %}
                         </td>
 
                         <td>
