@@ -5,7 +5,7 @@ from django.utils.dateparse import parse_datetime, parse_date
 from django.utils.timezone import make_aware, is_naive
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from django.contrib.auth.decorators import login_required
 import secrets
 import json
@@ -35,6 +35,7 @@ from django.contrib import messages
 from .forms import DispositivoForm
 from .autenticacion_dispositivo import DispositivoActivoPermission
 from Usuario.decorators import requiere_roles,solo_administrador
+from django.db.models import Exists, OuterRef
 
 
 # Create your views here.
@@ -1314,6 +1315,126 @@ def sync_cancelaciones(request):
         "message": "Cancelaciones sincronizadas correctamente"
     })
 
+@api_view(['POST'])
+@permission_classes([DispositivoActivoPermission])
+def sync_cancelaciones_devoluciones(request):
+    data = request.data
+
+    cancelaciones = data.get('cancelaciones', [])
+    detalles = data.get('detalles', [])
+    sustituciones = data.get('sustituciones', [])
+
+    with transaction.atomic():
+
+        for c in cancelaciones:
+            if CancelacionDevolucion.objects.filter(
+                uuid=c['uuid']
+            ).exists():
+                continue
+
+            usuario = Usuario.objects.filter(
+                id=c['usuario_id']
+            ).first()
+
+            if not usuario:
+                continue
+
+            mini_bodega = MiniBodega.objects.filter(
+                id=c['mini_bodega_id']
+            ).first()
+
+            if not mini_bodega:
+                continue
+
+            fecha_str = c.get('fecha')
+
+            if fecha_str:
+                try:
+                    fecha = datetime.fromisoformat(fecha_str)
+
+                    if timezone.is_naive(fecha):
+                        fecha = timezone.make_aware(
+                            fecha,
+                            timezone.get_current_timezone()
+                        )
+
+                except:
+                    fecha = timezone.now()
+            else:
+                fecha = timezone.now()
+
+            CancelacionDevolucion.objects.create(
+                uuid=c['uuid'],
+                devolucion_uuid=c['devolucion_uuid'],
+                usuario=usuario,
+                mini_bodega=mini_bodega,
+                fecha=fecha,
+                total=c['total'],
+                motivo=c.get('motivo', '')
+            )
+
+        for detalle in detalles:
+            if CancelacionDevolucionDetalle.objects.filter(
+                uuid=detalle['uuid']
+            ).exists():
+                continue
+
+            cancelacion = CancelacionDevolucion.objects.get(
+                uuid=detalle['cancelacion_uuid']
+            )
+
+            producto_variacion = ProductoVariacion.objects.filter(
+                id=detalle['producto_variacion_id']
+            ).first()
+
+            if not producto_variacion:
+                continue
+
+            CancelacionDevolucionDetalle.objects.create(
+                uuid=detalle['uuid'],
+                cancelacion=cancelacion,
+                cancelacion_uuid=detalle['cancelacion_uuid'],
+                producto_variacion=producto_variacion,
+                nombre_producto=detalle['nombre_producto'],
+                cantidad=detalle['cantidad'],
+                precio_unitario=detalle.get('precio_unitario', 0)
+            )
+
+        for sustitucion in sustituciones:
+            if CancelacionDevolucionSustitucion.objects.filter(
+                uuid=sustitucion['uuid']
+            ).exists():
+                continue
+
+            cancelacion = CancelacionDevolucion.objects.get(
+                uuid=sustitucion['cancelacion_uuid']
+            )
+
+            producto_variacion = ProductoVariacion.objects.filter(
+                id=sustitucion['producto_variacion_id']
+            ).first()
+
+            if not producto_variacion:
+                continue
+
+            CancelacionDevolucionSustitucion.objects.create(
+                uuid=sustitucion['uuid'],
+                cancelacion=cancelacion,
+                cancelacion_uuid=sustitucion['cancelacion_uuid'],
+                producto_variacion=producto_variacion,
+                nombre_producto=sustitucion['nombre_producto'],
+                cantidad=sustitucion['cantidad'],
+                precio_unitario=sustitucion.get(
+                    'precio_unitario',
+                    0
+                )
+            )
+
+    return Response({
+        "message": "Cancelaciones de devoluciones sincronizadas correctamente"
+    })
+
+
 
 ##Solo para revisar
 @api_view(['GET'])
@@ -1601,8 +1722,8 @@ from django.db.models import Sum, F, FloatField
 from .models import Devolucion
 
 
-@method_decorator(login_required,'dispatch')
-@method_decorator(requiere_roles("Producto Terminado","Recursos Humanos"), name='dispatch')
+@method_decorator(login_required, 'dispatch')
+@method_decorator(requiere_roles("Producto Terminado", "Recursos Humanos"), name='dispatch')
 class ListaDevolucionesView(ListView):
     model = Devolucion
     template_name = 'appMovil/devoluciones/lista_devoluciones.html'
@@ -1610,6 +1731,10 @@ class ListaDevolucionesView(ListView):
     paginate_by = 50
 
     def get_queryset(self):
+        sustitucion = DevolucionSustitucion.objects.filter(
+            devolucion=OuterRef('pk')
+        )
+
         queryset = super().get_queryset().select_related(
             'cliente',
             'usuario',
@@ -1619,23 +1744,21 @@ class ListaDevolucionesView(ListView):
                 F('devoluciondetalle__cantidad') *
                 F('devoluciondetalle__precio_unitario'),
                 output_field=FloatField()
-            )
+            ),
+            tiene_cambio_producto=Exists(sustitucion)
         )
 
         hoy = timezone.localdate().strftime('%Y-%m-%d')
 
-        # Obtener parámetros del GET
         fecha_inicio = self.request.GET.get('fecha_inicio') or hoy
         fecha_fin = self.request.GET.get('fecha_fin') or hoy
         repartidor = self.request.GET.get('repartidor')
 
-        # Aplicar filtros de fecha
         queryset = queryset.filter(
             fecha__date__gte=fecha_inicio,
             fecha__date__lte=fecha_fin
         )
 
-        # Filtrar por repartidor si se seleccionó
         if repartidor:
             queryset = queryset.filter(
                 usuario_id=repartidor
@@ -1648,7 +1771,6 @@ class ListaDevolucionesView(ListView):
 
         hoy = timezone.localdate().strftime('%Y-%m-%d')
 
-        # Valores actuales de los filtros
         fecha_inicio = self.request.GET.get('fecha_inicio') or hoy
         fecha_fin = self.request.GET.get('fecha_fin') or hoy
         repartidor = self.request.GET.get('repartidor')
@@ -1659,8 +1781,6 @@ class ListaDevolucionesView(ListView):
             'repartidor': repartidor
         })
 
-        # Total de todas las devoluciones del filtro,
-        # no solamente las de la página actual
         devoluciones_filtradas = self.get_queryset()
 
         total_suma = devoluciones_filtradas.aggregate(
@@ -1684,12 +1804,17 @@ class DetalleDevolucionView(DetailView):
     context_object_name = 'devolucion'
 
     def get_queryset(self):
-        # Traemos las relaciones y calculamos el total general de esta devolución en específico
-        return super().get_queryset().select_related('cliente', 'usuario', 'mini_bodega').prefetch_related(
-            'devoluciondetalle_set__producto_variacion'
+        return super().get_queryset().select_related(
+            'cliente',
+            'usuario',
+            'mini_bodega'
+        ).prefetch_related(
+            'devoluciondetalle_set__producto_variacion__presentacion',
+            'devolucionsustitucion_set__producto_sustituto__presentacion'
         ).annotate(
             total=Sum(
-                F('devoluciondetalle__cantidad') * F('devoluciondetalle__precio_unitario'),
+                F('devoluciondetalle__cantidad') *
+                F('devoluciondetalle__precio_unitario'),
                 output_field=FloatField()
             )
         )
@@ -2378,3 +2503,240 @@ def dashboard_repartidor_api(request):
             'efectivo_esperado': float(efectivo_esperado),
         }
     })
+
+
+
+@login_required
+@solo_administrador
+def admin_minibodega_list(request):
+
+    minibodegas = MiniBodega.objects.select_related(
+        'ruta',
+        'usuario',
+        'vehiculo'
+    ).order_by('-fecha', '-id')
+
+    context = {
+        'minibodegas': minibodegas
+    }
+
+    return render(
+        request,
+        'appMovil/miniBodegas/administracion/list.html',
+        context
+    )
+
+
+@login_required
+@solo_administrador
+def admin_minibodega_edit(request, pk):
+
+    minibodega = get_object_or_404(
+        MiniBodega.objects.select_related(
+            'ruta',
+            'usuario',
+            'vehiculo'
+        ),
+        pk=pk
+    )
+
+    if request.method == 'POST':
+
+        accion = request.POST.get('accion')
+
+        try:
+
+            with transaction.atomic():
+
+                if accion == 'guardar':
+
+                    ruta_id = request.POST.get('ruta')
+                    usuario_id = request.POST.get('usuario')
+                    vehiculo_id = request.POST.get('vehiculo')
+
+                    estado = request.POST.get('estado') == 'on'
+
+                    minibodega.ruta = get_object_or_404(
+                        Ruta,
+                        pk=ruta_id
+                    )
+
+                    minibodega.usuario = get_object_or_404(
+                        Usuario,
+                        pk=usuario_id
+                    )
+
+                    minibodega.vehiculo = get_object_or_404(
+                        Vehiculo,
+                        pk=vehiculo_id
+                    )
+
+                    minibodega.estado = estado
+
+                    minibodega.save()
+
+                    return redirect(
+                        'admin_minibodega_edit',
+                        pk=minibodega.pk
+                    )
+
+                elif accion == 'modificar_cantidad':
+
+                    detalle_id = request.POST.get('detalle_id')
+                    cantidad_inicial = request.POST.get('cantidad_inicial')
+                    cantidad_actual = request.POST.get('cantidad_actual')
+
+                    detalle = get_object_or_404(
+                        MiniBodegaDetalle,
+                        pk=detalle_id,
+                        mini_bodega=minibodega
+                    )
+
+                    try:
+                        nueva_cantidad_inicial = Decimal(cantidad_inicial)
+                        nueva_cantidad_actual = Decimal(cantidad_actual)
+                    except (InvalidOperation, TypeError):
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'Las cantidades ingresadas no son válidas.'
+                        }, status=400)
+
+                    if nueva_cantidad_inicial < 0 or nueva_cantidad_actual < 0:
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'Las cantidades no pueden ser negativas.'
+                        }, status=400)
+
+                    detalle.cantidad_inicial = nueva_cantidad_inicial
+                    detalle.cantidad_actual = nueva_cantidad_actual
+                    detalle.save()
+
+                    return redirect(
+                        'admin_minibodega_edit',
+                        pk=minibodega.pk
+                    )
+
+                elif accion == 'agregar_producto':
+
+                    producto_id = request.POST.get('producto')
+                    cantidad = request.POST.get('cantidad')
+
+                    producto = get_object_or_404(
+                        ProductoVariacion,
+                        pk=producto_id
+                    )
+
+                    try:
+                        nueva_cantidad = Decimal(cantidad)
+                    except (InvalidOperation, TypeError):
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'La cantidad ingresada no es válida.'
+                        }, status=400)
+
+                    if nueva_cantidad < 0:
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'La cantidad no puede ser negativa.'
+                        }, status=400)
+
+                    existe = MiniBodegaDetalle.objects.filter(
+                        mini_bodega=minibodega,
+                        producto_variacion=producto
+                    ).exists()
+
+                    if existe:
+                        return JsonResponse({
+                            'success': False,
+                            'message': 'El producto ya existe en esta Mini Bodega.'
+                        }, status=400)
+
+                    MiniBodegaDetalle.objects.create(
+                        mini_bodega=minibodega,
+                        producto_variacion=producto,
+                        cantidad_inicial=nueva_cantidad,
+                        cantidad_actual=nueva_cantidad
+                    )
+
+                    return redirect(
+                        'admin_minibodega_edit',
+                        pk=minibodega.pk
+                    )
+
+                elif accion == 'quitar_producto':
+
+                    detalle_id = request.POST.get('detalle_id')
+
+                    detalle = get_object_or_404(
+                        MiniBodegaDetalle,
+                        pk=detalle_id,
+                        mini_bodega=minibodega
+                    )
+
+                    detalle.delete()
+
+                    return redirect(
+                        'admin_minibodega_edit',
+                        pk=minibodega.pk
+                    )
+
+                else:
+
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Acción no válida.'
+                    }, status=400)
+
+        except Exception as e:
+
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            }, status=400)
+
+    detalles = MiniBodegaDetalle.objects.filter(
+        mini_bodega=minibodega
+    ).select_related(
+        'producto_variacion',
+        'producto_variacion__producto',
+        'producto_variacion__presentacion'
+    ).order_by(
+        'producto_variacion__producto__nombre',
+        'producto_variacion__presentacion__nombre'
+    )
+
+    rutas = Ruta.objects.all().order_by('nombre')
+
+    usuarios = Usuario.objects.filter(
+        is_active=True
+    ).order_by('username')
+
+    vehiculos = Vehiculo.objects.all().order_by(
+        'placa'
+    )
+
+    productos = ProductoVariacion.objects.filter(
+        producto__estado=True,
+        presentacion__estado=True
+    ).select_related(
+        'producto',
+        'presentacion'
+    ).order_by(
+        'producto__nombre',
+        'presentacion__nombre'
+    )
+
+    context = {
+        'minibodega': minibodega,
+        'detalles': detalles,
+        'rutas': rutas,
+        'usuarios': usuarios,
+        'vehiculos': vehiculos,
+        'productos': productos,
+    }
+
+    return render(
+        request,
+        'appMovil/miniBodegas/administracion/edit.html',
+        context
+    )

@@ -1,0 +1,110 @@
+{% extends 'Base/Sidebar.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container-fluid mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>Administración de MiniBodegas</h2>
+            <p class="text-muted mb-0">
+                Consulta y modifica la configuración de las MiniBodegas.
+            </p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <div class="table-responsive">
+
+                <table class="table table-hover align-middle">
+
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Fecha</th>
+                            <th>Ruta</th>
+                            <th>Repartidor</th>
+                            <th>Vehículo</th>
+                            <th>Estado</th>
+                            <th class="text-end">Acción</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        {% for minibodega in minibodegas %}
+
+                        <tr>
+
+                            <td>
+                                #{{ minibodega.id }}
+                            </td>
+
+                            <td>
+                                {{ minibodega.fecha|date:"d/m/Y" }}
+                            </td>
+
+                            <td>
+                                {{ minibodega.ruta.nombre }}
+                            </td>
+
+                            <td>
+                                {{ minibodega.usuario.get_full_name|default:minibodega.usuario.username }}
+                            </td>
+
+                            <td>
+                                {{ minibodega.vehiculo }}
+                            </td>
+
+                            <td>
+
+                                {% if minibodega.estado %}
+                                    <span class="badge bg-success">
+                                        Activa
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">
+                                        Cerrada
+                                    </span>
+                                {% endif %}
+
+                            </td>
+
+                            <td class="text-end">
+
+                                <a
+                                    href="{% url 'admin_minibodega_edit' minibodega.pk %}"
+                                    class="btn btn-primary btn-sm"
+                                >
+                                    Editar
+                                </a>
+
+                            </td>
+
+                        </tr>
+
+                        {% empty %}
+
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                No hay MiniBodegas registradas.
+                            </td>
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

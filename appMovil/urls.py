@@ -43,10 +43,15 @@ urlpatterns = [
     path('minibodegas/<int:pk>/', views.minibodega_detail, name='minibodega_detalle'),
 
     path('minibodegas/agregar/', views.agregar_minibodega, name='agregar_minibodega'),
+
+    path('administracion/minibodegas/',admin_minibodega_list,name='admin_minibodega_list'),
+    path('administracion/minibodegas/<int:pk>/',admin_minibodega_edit,name='admin_minibodega_edit'),
+
     path('sync/ventas/', sync_ventas),
     path('sync/abonos/', sync_abonos),
     path('sync/devoluciones/', sync_devoluciones),
     path('sync/cancelaciones/', sync_cancelaciones),
+    path('sync/cancelaciones-devoluciones/',sync_cancelaciones_devoluciones),
 
     path('movil/ventas/', get_ventas),
     path('movil/abonos/', get_abonos),

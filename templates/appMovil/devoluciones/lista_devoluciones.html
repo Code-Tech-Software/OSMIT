@@ -109,6 +109,7 @@
                         <th>Cliente</th>
                         <th>Repartidor</th>
                         <th>Tipo</th>
+                        <th>Cambio de producto</th>
                         <th>Bodega Destino</th>
                         <th>Valor Total</th>
                         <th>Acciones</th>
@@ -124,6 +125,18 @@
                             <span class="badge bg-secondary">
                                 {{ devolucion.tipo }}
                             </span>
+                        </td>
+                        <td>
+                            {% if devolucion.tiene_cambio_producto %}
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-arrow-left-right me-1"></i>
+                                    Sí
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">
+                                    No
+                                </span>
+                            {% endif %}
                         </td>
                         <td>{{ devolucion.mini_bodega.nombre|default:"N/A" }}</td>
                         <td><strong>${{ devolucion.total|default:0|floatformat:2 }}</strong></td>

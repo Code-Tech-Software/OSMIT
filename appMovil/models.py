@@ -249,3 +249,44 @@ class DevolucionSustitucion(models.Model):
     @property
     def subtotal(self):
         return self.cantidad * self.precio_unitario
+
+
+
+class CancelacionDevolucion(models.Model):
+    uuid = models.UUIDField(unique=True)
+    devolucion_uuid = models.UUIDField()
+    usuario = models.ForeignKey(Usuario, on_delete=models.PROTECT)
+    mini_bodega = models.ForeignKey(MiniBodega, on_delete=models.PROTECT)
+    fecha = models.DateTimeField()
+    total = models.DecimalField(max_digits=10, decimal_places=2)
+    motivo = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Cancelación devolución {self.uuid}"
+
+
+class CancelacionDevolucionDetalle(models.Model):
+    uuid = models.UUIDField(unique=True)
+    cancelacion = models.ForeignKey(CancelacionDevolucion,on_delete=models.CASCADE,related_name='detalles')
+    cancelacion_uuid = models.UUIDField()
+    producto_variacion = models.ForeignKey(ProductoVariacion,on_delete=models.PROTECT)
+    nombre_producto = models.CharField(max_length=255)
+    cantidad = models.DecimalField(max_digits=10, decimal_places=2)
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.nombre_producto} - {self.cantidad}"
+
+
+class CancelacionDevolucionSustitucion(models.Model):
+    uuid = models.UUIDField(unique=True)
+    cancelacion = models.ForeignKey(CancelacionDevolucion,on_delete=models.CASCADE,related_name='sustituciones')
+    cancelacion_uuid = models.UUIDField()
+    producto_variacion = models.ForeignKey(ProductoVariacion,on_delete=models.PROTECT)
+    nombre_producto = models.CharField(max_length=255)
+    cantidad = models.DecimalField(max_digits=10, decimal_places=2)
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.nombre_producto} - {self.cantidad}"
