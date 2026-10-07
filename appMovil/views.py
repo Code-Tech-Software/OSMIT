@@ -2176,6 +2176,9 @@ def realizar_corte_minibodega(request,pk):
         ).select_related(
             'producto_variacion__producto',
             'producto_variacion__presentacion'
+        ).order_by(
+            'producto_variacion__producto__nombre',
+            'producto_variacion__presentacion__nombre'
         )
 
     if request.method=='POST':
@@ -2268,7 +2271,10 @@ def detalle_corte_minibodegas(request,corte_id):
     ).select_related(
         'mini_bodega_detalle__producto_variacion__producto',
         'mini_bodega_detalle__producto_variacion__presentacion'
+    ).order_by(
+        'mini_bodega_detalle__producto_variacion__producto__nombre'
     )
+
     context={
         'corte':corte,
         'detalles':detalles
@@ -2293,6 +2299,9 @@ def ajustar_inventario_minibodega(request,corte_id):
     ).select_related(
         'mini_bodega_detalle__producto_variacion__producto',
         'mini_bodega_detalle__producto_variacion__presentacion'
+    ).order_by(
+        'mini_bodega_detalle__producto_variacion__producto__nombre',
+        'mini_bodega_detalle__producto_variacion__presentacion__nombre'
     )
 
     if request.method=='POST':

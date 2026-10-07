@@ -209,7 +209,7 @@ def registrar_entrada(request):
             "Kiosko",
         ]
     )
-    #Yeos 200 Yeos gnd Kiosko
+    # Yeos 200 Yeos gnd Kiosko
 
     # =========================================================
     # PRODUCTOS NORMALES
@@ -229,11 +229,33 @@ def registrar_entrada(request):
         'variaciones__presentacion'
     )
 
+    # =========================================================
+    # ORDEN PERSONALIZADO DE PRODUCTOS
+    # =========================================================
+    orden_productos = [
+        "PISTACHE", "ENCHILADO", "JAPONES", "JAPONES FUEGO", "MACHO",
+        "HORNEADO", "CASCARITA", "SURTIDO", "HABA PELADA", "HABA CON CASCARA",
+        "GARBANZA", "GARAPIÑADO", "GOMITA", "LUNETA", "HUEVITO",
+        "GALLETA MARINA", "CIRUELA", "PASAS", "SEMILLA DE CALABAZA",
+        "SEMILLA DE GIRASOL", "NUEZ", "ALMENDRA", "GRANOLA", "CHILE DE ARBOL",
+        "CHILE PULLA", "CHILE CASCABEL", "CAMARON", "CAMARON MOLIDO",
+        "CHARAL NATURAL", "CHARAL ADOBADO", "CECINA NATURAL", "CECINA ADOBADA",
+        "CECINA DE LIMON", "CECINA CHILTEPIN", "CECINA CHIPOTLE",
+        "CECINA HABANERO", "CECINA ARTESANAL PICANTE", "PAPA FRITA",
+        "CHURRO DE MASA", "CHURRO DELGADO", "CHICHARRON", "CHICHARRON CRAC",
+        "PLATANO", "TOSTADA", "MIEL", "TIRA DE CC MINI", "TIRA DE DULCE",
+        "MIX VERDE", "MIX ROJO"
+    ]
+
+    usar_orden_personalizado = request.GET.get('orden') == 'personalizado'
+
     if request.method == 'POST':
         form = EntradaForm(request.POST)
+
         if form.is_valid():
             nota = form.cleaned_data.get('nota', '')
             detalles_validos = []
+
             for key, value in request.POST.items():
                 if key.startswith('cantidad_'):
                     try:
@@ -243,6 +265,7 @@ def registrar_entrada(request):
                         if cantidad > 0:
                             variacion = ProductoVariacion.objects.get(id=variacion_id)
                             detalles_validos.append((variacion, cantidad))
+
                     except (ValueError, TypeError, ProductoVariacion.DoesNotExist):
                         continue
 
@@ -254,34 +277,48 @@ def registrar_entrada(request):
                             usuario=request.user,
                             nota=nota
                         )
+
                         for variacion, cantidad in detalles_validos:
                             DetalleEntradaPTerminado.objects.create(
                                 entrada_p_terminado=entrada,
                                 producto_variacion=variacion,
                                 cantidad=cantidad
                             )
+
                             variacion.stock += cantidad
                             variacion.save()
 
                     messages.success(request, 'Entrada registrada correctamente.')
                     return redirect('registrar_entradaPT')
+
                 except Exception as e:
                     messages.error(request, f'Error al registrar la entrada: {str(e)}')
+
             else:
                 messages.error(request, 'Debe ingresar al menos una cantidad mayor a 0.')
+
     else:
         form = EntradaForm()
 
+    # =========================================================
+    # MATRIZ DE PRODUCTOS Y PRESENTACIONES
+    # =========================================================
     productos_matriz = []
 
     for prod in productos:
-        vars_dict = {var.presentacion.id: var for var in prod.variaciones.all()}
+        vars_dict = {
+            var.presentacion.id: var
+            for var in prod.variaciones.all()
+        }
+
         if not vars_dict:
             continue
 
         celdas = []
+
         for pres in presentaciones:
             variacion = vars_dict.get(pres.id)
+
             if variacion:
                 celdas.append({
                     'existe': True,
@@ -291,18 +328,48 @@ def registrar_entrada(request):
                     'nombre_presentacion': str(pres)
                 })
             else:
-                celdas.append({'existe': False})
+                celdas.append({
+                    'existe': False
+                })
 
         productos_matriz.append({
             'producto': prod,
             'celdas': celdas
         })
 
-    return render(request, 'ProductoTerminado/entradas/registrar_entrada.html', {
-        'form': form,
-        'presentaciones': presentaciones,
-        'productos_matriz': productos_matriz
-    })
+    # =========================================================
+    # ORDENAR PRODUCTOS
+    # =========================================================
+    if usar_orden_personalizado:
+        orden_dict = {
+            nombre: i
+            for i, nombre in enumerate(orden_productos)
+        }
+
+        productos_matriz.sort(
+            key=lambda item: (
+                orden_dict.get(
+                    item['producto'].nombre.strip().upper(),
+                    9999
+                ),
+                item['producto'].nombre
+            )
+        )
+    else:
+        productos_matriz.sort(
+            key=lambda item: item['producto'].nombre
+        )
+
+    return render(
+        request,
+        'ProductoTerminado/entradas/registrar_entrada.html',
+        {
+            'form': form,
+            'presentaciones': presentaciones,
+            'productos_matriz': productos_matriz,
+            'usar_orden_personalizado': usar_orden_personalizado
+        }
+    )
 
 
 @login_required
@@ -580,42 +647,42 @@ def registrar_salida(request):
     presentaciones_qs = PresentacionProductoTerminado.objects.filter(
         estado=True,
         nombre__in=[
-            "Minis",
-            "Chico",
-            "Mediano",
-            "Grande",
-            "250g",
-            "500g",
-            "1kg",
-            "Grande 150g",
-            "Grande 140g",
-            "Pieza",
-            "Kiosko",
+            "Minis", "Chico", "Mediano", "Grande", "250g", "500g",
+            "1kg", "Grande 150g", "Grande 140g", "Pieza", "Kiosko"
         ]
     )
 
     orden_deseado = [
-        "Chico",
-        "Mediano",
-        "Grande",
-        "250g",
-        "500g",
-        "1kg",
-        "Grande 150g",
-        "Grande 140g",
-        "Minis",
-        "Kiosko",
+        "Chico", "Mediano", "Grande", "250g", "500g", "1kg",
+        "Grande 150g", "Grande 140g", "Minis", "Kiosko"
     ]
 
     presentaciones = list(presentaciones_qs)
 
     presentaciones.sort(
-        key=lambda p: (
-            orden_deseado.index(str(p))
-            if str(p) in orden_deseado
-            else 99
-        )
+        key=lambda p: orden_deseado.index(str(p))
+        if str(p) in orden_deseado else 99
     )
+
+    # =========================================================
+    # ORDEN DE PRODUCTOS
+    # =========================================================
+    orden_productos = [
+        "PISTACHE", "ENCHILADO", "JAPONES", "JAPONES FUEGO", "MACHO",
+        "HORNEADO", "CASCARITA", "SURTIDO", "HABA PELADA", "HABA CON CASCARA",
+        "GARBANZA", "GARAPIÑADO", "GOMITA", "LUNETA", "HUEVITO",
+        "GALLETA MARINA", "CIRUELA", "PASAS", "SEMILLA DE CALABAZA",
+        "SEMILLA DE GIRASOL", "NUEZ", "ALMENDRA", "GRANOLA", "CHILE DE ARBOL",
+        "CHILE PULLA", "CHILE CASCABEL", "CAMARON", "CAMARON MOLIDO",
+        "CHARAL NATURAL", "CHARAL ADOBADO", "CECINA NATURAL", "CECINA ADOBADA",
+        "CECINA DE LIMON", "CECINA CHILTEPIN", "CECINA CHIPOTLE",
+        "CECINA HABANERO", "CECINA ARTESANAL PICANTE", "PAPA FRITA",
+        "CHURRO DE MASA", "CHURRO DELGADO", "CHICHARRON", "CHICHARRON CRAC",
+        "PLATANO", "TOSTADA", "MIEL", "TIRA DE CC MINI", "TIRA DE DULCE",
+        "MIX VERDE", "MIX ROJO"
+    ]
+
+    usar_orden_personalizado = request.GET.get('orden') == 'personalizado'
 
     if request.method == 'POST':
         form = SalidaForm(request.POST)
@@ -668,7 +735,7 @@ def registrar_salida(request):
                             # A. Crear el registro principal de la salida
                             salida = SalidaPTerminado.objects.create(
                                 fecha_salida=timezone.now(),
-                                usuario=request.user,  # Quien registra la salida en el sistema
+                                usuario=request.user,
                                 ruta=ruta if destino == 'opcion1' else None,
                                 destino=destino,
                                 nota=nota
@@ -683,17 +750,17 @@ def registrar_salida(request):
                                 minibodega, created = MiniBodega.objects.get_or_create(
                                     ruta=ruta,
                                     defaults={
-                                    'fecha': hoy,
-                                    'usuario': ruta.usuario,
-                                    'vehiculo': ruta.vehiculo,
-                                    'estado': True
+                                        'fecha': hoy,
+                                        'usuario': ruta.usuario,
+                                        'vehiculo': ruta.vehiculo,
+                                        'estado': True
                                     }
                                 )
 
                                 if not created:
                                     if (
-                                    minibodega.usuario != ruta.usuario
-                                    or minibodega.vehiculo != ruta.vehiculo
+                                        minibodega.usuario != ruta.usuario
+                                        or minibodega.vehiculo != ruta.vehiculo
                                     ):
                                         minibodega.usuario = ruta.usuario
                                         minibodega.vehiculo = ruta.vehiculo
@@ -701,13 +768,13 @@ def registrar_salida(request):
 
                             # B. Registrar los detalles y mover el stock
                             for variacion, cantidad in detalles_validos:
-                                # Descontar del stock principal
                                 DetalleSalidaPTerminado.objects.create(
-                                salida_p_terminado=salida,
-                                producto_variacion=variacion,
-                                cantidad=cantidad,
-                                precio_unitario=variacion.precio
+                                    salida_p_terminado=salida,
+                                    producto_variacion=variacion,
+                                    cantidad=cantidad,
+                                    precio_unitario=variacion.precio
                                 )
+
                                 variacion.stock -= cantidad
                                 variacion.save()
 
@@ -721,8 +788,7 @@ def registrar_salida(request):
                                             'cantidad_actual': Decimal('0.00')
                                         }
                                     )
-                                    #
-                                    # Se suma a lo que ya tuviera en la ruta ese día
+
                                     mb_detalle.cantidad_actual += cantidad
                                     mb_detalle.cantidad_inicial = mb_detalle.cantidad_actual
                                     mb_detalle.save()
@@ -737,16 +803,21 @@ def registrar_salida(request):
     else:
         form = SalidaForm()
 
-    # Construir la matriz de productos
+    # =========================================================
+    # CONSTRUIR MATRIZ DE PRODUCTOS
+    # =========================================================
     productos_matriz = []
+
     for prod in productos:
         vars_dict = {var.presentacion.id: var for var in prod.variaciones.all()}
         if not vars_dict:
             continue
 
         celdas = []
+
         for pres in presentaciones:
             variacion = vars_dict.get(pres.id)
+
             if variacion:
                 celdas.append({
                     'existe': True,
@@ -763,11 +834,30 @@ def registrar_salida(request):
             'celdas': celdas
         })
 
+    # =========================================================
+    # ORDENAR PRODUCTOS
+    # =========================================================
+    if usar_orden_personalizado:
+        orden_dict = {nombre: i for i, nombre in enumerate(orden_productos)}
+
+        productos_matriz.sort(
+            key=lambda item: (
+                orden_dict.get(item['producto'].nombre.strip().upper(), 9999),
+                item['producto'].nombre
+            )
+        )
+    else:
+        productos_matriz.sort(
+            key=lambda item: item['producto'].nombre
+        )
+
     return render(request, 'ProductoTerminado/salidas/registrar_salida.html', {
         'form': form,
         'presentaciones': presentaciones,
-        'productos_matriz': productos_matriz
+        'productos_matriz': productos_matriz,
+        'usar_orden_personalizado': usar_orden_personalizado
     })
+
 
 
 
