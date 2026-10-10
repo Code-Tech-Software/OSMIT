@@ -32,8 +32,21 @@ urlpatterns = [
     path('reabastecimiento/crear/', crear_reabastecimiento),
     #path('reabastecimiento/sincronizar/', sincronizar_reabastecimiento),
 
+    # =========================
+    # PEDIDOS DE REABASTECIMIENTO
+    # =========================
+
+    # Listado y detalle
     path('pedidos/', views.lista_pedidos, name='lista_pedidos_reparto'),
     path('pedidos/<int:pedido_id>/', views.detalle_pedido, name='detalle_pedido_reparto'),
+
+    # Modificar productos y cantidades
+    path('pedidos/<int:pedido_id>/editar/', views.editar_pedido_reabastecimiento, name='editar_pedido_reabastecimiento'),
+    path('pedidos/<int:pedido_id>/agregar/', views.agregar_producto_pedido, name='agregar_producto_pedido'),
+    path('pedidos/<int:pedido_id>/eliminar/<int:detalle_id>/', views.eliminar_producto_pedido, name='eliminar_producto_pedido'),
+
+    # Rechazar o procesar pedido
+    path('pedidos/<int:pedido_id>/rechazar/', views.rechazar_pedido_reabastecimiento, name='rechazar_pedido_reabastecimiento'),
     path('pedidos/<int:pedido_id>/procesar/', views.procesar_reabastecimiento, name='procesar_reabastecimiento'),
 
     path('minibodegas/', views.minibodega_list, name='minibodega_lista'),

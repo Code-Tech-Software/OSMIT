@@ -1,314 +1,538 @@
 {% extends 'Base/Sidebar.html' %}
 {% load static %}
+{% load l10n %}
 
 {% block content %}
-    <!-- Estilos personalizados y DataTables -->
-    <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
-    <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
 
-    <!-- Encabezado estilo Breadcrumb -->
-    <div>
-        <span class="fw-bold text-dark">Pedidos de Reabastecimiento</span>
-        <span class="mx-2 text-dark">|</span>
-        <span class="text-secondary">Detalle del Pedido #{{ pedido.id }}</span>
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+<link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css">
+
+<style>
+    .pedido-info { background: #f8f9fa; border-radius: 8px; padding: 15px; }
+    .pedido-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tabla-acciones { display: flex; justify-content: center; gap: 6px; }
+    .historial-card { margin-top: 24px; }
+    .swal2-popup .form-label { font-weight: 600; text-align: left; display: block; }
+    .swal2-popup .form-control, .swal2-popup .form-select { margin: 0; }
+</style>
+
+<!-- ENCABEZADO -->
+<div class="mb-4">
+    <span class="fw-bold text-dark">Pedidos de Reabastecimiento</span>
+    <span class="mx-2 text-dark">|</span>
+    <span class="text-secondary">Detalle del Pedido #{{ pedido.id }}</span>
+</div>
+
+<div class="custom-card">
+
+    <!-- INFORMACIÓN DEL PEDIDO -->
+    <div class="row mb-4 align-items-center pb-3 border-bottom">
+        <div class="col-md-8">
+            <h5 class="fw-bold text-dark mb-3">Información del Pedido</h5>
+            <p class="mb-1"><strong>Ruta:</strong> {{ pedido.ruta.nombre }}</p>
+            <p class="mb-1"><strong>Solicitado por:</strong> {{ pedido.usuario|default:"Sin asignar" }}</p>
+            <p class="mb-1"><strong>Fecha:</strong> {{ pedido.fecha|date:"d/m/Y" }}</p>
+        </div>
+        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+            {% if pedido.resultado == 'PROCESADO' %}
+                <span class="badge bg-custom-success fs-6">Procesado</span>
+            {% elif pedido.resultado == 'RECHAZADO' %}
+                <span class="badge bg-custom-danger fs-6">Rechazado</span>
+            {% else %}
+                <span class="badge bg-warning text-dark fs-6">Pendiente</span>
+            {% endif %}
+        </div>
     </div>
 
-    <!-- Espaciador -->
-    <div class="mb-4"></div>
+    {% if not puede_editar %}
+    <div class="pedido-info mb-4">
+        <p class="mb-1">
+            <strong>Resultado:</strong> {{ pedido.get_resultado_display }}
+        </p>
+        <p class="mb-1">
+            <strong>Cerrado por:</strong> {{ pedido.usuario_cierre|default:"Sin información" }}
+        </p>
+        <p class="mb-1">
+            <strong>Fecha de cierre:</strong>
+            {{ pedido.fecha_cierre|date:"d/m/Y H:i"|default:"Sin información" }}
+        </p>
+        {% if pedido.motivo_rechazo %}
+        <p class="mb-0">
+            <strong>Motivo del rechazo:</strong> {{ pedido.motivo_rechazo }}
+        </p>
+        {% endif %}
+    </div>
+    {% endif %}
 
-    <!-- Contenedor Principal -->
-    <div class="custom-card">
+    <!-- TÍTULO Y BOTÓN AGREGAR -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h5 class="fw-bold mb-0">Productos solicitados</h5>
 
-        <!-- Información general del pedido -->
-        <div class="row mb-4 align-items-center pb-3 border-bottom">
-            <div class="col-md-6">
-                <h5 class="fw-bold text-dark mb-1">Información del Pedido</h5>
-                <p class="mb-0 text-secondary">
-                    <strong>Ruta:</strong> {{ pedido.ruta.nombre }}
-                </p>
-            </div>
+        {% if puede_editar %}
+        <button type="button" class="btn btn-custom-success" id="btn-agregar">
+            <i class="bi bi-plus-circle"></i> Agregar Producto
+        </button>
+        {% endif %}
+    </div>
 
-            <div class="col-md-6 text-md-end mt-2 mt-md-0">
-                <p class="mb-0 text-secondary">
-                    <strong>Fecha:</strong> {{ pedido.fecha }}
-                </p>
-            </div>
-        </div>
+    <!-- TABLA -->
+    <div class="table-responsive">
+        <table id="detallesTable" class="table table-striped table-bordered align-middle">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Presentación</th>
+                    <th class="text-center">Stock Actual (Bodega)</th>
+                    <th class="text-center">Cantidad Pedida</th>
+                    {% if puede_editar %}<th class="text-center">Acciones</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for detalle in detalles %}
+                <tr>
+                    <td>{{ detalle.producto_variacion.producto.nombre }}</td>
+                    <td>{{ detalle.producto_variacion.presentacion }}</td>
+                    <td class="text-center">
+                        {% if detalle.producto_variacion.stock < detalle.cantidad %}
+                            <span class="badge bg-custom-danger"
+                                  title="Stock insuficiente">
+                                {{ detalle.producto_variacion.stock }}
+                            </span>
+                        {% else %}
+                            <span class="badge bg-custom-success">
+                                {{ detalle.producto_variacion.stock }}
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center fw-bold">{{ detalle.cantidad }}</td>
 
-        <!-- Tabla de Detalles -->
-        <div class="table-responsive">
-            <table id="detallesTable" class="table table-striped table-bordered">
+                    {% if puede_editar %}
+                    <td>
+                        <div class="tabla-acciones">
+                            <button type="button"
+                                    class="btn btn-sm btn-primary btn-editar"
+                                    title="Editar producto"
+                                    data-id="{{ detalle.id }}"
+                                    data-producto-id="{{ detalle.producto_variacion_id }}"
+                                    data-cantidad="{{ detalle.cantidad|unlocalize }}"
+                                    data-nombre="{{ detalle.producto_variacion.producto.nombre }} - {{ detalle.producto_variacion.presentacion }}">
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
 
-                <thead>
-                    <tr>
-                        <th>Producto</th>
-                        <th>Presentación</th>
-                        <th style="text-align: center;">
-                            Stock Actual (Bodega)
-                        </th>
-                        <th style="text-align: center;">
-                            Cantidad Pedida
-                        </th>
-                    </tr>
-                </thead>
+                            <button type="button"
+                                    class="btn btn-sm btn-danger btn-eliminar"
+                                    title="Eliminar producto"
+                                    data-url="{% url 'eliminar_producto_pedido' pedido.id detalle.id %}"
+                                    data-nombre="{{ detalle.producto_variacion.producto.nombre }} - {{ detalle.producto_variacion.presentacion }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
-                <tbody>
+    {% if puede_editar %}
+    <p class="small text-secondary mt-2 mb-0">
+        <i class="bi bi-info-circle"></i>
+        Los cambios en este pedido no modifican las existencias.
+        El inventario se actualizará únicamente cuando se apruebe y procese.
+    </p>
+    {% endif %}
 
-                    {% for detalle in detalles %}
+    <!-- BOTONES INFERIORES -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-4 pt-3 border-top">
+        <a href="{% url 'lista_pedidos_reparto' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver atrás
+        </a>
 
-                    <tr>
+        {% if puede_editar %}
+        <div class="pedido-acciones">
+            <button type="button" class="btn btn-danger" id="btn-rechazar">
+                <i class="bi bi-x-circle"></i> Rechazar Pedido
+            </button>
 
-                        <td>
-                            {{ detalle.producto_variacion.producto.nombre }}
-                        </td>
-
-                        <td>
-                            {{ detalle.producto_variacion.presentacion }}
-                        </td>
-
-                        <td class="text-center">
-
-                            {% if detalle.producto_variacion.stock == 0 %}
-
-                                <span
-                                    class="badge bg-custom-danger"
-                                    title="Sin existencia"
-                                >
-                                    {{ detalle.producto_variacion.stock }}
-                                </span>
-
-                            {% elif detalle.producto_variacion.stock < detalle.cantidad %}
-
-                                <span
-                                    class="badge bg-custom-danger"
-                                    title="Stock insuficiente"
-                                >
-                                    {{ detalle.producto_variacion.stock }}
-                                </span>
-
-                            {% else %}
-
-                                <span class="badge bg-custom-success">
-                                    {{ detalle.producto_variacion.stock }}
-                                </span>
-
-                            {% endif %}
-
-                        </td>
-
-                        <td class="text-center fw-bold">
-                            {{ detalle.cantidad }}
-                        </td>
-
-                    </tr>
-
-                    {% endfor %}
-
-                </tbody>
-
-            </table>
-        </div>
-
-        <!-- Botones de Acción -->
-        <div class="d-flex justify-content-between mt-4 pt-3 border-top">
-
-            <a
-                href="{% url 'lista_pedidos_reparto' %}"
-                class="btn btn-secondary"
-            >
-                <i class="bi bi-arrow-left"></i>
-                Volver atrás
-            </a>
-
-            <form
-                id="form-procesar"
-                action="{% url 'procesar_reabastecimiento' pedido.id %}"
-                method="POST"
-                class="d-inline"
-            >
-
+            <form id="form-procesar"
+                  action="{% url 'procesar_reabastecimiento' pedido.id %}"
+                  method="POST">
                 {% csrf_token %}
-
-                <button
-                    type="button"
-                    id="btn-procesar"
-                    class="btn btn-custom-success"
-                >
-                    <i class="bi bi-check-circle"></i>
-                    Aprobar y Procesar
+                <button type="button" id="btn-procesar" class="btn btn-custom-success"
+                        {% if not detalles %}disabled{% endif %}>
+                    <i class="bi bi-check-circle"></i> Aprobar y Procesar
                 </button>
-
             </form>
-
         </div>
-
+        {% endif %}
     </div>
+</div>
 
-    <!-- Scripts -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- HISTORIAL -->
+<div class="custom-card historial-card">
+    <h5 class="fw-bold mb-3">
+        <i class="bi bi-clock-history"></i> Historial de modificaciones
+    </h5>
 
-    <script>
-        $(document).ready(function () {
+    <div class="table-responsive">
+        <table id="historialTable" class="table table-striped table-bordered align-middle">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Usuario</th>
+                    <th>Acción</th>
+                    <th>Producto anterior</th>
+                    <th>Producto nuevo</th>
+                    <th>Cantidad anterior</th>
+                    <th>Cantidad nueva</th>
+                    <th>Observación</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for movimiento in historial %}
+                <tr>
+                    <td>{{ movimiento.fecha|date:"d/m/Y H:i" }}</td>
+                    <td>{{ movimiento.usuario|default:"Sin usuario" }}</td>
+                    <td>
+                        {% if movimiento.accion == 'AGREGAR' %}
+                            <span class="badge bg-success">Agregado</span>
+                        {% elif movimiento.accion == 'MODIFICAR' %}
+                            <span class="badge bg-primary">Modificado</span>
+                        {% elif movimiento.accion == 'ELIMINAR' %}
+                            <span class="badge bg-danger">Eliminado</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Rechazado</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if movimiento.producto_anterior %}
+                            {{ movimiento.producto_anterior.producto.nombre }}
+                            - {{ movimiento.producto_anterior.presentacion }}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if movimiento.producto_nuevo %}
+                            {{ movimiento.producto_nuevo.producto.nombre }}
+                            - {{ movimiento.producto_nuevo.presentacion }}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>{{ movimiento.cantidad_anterior|default_if_none:"—" }}</td>
+                    <td>{{ movimiento.cantidad_nueva|default_if_none:"—" }}</td>
+                    <td>{{ movimiento.observacion|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 
-            // ---------------------------------------------------------
-            // DataTables
-            // ---------------------------------------------------------
+{% if puede_editar %}
 
-            $('#detallesTable').DataTable({
+<!-- CATÁLOGO PARA LOS DIÁLOGOS -->
+<select id="catalogo-productos" class="d-none">
+    <option value="">Seleccione un producto</option>
+    {% for producto in productos %}
+    <option value="{{ producto.id }}">
+        {{ producto.producto.nombre }} - {{ producto.presentacion }} | Stock: {{ producto.stock }}
+    </option>
+    {% endfor %}
+</select>
 
-                columnDefs: [
-                    {
-                        width: "40%",
-                        targets: 0
-                    },
-                    {
-                        width: "30%",
-                        targets: 1
-                    },
-                    {
-                        width: "15%",
-                        targets: 2,
-                        className: "text-center"
-                    },
-                    {
-                        width: "15%",
-                        targets: 3,
-                        className: "text-center"
-                    }
-                ],
+<!-- FORMULARIOS POST OCULTOS -->
+<form id="form-editar"
+      action="{% url 'editar_pedido_reabastecimiento' pedido.id %}"
+      method="POST" class="d-none">
+    {% csrf_token %}
+    <input type="hidden" name="detalle_id">
+    <input type="hidden" name="producto_variacion_id">
+    <input type="hidden" name="cantidad">
+</form>
 
-                language: {
-                    decimal: "",
-                    emptyTable: "No hay productos en este pedido",
-                    info: "Mostrando _START_ a _END_ de _TOTAL_ productos",
-                    infoEmpty: "Mostrando 0 a 0 de 0 productos",
-                    infoFiltered: "(filtrado de _MAX_ productos totales)",
-                    lengthMenu: "Mostrar _MENU_ productos",
-                    loadingRecords: "Cargando...",
-                    processing: "Procesando...",
-                    search: "Buscar:",
-                    zeroRecords: "No se encontraron coincidencias",
+<form id="form-agregar"
+      action="{% url 'agregar_producto_pedido' pedido.id %}"
+      method="POST" class="d-none">
+    {% csrf_token %}
+    <input type="hidden" name="producto_variacion_id">
+    <input type="hidden" name="cantidad">
+</form>
 
-                    paginate: {
-                        first: '<i class="bi bi-rewind-fill"></i>',
-                        last: '<i class="bi bi-fast-forward-fill"></i>',
-                        next: '<i class="bi bi-caret-right-fill"></i>',
-                        previous: '<i class="bi bi-caret-left-fill"></i>'
-                    }
-                },
+<form id="form-eliminar" method="POST" class="d-none">
+    {% csrf_token %}
+</form>
 
-                responsive: true,
-                paging: false,
-                info: false
-            });
+<form id="form-rechazar"
+      action="{% url 'rechazar_pedido_reabastecimiento' pedido.id %}"
+      method="POST" class="d-none">
+    {% csrf_token %}
+    <input type="hidden" name="motivo_rechazo">
+</form>
 
+{% endif %}
 
-            // ---------------------------------------------------------
-            // Confirmación antes de procesar
-            // ---------------------------------------------------------
+<!-- SCRIPTS -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
 
-            $('#btn-procesar').on('click', function () {
+<script>
+$(document).ready(function () {
 
-                Swal.fire({
+    // DATATABLES
+    const idiomaTabla = {
+        emptyTable: "No hay registros",
+        info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+        infoEmpty: "Mostrando 0 registros",
+        infoFiltered: "(filtrado de _MAX_ registros)",
+        lengthMenu: "Mostrar _MENU_ registros",
+        search: "Buscar:",
+        zeroRecords: "No se encontraron coincidencias",
+        paginate: {
+            first: '<i class="bi bi-rewind-fill"></i>',
+            last: '<i class="bi bi-fast-forward-fill"></i>',
+            next: '<i class="bi bi-caret-right-fill"></i>',
+            previous: '<i class="bi bi-caret-left-fill"></i>'
+        }
+    };
 
-                    title: '¿Procesar reabastecimiento?',
+    $('#detallesTable').DataTable({
+        language: idiomaTabla,
+        paging: false,
+        info: false,
+        order: [],
+        columnDefs: [
+            {% if puede_editar %}
+            { targets: 4, orderable: false, searchable: false, className: 'text-center' },
+            {% endif %}
+            { targets: [2, 3], className: 'text-center' }
+        ]
+    });
 
-                    html: `
-                        <p class="mb-2">
-                            Se descontará del stock de la bodega
-                            la cantidad que esté disponible.
-                        </p>
+    $('#historialTable').DataTable({
+        language: idiomaTabla,
+        pageLength: 10,
+        order: [[0, 'desc']]
+    });
 
-                        <p class="mb-0 text-secondary">
-                            Si algún producto no tiene suficiente stock,
-                            se surtirá únicamente la cantidad disponible.
-                        </p>
-                    `,
+    {% if puede_editar %}
 
-                    icon: 'question',
+    // FUNCIONES AUXILIARES
+    function opcionesProductos(seleccionado = '') {
+        const select = document.getElementById('catalogo-productos').cloneNode(true);
+        select.removeAttribute('id');
+        select.className = 'form-select';
+        select.id = 'swal-producto';
+        select.value = String(seleccionado);
+        return select;
+    }
 
-                    showCancelButton: true,
-
-                    confirmButtonColor: '#198754',
-                    cancelButtonColor: '#6c757d',
-
-                    confirmButtonText: 'Sí, procesar',
-                    cancelButtonText: 'Cancelar'
-
-                }).then((result) => {
-
-                    if (result.isConfirmed) {
-
-                        const btnProcesar = $('#btn-procesar');
-
-                        btnProcesar.prop('disabled', true);
-
-                        btnProcesar.html(
-                            '<span class="spinner-border spinner-border-sm me-2" ' +
-                            'role="status" aria-hidden="true"></span>' +
-                            'Procesando...'
-                        );
-
-                        $('#form-procesar').submit();
-                    }
-
-                });
-
-            });
-
+    function enviarFormulario(selector, datos = {}) {
+        const form = document.querySelector(selector);
+        Object.entries(datos).forEach(([nombre, valor]) => {
+            form.elements[nombre].value = valor;
         });
-    </script>
+        form.submit();
+    }
 
-    <!-- Notificaciones con Notyf -->
-    <script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
+    function cantidadValida(valor) {
+        const texto = String(valor).trim();
+        if (!/^\d+(\.\d{1,2})?$/.test(texto)) return false;
+        const cantidad = Number(texto);
+        return Number.isFinite(cantidad) && cantidad > 0 && cantidad < 100000000;
+    }
 
-    <link
-        href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css"
-        rel="stylesheet"
-    >
+    // AGREGAR PRODUCTO
+    $('#btn-agregar').on('click', async function () {
+        const contenido = document.createElement('div');
+        contenido.innerHTML = `
+            <label class="form-label mt-2">Producto y presentación</label>
+            <div id="contenedor-select"></div>
+            <label class="form-label mt-3">Cantidad solicitada</label>
+            <input id="swal-cantidad" type="number" min="0.01" step="0.01"
+                   class="form-control" placeholder="Ingrese la cantidad">
+        `;
+        contenido.querySelector('#contenedor-select').appendChild(opcionesProductos());
 
-    {% if messages %}
+        const resultado = await Swal.fire({
+            title: 'Agregar producto',
+            html: contenido,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Agregar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#198754',
+            focusConfirm: false,
+            preConfirm: () => {
+                const producto = document.getElementById('swal-producto').value;
+                const cantidad = document.getElementById('swal-cantidad').value;
 
-        <script>
+                if (!producto || !cantidadValida(cantidad)) {
+                    Swal.showValidationMessage('Seleccione un producto e ingrese una cantidad válida.');
+                    return false;
+                }
+                return { producto, cantidad };
+            }
+        });
 
-            const notyf = new Notyf({
-                duration: 3500,
-                position: {
-                    x: 'right',
-                    y: 'bottom'
-                },
-                dismissible: true,
-
-                types: [
-                    {type: 'Success'},
-                    {type: 'Error'}
-                ]
+        if (resultado.isConfirmed) {
+            enviarFormulario('#form-agregar', {
+                producto_variacion_id: resultado.value.producto,
+                cantidad: resultado.value.cantidad
             });
+        }
+    });
 
+    // EDITAR PRODUCTO
+    $(document).on('click', '.btn-editar', async function () {
+        const boton = $(this);
+        const detalleId = boton.attr('data-id');
+        const productoId = boton.attr('data-producto-id');
+        const cantidadActual = boton.attr('data-cantidad');
+        const nombre = boton.attr('data-nombre');
 
-            {% for message in messages %}
+        const contenido = document.createElement('div');
+        contenido.innerHTML = `
+            <p class="text-secondary small mb-3" id="producto-actual"></p>
+            <label class="form-label">Producto y presentación</label>
+            <div id="contenedor-select"></div>
+            <label class="form-label mt-3">Cantidad solicitada</label>
+            <input id="swal-cantidad" type="number" min="0.01" step="0.01"
+                   class="form-control">
+        `;
+        contenido.querySelector('#producto-actual').textContent = `Actual: ${nombre}`;
+        contenido.querySelector('#contenedor-select').appendChild(opcionesProductos(productoId));
+        contenido.querySelector('#swal-cantidad').value = cantidadActual;
 
-                {% if message.tags == 'success' %}
+        const resultado = await Swal.fire({
+            title: 'Editar producto',
+            html: contenido,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Guardar cambios',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#0d6efd',
+            focusConfirm: false,
+            preConfirm: () => {
+                const producto = document.getElementById('swal-producto').value;
+                const cantidad = document.getElementById('swal-cantidad').value;
 
-                    notyf.success("{{ message }}");
+                if (!producto || !cantidadValida(cantidad)) {
+                    Swal.showValidationMessage('Seleccione un producto e ingrese una cantidad válida.');
+                    return false;
+                }
+                return { producto, cantidad };
+            }
+        });
 
-                {% elif message.tags == 'error' or 'danger' in message.tags %}
+        if (resultado.isConfirmed) {
+            enviarFormulario('#form-editar', {
+                detalle_id: detalleId,
+                producto_variacion_id: resultado.value.producto,
+                cantidad: resultado.value.cantidad
+            });
+        }
+    });
 
-                    notyf.error("{{ message }}");
+    // ELIMINAR PRODUCTO
+    $(document).on('click', '.btn-eliminar', async function () {
+        const url = $(this).attr('data-url');
+        const nombre = $(this).attr('data-nombre');
 
-                {% else %}
+        const resultado = await Swal.fire({
+            title: '¿Eliminar producto?',
+            text: `Se quitará del pedido: ${nombre}`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#dc3545'
+        });
 
-                    notyf.success("{{ message }}");
+        if (resultado.isConfirmed) {
+            const form = document.getElementById('form-eliminar');
+            form.action = url;
+            form.submit();
+        }
+    });
 
-                {% endif %}
+    // RECHAZAR PEDIDO
+    $('#btn-rechazar').on('click', async function () {
+        const resultado = await Swal.fire({
+            title: '¿Rechazar pedido?',
+            html: `
+                <p class="text-secondary">
+                    El pedido se cerrará sin modificar los inventarios.
+                </p>
+                <textarea id="swal-motivo" class="form-control" rows="3"
+                          placeholder="Motivo del rechazo (opcional)"></textarea>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, rechazar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#dc3545',
+            focusConfirm: false,
+            preConfirm: () => document.getElementById('swal-motivo').value.trim()
+        });
 
-            {% endfor %}
+        if (resultado.isConfirmed) {
+            enviarFormulario('#form-rechazar', {
+                motivo_rechazo: resultado.value
+            });
+        }
+    });
 
-        </script>
+    // APROBAR Y PROCESAR
+    $('#btn-procesar').on('click', function () {
+        Swal.fire({
+            title: '¿Procesar reabastecimiento?',
+            html: `
+                <p class="mb-2">
+                    Se descontará del stock de la bodega la cantidad disponible.
+                </p>
+                <p class="mb-0 text-secondary">
+                    Si algún producto no tiene suficiente stock,
+                    se surtirá únicamente la cantidad disponible.
+                </p>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#198754',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, procesar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const boton = $('#btn-procesar');
+                boton.prop('disabled', true);
+                boton.html(
+                    '<span class="spinner-border spinner-border-sm me-2"></span>Procesando...'
+                );
+                document.getElementById('form-procesar').submit();
+            }
+        });
+    });
 
     {% endif %}
 
-{% endblock %}
+    // NOTIFICACIONES
+    const notyf = new Notyf({
+        duration: 3500,
+        position: { x: 'right', y: 'bottom' },
+        dismissible: true
+    });
 
+    {% for message in messages %}
+        {% if message.tags == 'error' or 'danger' in message.tags %}
+            notyf.error("{{ message|escapejs }}");
+        {% else %}
+            notyf.success("{{ message|escapejs }}");
+        {% endif %}
+    {% endfor %}
+
+});
+</script>
+
+{% endblock %}

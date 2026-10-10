@@ -37,6 +37,7 @@ from .forms import DispositivoForm
 from .autenticacion_dispositivo import DispositivoActivoPermission
 from Usuario.decorators import requiere_roles,solo_administrador
 from django.db.models import Exists, OuterRef
+from django.views.decorators.http import require_POST
 
 
 # Create your views here.
@@ -210,11 +211,7 @@ def cerrar_mini_bodega(request):
                         producto_variacion_id=producto_variacion_id
                     )
 
-                    cantidad_maxima = (
-                        detalle.cantidad_inicial
-                        + cantidad_recibida
-                        - cantidad_entregada
-                    )
+                    cantidad_maxima = detalle.cantidad_inicial + cantidad_recibida
 
                     if cantidad > cantidad_maxima:
                         return Response({
@@ -229,7 +226,7 @@ def cerrar_mini_bodega(request):
 
                 except MiniBodegaDetalle.DoesNotExist:
                     # Solo permitir productos nuevos recibidos por rotación
-                    cantidad_maxima = cantidad_recibida - cantidad_entregada
+                    cantidad_maxima = cantidad_recibida
 
                     if cantidad_recibida <= 0:
                         return Response({
@@ -337,64 +334,6 @@ def crear_reabastecimiento(request):
     }, status=201)
 
 
-
-
-"""
-{
-  "pedido_id": 1
-}
-
-@api_view(['POST'])
-def sincronizar_reabastecimiento(request):
-    pedido_id = request.data.get("pedido_id")
-
-    try:
-        pedido = PedidoReabastecimiento.objects.get(id=pedido_id)
-    except PedidoReabastecimiento.DoesNotExist:
-        return Response({"error": "Pedido no encontrado"}, status=404)
-
-    try:
-        mini_bodega = MiniBodega.objects.get(
-            usuario=pedido.ruta.usuario
-        )
-    except MiniBodega.DoesNotExist:
-        return Response({"error": "Mini bodega no encontrada"}, status=404)
-
-    # 🔥 REACTIVAR PARA EL NUEVO DÍA
-    mini_bodega.estado = True
-    mini_bodega.save()
-
-    detalles_pedido = PedidoReabastecimientoDetalle.objects.filter(
-        pedido=pedido
-    )
-
-    for det in detalles_pedido:
-
-        pv = det.producto_variacion
-        cantidad = det.cantidad
-
-        detalle_mb, created = MiniBodegaDetalle.objects.get_or_create(
-            mini_bodega=mini_bodega,
-            producto_variacion=pv,
-            defaults={
-                "cantidad_inicial": cantidad,
-                "cantidad_actual": cantidad
-            }
-        )
-
-        if not created:
-            # SUMAR AL STOCK ACTUAL
-            detalle_mb.cantidad_actual += cantidad
-            # REINICIAR STOCK INICIAL (NUEVO DÍA)
-            detalle_mb.cantidad_inicial = detalle_mb.cantidad_actual
-            detalle_mb.save()
-
-    return Response({
-        "message": "Stock actualizado y minibodega reactivada"
-    })
-
-"""
-
 # 1. Ver lista de pedidos pendientes
 @login_required
 @requiere_roles("Producto Terminado")
@@ -408,208 +347,410 @@ def lista_pedidos(request):
 @login_required
 @requiere_roles("Producto Terminado")
 def detalle_pedido(request, pedido_id):
-    pedido = get_object_or_404(PedidoReabastecimiento, id=pedido_id)
-    detalles = pedido.pedidoreabastecimientodetalle_set.all()
-    return render(request, 'appMovil/reabastecimiento/detalle_pedido.html', {'pedido': pedido, 'detalles': detalles})
+    pedido = get_object_or_404(
+        PedidoReabastecimiento.objects.select_related(
+            'ruta', 'usuario', 'usuario_cierre'
+        ),
+        id=pedido_id
+    )
+
+    detalles = pedido.pedidoreabastecimientodetalle_set.select_related(
+        'producto_variacion__producto',
+        'producto_variacion__presentacion'
+    ).order_by('id')
+
+    productos = ProductoVariacion.objects.select_related(
+        'producto', 'presentacion'
+    ).order_by('producto__nombre', 'presentacion__nombre')
+
+    historial = pedido.historial.select_related(
+        'usuario', 'producto_anterior__producto',
+        'producto_anterior__presentacion',
+        'producto_nuevo__producto',
+        'producto_nuevo__presentacion'
+    ).order_by('-fecha')
+
+    return render(request, 'appMovil/reabastecimiento/detalle_pedido.html', {
+        'pedido': pedido,
+        'detalles': detalles,
+        'productos': productos,
+        'historial': historial,
+        'puede_editar': pedido.estado and pedido.resultado == 'PENDIENTE'
+    })
 
 
-# 3. Procesar el Reabastecimiento , solo terminado
 @login_required
 @requiere_roles("Producto Terminado")
-def procesar_reabastecimiento(request, pedido_id):
+@require_POST
+def editar_pedido_reabastecimiento(request, pedido_id):
+    detalle_id = request.POST.get('detalle_id')
+    variacion_id = request.POST.get('producto_variacion_id')
+    cantidad = validar_cantidad_pedido(request.POST.get('cantidad'))
 
-    if request.method == 'POST':
+    if cantidad is None:
+        messages.error(request, "La cantidad debe ser mayor a cero y tener máximo dos decimales.")
+        return redirect('detalle_pedido_reparto', pedido_id=pedido_id)
 
+    with transaction.atomic():
         pedido = get_object_or_404(
-            PedidoReabastecimiento,
-            id=pedido_id,
-            estado=True
+            PedidoReabastecimiento.objects.select_for_update(),
+            id=pedido_id
         )
 
-        detalles = pedido.pedidoreabastecimientodetalle_set.all()
+        if not pedido.estado or pedido.resultado != 'PENDIENTE':
+            messages.error(request, "Este pedido ya no puede modificarse.")
+            return redirect('detalle_pedido_reparto', pedido_id=pedido_id)
 
-        # Buscar la MiniBodega para esta ruta
-        minibodega = MiniBodega.objects.filter(
-            ruta=pedido.ruta
-        ).last()
+        detalle = get_object_or_404(
+            PedidoReabastecimientoDetalle,
+            id=detalle_id, pedido=pedido
+        )
+        variacion = get_object_or_404(ProductoVariacion, id=variacion_id)
 
-        if not minibodega:
-            messages.error(
-                request,
-                f"No se encontró una MiniBodega para la ruta "
-                f"{pedido.ruta.nombre}."
-            )
+        duplicado = PedidoReabastecimientoDetalle.objects.filter(
+            pedido=pedido, producto_variacion=variacion
+        ).exclude(id=detalle.id).exists()
 
-            return redirect(
-                'detalle_pedido_reparto',
-                pedido_id=pedido.id
-            )
+        if duplicado:
+            messages.error(request, "Este producto ya existe en el pedido.")
+            return redirect('detalle_pedido_reparto', pedido_id=pedido_id)
 
-        try:
+        producto_anterior = detalle.producto_variacion
+        cantidad_anterior = detalle.cantidad
 
-            with transaction.atomic():
+        if producto_anterior.id == variacion.id and cantidad_anterior == cantidad:
+            messages.info(request, "No se realizaron cambios.")
+            return redirect('detalle_pedido_reparto', pedido_id=pedido_id)
 
-                # Reactivar la MiniBodega para el nuevo día
-                minibodega.estado = True
-                minibodega.save()
+        detalle.producto_variacion = variacion
+        detalle.cantidad = cantidad
+        detalle.save(update_fields=['producto_variacion', 'cantidad', 'updated_at'])
 
-                # Todo lo que ya tenía la MiniBodega pasa a ser
-                # el inventario inicial del nuevo día.
-                MiniBodegaDetalle.objects.filter(
-                    mini_bodega=minibodega
-                ).update(
-                    cantidad_inicial=F('cantidad_actual')
-                )
+        PedidoReabastecimientoHistorial.objects.create(
+            pedido=pedido,
+            usuario=request.user,
+            accion='MODIFICAR',
+            producto_anterior=producto_anterior,
+            producto_nuevo=variacion,
+            cantidad_anterior=cantidad_anterior,
+            cantidad_nueva=cantidad,
+            observacion="Modificación de producto o cantidad solicitada."
+        )
 
-                salida = None
+        pedido.save(update_fields=['updated_at'])
 
-                productos_completos = []
-                productos_parciales = []
-                productos_no_surtidos = []
+    messages.success(request, "Producto actualizado correctamente.")
+    return redirect('detalle_pedido_reparto', pedido_id=pedido_id)
 
-                for item in detalles:
 
-                    variacion = item.producto_variacion
-                    cantidad_pedida = item.cantidad
+@login_required
+@requiere_roles("Producto Terminado")
+@require_POST
+def agregar_producto_pedido(request, pedido_id):
+    variacion_id = request.POST.get('producto_variacion_id')
+    cantidad = validar_cantidad_pedido(request.POST.get('cantidad'))
 
-                    # Cantidad que realmente se puede surtir.
-                    # Si hay menos stock que lo pedido,
-                    # se entrega todo lo disponible.
-                    cantidad_surtir = min(
-                        variacion.stock,
-                        cantidad_pedida
-                    )
+    if cantidad is None:
+        messages.error(request, "La cantidad debe ser mayor a cero y tener máximo dos decimales.")
+        return redirect('detalle_pedido_reparto', pedido_id=pedido_id)
 
-                    # No hay existencia disponible.
-                    if cantidad_surtir <= 0:
+    with transaction.atomic():
+        pedido = get_object_or_404(
+            PedidoReabastecimiento.objects.select_for_update(),
+            id=pedido_id
+        )
 
-                        productos_no_surtidos.append({
-                            'producto': str(variacion),
-                            'solicitado': float(cantidad_pedida),
-                            'surtido': 0
-                        })
+        if not pedido.estado or pedido.resultado != 'PENDIENTE':
+            messages.error(request, "Este pedido ya no puede modificarse.")
+            return redirect('detalle_pedido_reparto', pedido_id=pedido_id)
 
-                        continue
+        variacion = get_object_or_404(ProductoVariacion, id=variacion_id)
 
-                    # Si es el primer producto que realmente se va a surtir,
-                    # creamos la salida.
-                    if salida is None:
+        if PedidoReabastecimientoDetalle.objects.filter(
+            pedido=pedido, producto_variacion=variacion
+        ).exists():
+            messages.error(request, "Este producto ya está agregado al pedido.")
+            return redirect('detalle_pedido_reparto', pedido_id=pedido_id)
 
-                        salida = SalidaPTerminado.objects.create(
-                            fecha_salida=timezone.now(),
-                            usuario=request.user,
-                            ruta=pedido.ruta,
-                            destino='opcion1',
-                            nota=(
-                                f"Salida generada por reabastecimiento. "
-                                f"Pedido #{pedido.id}"
-                            )
-                        )
+        PedidoReabastecimientoDetalle.objects.create(
+            pedido=pedido,
+            pedido_uuid=pedido.uuid,
+            producto_variacion=variacion,
+            cantidad=cantidad
+        )
 
-                    # Descontar del stock central
-                    variacion.stock -= cantidad_surtir
-                    variacion.save()
+        PedidoReabastecimientoHistorial.objects.create(
+            pedido=pedido,
+            usuario=request.user,
+            accion='AGREGAR',
+            producto_nuevo=variacion,
+            cantidad_nueva=cantidad,
+            observacion="Producto agregado manualmente desde Django."
+        )
 
-                    # Registrar solamente lo que realmente se surtió
-                    DetalleSalidaPTerminado.objects.create(
-                        salida_p_terminado=salida,
-                        producto_variacion=variacion,
-                        cantidad=cantidad_surtir,
-                        precio_unitario=variacion.precio
-                    )
+        pedido.save(update_fields=['updated_at'])
 
-                    # Ingresar solamente lo surtido a la MiniBodega
-                    mb_detalle, created = MiniBodegaDetalle.objects.get_or_create(
-                        mini_bodega=minibodega,
-                        producto_variacion=variacion,
-                        defaults={
-                            'cantidad_inicial': cantidad_surtir,
-                            'cantidad_actual': cantidad_surtir
-                        }
-                    )
+    messages.success(request, "Producto agregado correctamente.")
+    return redirect('detalle_pedido_reparto', pedido_id=pedido_id)
 
-                    if not created:
+@login_required
+@requiere_roles("Producto Terminado")
+@require_POST
+def eliminar_producto_pedido(request, pedido_id, detalle_id):
+    with transaction.atomic():
+        pedido = get_object_or_404(
+            PedidoReabastecimiento.objects.select_for_update(),
+            id=pedido_id
+        )
 
-                        mb_detalle.cantidad_actual += cantidad_surtir
+        if not pedido.estado or pedido.resultado != 'PENDIENTE':
+            messages.error(request, "Este pedido ya no puede modificarse.")
+            return redirect('detalle_pedido_reparto', pedido_id=pedido_id)
 
-                        # Como la cantidad agregada pertenece al nuevo
-                        # reabastecimiento, pasa a formar parte del inicial.
-                        mb_detalle.cantidad_inicial = (
-                            mb_detalle.cantidad_actual
-                        )
+        detalle = get_object_or_404(
+            PedidoReabastecimientoDetalle,
+            id=detalle_id, pedido=pedido
+        )
 
-                        mb_detalle.save()
+        PedidoReabastecimientoHistorial.objects.create(
+            pedido=pedido,
+            usuario=request.user,
+            accion='ELIMINAR',
+            producto_anterior=detalle.producto_variacion,
+            cantidad_anterior=detalle.cantidad,
+            observacion="Producto eliminado manualmente del pedido."
+        )
 
-                    # Determinar si se surtió completo o parcialmente
-                    if cantidad_surtir == cantidad_pedida:
+        detalle.delete()
+        pedido.save(update_fields=['updated_at'])
 
-                        productos_completos.append({
-                            'producto': str(variacion),
-                            'solicitado': float(cantidad_pedida),
-                            'surtido': float(cantidad_surtir)
-                        })
+    messages.success(request, "Producto eliminado correctamente.")
+    return redirect('detalle_pedido_reparto', pedido_id=pedido_id)
 
-                    else:
+@login_required
+@requiere_roles("Producto Terminado")
+@require_POST
+def rechazar_pedido_reabastecimiento(request, pedido_id):
+    motivo = request.POST.get('motivo_rechazo', '').strip()
 
-                        productos_parciales.append({
-                            'producto': str(variacion),
-                            'solicitado': float(cantidad_pedida),
-                            'surtido': float(cantidad_surtir)
-                        })
+    with transaction.atomic():
+        pedido = get_object_or_404(
+            PedidoReabastecimiento.objects.select_for_update(),
+            id=pedido_id
+        )
 
-                # Eliminar productos que quedaron en cero.
-                MiniBodegaDetalle.objects.filter(
-                    mini_bodega=minibodega,
-                    cantidad_actual=0
-                ).delete()
+        if not pedido.estado or pedido.resultado != 'PENDIENTE':
+            messages.error(request, "Este pedido ya fue procesado o rechazado.")
+            return redirect('detalle_pedido_reparto', pedido_id=pedido_id)
 
-                # Marcar el pedido como procesado.
-                pedido.estado = False
-                pedido.save()
+        pedido.estado = False
+        pedido.resultado = 'RECHAZADO'
+        pedido.motivo_rechazo = motivo
+        pedido.usuario_cierre = request.user
+        pedido.fecha_cierre = timezone.now()
+        pedido.save(update_fields=[
+            'estado', 'resultado', 'motivo_rechazo',
+            'usuario_cierre', 'fecha_cierre', 'updated_at'
+        ])
 
-            # ---------------------------------------------------------
-            # PREPARAR RESULTADO PARA LA MODAL
-            # ---------------------------------------------------------
+        PedidoReabastecimientoHistorial.objects.create(
+            pedido=pedido,
+            usuario=request.user,
+            accion='RECHAZAR',
+            observacion=motivo or "Pedido rechazado sin motivo especificado."
+        )
 
-            resultado = {
-                'completos': productos_completos,
-                'parciales': productos_parciales,
-                'no_surtidos': productos_no_surtidos
-            }
-
-            # Si hubo productos parciales o sin surtir,
-            # mostramos la modal de advertencia.
-            if productos_parciales or productos_no_surtidos:
-
-                messages.warning(
-                    request,
-                    json.dumps(resultado)
-                )
-
-            else:
-
-                # Todo se surtió correctamente.
-                messages.success(
-                    request,
-                    json.dumps(resultado)
-                )
-
-            return redirect('lista_pedidos_reparto')
-
-        except Exception as e:
-
-            messages.error(
-                request,
-                f"Ocurrió un error al procesar: {str(e)}"
-            )
-
-            return redirect(
-                'detalle_pedido_reparto',
-                pedido_id=pedido.id
-            )
-
+    messages.success(request, f"Pedido #{pedido.id} rechazado correctamente.")
     return redirect('lista_pedidos_reparto')
 
+@login_required
+@requiere_roles("Producto Terminado")
+@require_POST
+def procesar_reabastecimiento(request, pedido_id):
+    try:
+        with transaction.atomic():
+
+            # Bloquear el pedido para evitar modificaciones simultáneas.
+            pedido = get_object_or_404(
+                PedidoReabastecimiento.objects.select_for_update(),
+                id=pedido_id
+            )
+
+            if not pedido.estado or pedido.resultado != 'PENDIENTE':
+                messages.error(request, "Este pedido ya fue procesado o rechazado.")
+                return redirect('detalle_pedido_reparto', pedido_id=pedido.id)
+
+            detalles = list(
+                PedidoReabastecimientoDetalle.objects.filter(
+                    pedido=pedido
+                ).select_related('producto_variacion').order_by('id')
+            )
+
+            if not detalles:
+                messages.error(request, "No se puede procesar un pedido sin productos.")
+                return redirect('detalle_pedido_reparto', pedido_id=pedido.id)
+
+            # Buscar la MiniBodega correspondiente a la ruta.
+            minibodega = MiniBodega.objects.filter(
+                ruta=pedido.ruta
+            ).order_by('-id').first()
+
+            if not minibodega:
+                messages.error(
+                    request,
+                    f"No se encontró una MiniBodega para la ruta {pedido.ruta.nombre}."
+                )
+                return redirect('detalle_pedido_reparto', pedido_id=pedido.id)
+
+            # Bloquear variaciones y trabajar con sus existencias actuales.
+            variaciones_ids = sorted({
+                item.producto_variacion_id for item in detalles
+            })
+
+            variaciones = {
+                variacion.id: variacion
+                for variacion in ProductoVariacion.objects.select_for_update()
+                .filter(id__in=variaciones_ids).order_by('id')
+            }
+
+            # Validar cantidades y productos duplicados.
+            if len(variaciones_ids) != len(detalles):
+                messages.error(request, "El pedido contiene productos duplicados.")
+                return redirect('detalle_pedido_reparto', pedido_id=pedido.id)
+
+            if any(item.cantidad <= 0 for item in detalles):
+                messages.error(request, "El pedido contiene cantidades inválidas.")
+                return redirect('detalle_pedido_reparto', pedido_id=pedido.id)
+
+            # Reactivar la MiniBodega para el nuevo día.
+            minibodega.estado = True
+            minibodega.save(update_fields=['estado', 'updated_at'])
+
+            # El inventario actual pasa a ser el inicial del nuevo día.
+            MiniBodegaDetalle.objects.filter(
+                mini_bodega=minibodega
+            ).update(cantidad_inicial=F('cantidad_actual'))
+
+            salida = None
+            productos_completos = []
+            productos_parciales = []
+            productos_no_surtidos = []
+
+            for item in detalles:
+                variacion = variaciones[item.producto_variacion_id]
+                cantidad_pedida = item.cantidad
+
+                # Surtir solamente lo disponible.
+                cantidad_surtir = min(
+                    max(variacion.stock, 0),
+                    cantidad_pedida
+                )
+
+                if cantidad_surtir <= 0:
+                    productos_no_surtidos.append({
+                        'producto': str(variacion),
+                        'solicitado': float(cantidad_pedida),
+                        'surtido': 0
+                    })
+                    continue
+
+                # Crear la salida solamente cuando haya algo que surtir.
+                if salida is None:
+                    salida = SalidaPTerminado.objects.create(
+                        fecha_salida=timezone.now(),
+                        usuario=request.user,
+                        ruta=pedido.ruta,
+                        destino='opcion1',
+                        nota=(
+                            f"Salida generada por reabastecimiento. "
+                            f"Pedido #{pedido.id}"
+                        )
+                    )
+
+                # Descontar existencias centrales.
+                variacion.stock -= cantidad_surtir
+                variacion.save(update_fields=['stock'])
+
+                # Registrar el producto realmente surtido.
+                DetalleSalidaPTerminado.objects.create(
+                    salida_p_terminado=salida,
+                    producto_variacion=variacion,
+                    cantidad=cantidad_surtir,
+                    precio_unitario=variacion.precio
+                )
+
+                # Agregar las existencias a la MiniBodega.
+                mb_detalle, created = MiniBodegaDetalle.objects.get_or_create(
+                    mini_bodega=minibodega,
+                    producto_variacion=variacion,
+                    defaults={
+                        'cantidad_inicial': cantidad_surtir,
+                        'cantidad_actual': cantidad_surtir
+                    }
+                )
+
+                if not created:
+                    mb_detalle.cantidad_actual += cantidad_surtir
+                    mb_detalle.cantidad_inicial = mb_detalle.cantidad_actual
+                    mb_detalle.save()
+
+                # Clasificar resultado del surtido.
+                producto_resultado = {
+                    'producto': str(variacion),
+                    'solicitado': float(cantidad_pedida),
+                    'surtido': float(cantidad_surtir)
+                }
+
+                if cantidad_surtir == cantidad_pedida:
+                    productos_completos.append(producto_resultado)
+                else:
+                    productos_parciales.append(producto_resultado)
+
+            # Eliminar registros sin existencias.
+            MiniBodegaDetalle.objects.filter(
+                mini_bodega=minibodega,
+                cantidad_actual=0
+            ).delete()
+
+            # Cerrar el pedido y registrar quién lo procesó.
+            pedido.estado = False
+            pedido.resultado = 'PROCESADO'
+            pedido.usuario_cierre = request.user
+            pedido.fecha_cierre = timezone.now()
+            pedido.save(update_fields=[
+                'estado', 'resultado', 'usuario_cierre',
+                'fecha_cierre', 'updated_at'
+            ])
+
+        # Preparar el resultado para la modal existente.
+        resultado = {
+            'completos': productos_completos,
+            'parciales': productos_parciales,
+            'no_surtidos': productos_no_surtidos
+        }
+
+        if productos_parciales or productos_no_surtidos:
+            messages.warning(request, json.dumps(resultado))
+        else:
+            messages.success(request, json.dumps(resultado))
+
+        return redirect('lista_pedidos_reparto')
+
+    except Exception as e:
+        messages.error(request, f"Ocurrió un error al procesar: {str(e)}")
+        return redirect('detalle_pedido_reparto', pedido_id=pedido_id)
+
+
+def validar_cantidad_pedido(valor):
+    try:
+        cantidad = Decimal(str(valor))
+        if not cantidad.is_finite() or cantidad <= 0:
+            return None
+        if cantidad.as_tuple().exponent < -2 or cantidad >= Decimal('100000000'):
+            return None
+        return cantidad
+    except (InvalidOperation, TypeError, ValueError):
+        return None
 
 
 # Vista para el listado
@@ -1495,6 +1636,8 @@ def sync_cancelaciones_devoluciones(request):
     return Response({
         "message": "Cancelaciones de devoluciones sincronizadas correctamente"
     })
+
+
 
 
 @api_view(['POST'])

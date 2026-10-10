@@ -94,12 +94,21 @@ class VentaDetalle(models.Model):
 
 
 class PedidoReabastecimiento(models.Model):
-    uuid = models.UUIDField(default=uuid.uuid4, editable=False)#, unique=True ponerlo despues
+    RESULTADOS = [
+        ('PENDIENTE', 'Pendiente'),
+        ('PROCESADO', 'Procesado'),
+        ('RECHAZADO', 'Rechazado'),
+    ]
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False)
     ruta = models.ForeignKey(Ruta, on_delete=models.CASCADE)
     fecha = models.DateField(auto_now_add=True)
     estado = models.BooleanField(default=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    resultado = models.CharField(max_length=15, choices=RESULTADOS, default='PENDIENTE')
+    motivo_rechazo = models.TextField(null=True, blank=True)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, null=True)
+    usuario_cierre = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True, blank=True,related_name='pedidos_reabastecimiento_cerrados')
+    fecha_cierre = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"Pedido - {self.ruta.nombre} - {self.fecha}"
@@ -116,6 +125,40 @@ class PedidoReabastecimientoDetalle(models.Model):
 
     def __str__(self):
         return f"Detalle - {self.pedido} - {self.producto_variacion}"
+
+class PedidoReabastecimientoHistorial(models.Model):
+    ACCIONES = [
+        ('AGREGAR', 'Producto agregado'),
+        ('MODIFICAR', 'Producto modificado'),
+        ('ELIMINAR', 'Producto eliminado'),
+        ('RECHAZAR', 'Pedido rechazado'),
+    ]
+
+    pedido = models.ForeignKey(
+        PedidoReabastecimiento, on_delete=models.CASCADE,
+        related_name='historial'
+    )
+    usuario = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True)
+    accion = models.CharField(max_length=15, choices=ACCIONES)
+    producto_anterior = models.ForeignKey(
+        ProductoVariacion, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='+'
+    )
+    producto_nuevo = models.ForeignKey(
+        ProductoVariacion, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='+'
+    )
+    cantidad_anterior = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    cantidad_nueva = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    observacion = models.TextField(null=True, blank=True)
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Pedido #{self.pedido_id} - {self.get_accion_display()}"
     
 
 class Devolucion(models.Model):
