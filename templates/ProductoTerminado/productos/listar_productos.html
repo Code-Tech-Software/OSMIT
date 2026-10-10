@@ -47,7 +47,11 @@
                         <th>Producto</th>
                         <th>Variaciones (Presentación | Código | Costo | Precio | Stock)</th>
                         <th class="text-center">Estado</th>
-                        <th class="text-center">Acciones</th>
+                        
+                        {% if user|has_role:"Administrador" %}
+                            <th class="text-center">Acciones</th>
+                        {% endif %}
+
                     </tr>
                 </thead>
                 <tbody>
@@ -93,18 +97,20 @@
                                 {% endif %}
                             </td>
                             
-                            <td class="text-center align-middle">
-                                <div class="d-flex justify-content-center gap-2">
-                                    <a href="{% url 'editar_productoPT' grupo.grouper.id %}" class="btn btn-custom-info btn-sm"
-                                       title="Editar Producto">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
+                            {% if user|has_role:"Administrador" %}
+                                <td class="text-center align-middle">
+                                    <div class="d-flex justify-content-center gap-2">
+                                        <a href="{% url 'editar_productoPT' grupo.grouper.id %}" class="btn btn-custom-info btn-sm"
+                                           title="Editar Producto">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
                                     <a href="{% url 'eliminar_productoPT' grupo.grouper.id %}"
                                        class="btn btn-custom-danger btn-sm btn-delete" title="Eliminar Producto">
                                         <i class="bi bi-trash"></i>
                                     </a>
                                 </div>
                             </td>
+                            {% endif %}
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -141,10 +147,12 @@
             // Inicialización de DataTables ajustada a 4 columnas
             $('#productosPTTable').DataTable({
                 columnDefs: [
-                    {width: "20%", targets: 0}, // Producto
-                    {width: "55%", targets: 1, orderable: false}, // Variaciones (Desactivado el orden para no desordenar el HTML interno)
-                    {width: "10%", targets: 2, className: "text-center"}, // Estado
-                    {width: "15%", targets: 3, className: "text-center", orderable: false} // Acciones
+                    {width: "20%", targets: 0},
+                    {width: "55%", targets: 1, orderable: false},
+                    {width: "10%", targets: 2, className: "text-center"}
+                    {% if user|has_role:"Administrador" %}
+                        ,{width: "15%", targets: 3, className: "text-center", orderable: false}
+                    {% endif %}
                 ],
                 language: {
                     decimal: "",

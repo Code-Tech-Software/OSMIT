@@ -290,3 +290,51 @@ class CancelacionDevolucionSustitucion(models.Model):
 
     def __str__(self):
         return f"{self.nombre_producto} - {self.cantidad}"
+
+
+
+class Rotacion(models.Model):
+    uuid = models.UUIDField(unique=True)
+    cliente = models.ForeignKey('ProductoTerminado.Cliente', on_delete=models.PROTECT, null=True, blank=True)
+    usuario = models.ForeignKey(Usuario, on_delete=models.PROTECT)
+    mini_bodega = models.ForeignKey('appMovil.MiniBodega', on_delete=models.PROTECT)
+    fecha = models.DateTimeField()
+    descripcion = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField()
+
+    def __str__(self):
+        return f"Rotación #{self.id} - {self.fecha}"
+
+
+class RotacionDetalle(models.Model):
+    uuid = models.UUIDField(unique=True)
+    rotacion = models.ForeignKey(Rotacion, on_delete=models.CASCADE)
+    producto_variacion = models.ForeignKey('ProductoTerminado.ProductoVariacion', on_delete=models.PROTECT)
+    nombre_producto = models.CharField(max_length=255)
+    cantidad = models.DecimalField(max_digits=12, decimal_places=2)
+    precio_unitario = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    @property
+    def subtotal(self):
+        return self.cantidad * self.precio_unitario
+
+    def __str__(self):
+        return f"{self.nombre_producto} - {self.cantidad}"
+
+class RotacionSustitucion(models.Model):
+    uuid = models.UUIDField(unique=True)
+    rotacion = models.ForeignKey(Rotacion, on_delete=models.CASCADE)
+    rotacion_detalle = models.ForeignKey(RotacionDetalle, on_delete=models.CASCADE)
+    producto_variacion = models.ForeignKey('ProductoTerminado.ProductoVariacion', on_delete=models.PROTECT)
+    nombre_producto = models.CharField(max_length=255)
+    cantidad = models.DecimalField(max_digits=12, decimal_places=2)
+    precio_unitario = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    created_at = models.DateTimeField()
+    sincronizado = models.BooleanField(default=False)
+
+    @property
+    def subtotal(self):
+        return self.cantidad * self.precio_unitario
+
+    def __str__(self):
+        return f"{self.nombre_producto} - {self.cantidad}"

@@ -4,3 +4,4 @@ from appMovil.models import *
 
 admin.site.register(MiniBodega)
 admin.site.register(MiniBodegaDetalle)
+admin.site.register(PedidoReabastecimiento)

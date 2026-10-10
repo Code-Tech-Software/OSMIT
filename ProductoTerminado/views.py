@@ -2924,7 +2924,7 @@ def detalle_entrada(request, entrada_id):
     )
 
     es_hoy = (
-        entrada.fecha_entrada.date() == timezone.localdate()
+        timezone.localtime(entrada.fecha_entrada).date() == timezone.localdate()
     )
 
     # =========================================================
@@ -3004,6 +3004,22 @@ def detalle_entrada(request, entrada_id):
             )
         )
 
+    # =========================================================
+    # HISTORIAL DE CORRECCIONES
+    # =========================================================
+
+    correcciones = (
+        entrada.correcciones
+        .select_related(
+            "producto_anterior__producto",
+            "producto_anterior__presentacion",
+            "producto_nuevo__producto",
+            "producto_nuevo__presentacion",
+            "usuario"
+        )
+        .order_by("fecha_correccion", "id")
+    )
+
     return render(
         request,
         "ProductoTerminado/entradas/detalle_entrada.html",
@@ -3012,6 +3028,7 @@ def detalle_entrada(request, entrada_id):
             "detalles": detalles,
             "es_hoy": es_hoy,
             "variaciones": variaciones,
+            "correcciones": correcciones,
         }
     )
 
@@ -3081,29 +3098,19 @@ def detalle_salida(request, salida_id):
         Decimal("0.00")
     )
 
-    # Saber si la salida es de hoy
+    # =========================================================
+    # SABER SI LA SALIDA ES DE HOY
+    # =========================================================
+
     es_hoy = (
         timezone.localtime(salida.fecha_salida).date()
         == timezone.localdate()
     )
 
-     # TEMPORAL: comprobar por qué aparece/no aparece el botón
-    
-    # print("CANTIDAD DE DETALLES:", detalles.count())
-    # print("ES HOY:", es_hoy)
+    # =========================================================
+    # DETERMINAR CATÁLOGO DE LA SALIDA
+    # =========================================================
 
-    # print("SALIDA:", salida.id)
-    # print("FECHA SALIDA:", salida.fecha_salida)
-    # print("LOCALTIME:", timezone.localtime(salida.fecha_salida))
-    # print("FECHA LOCAL:", timezone.localtime(salida.fecha_salida).date())
-    # print("LOCALDATE:", timezone.localdate())
-    # print("TIMEZONE ACTUAL:", timezone.get_current_timezone())
-
-    # print(
-    # "COMPARACION:",
-    # timezone.localtime(salida.fecha_salida).date() == timezone.localdate())
-
-    # Detectar si la salida pertenece a un catálogo especial
     prefijos_especiales = [
         "ML ",
         "Y ",
@@ -3116,11 +3123,9 @@ def detalle_salida(request, salida_id):
     prefijo_especial = None
 
     for detalle in detalles:
-
         nombre_producto = detalle.producto_variacion.producto.nombre
 
         for prefijo in prefijos_especiales:
-
             if nombre_producto.startswith(prefijo):
                 prefijo_especial = prefijo
                 break
@@ -3128,7 +3133,10 @@ def detalle_salida(request, salida_id):
         if prefijo_especial:
             break
 
-    # Obtener las variaciones que se podrán seleccionar
+    # =========================================================
+    # OBTENER VARIACIONES PERMITIDAS
+    # =========================================================
+
     if prefijo_especial:
 
         variaciones = (
@@ -3173,6 +3181,35 @@ def detalle_salida(request, salida_id):
                 "presentacion__nombre"
             )
         )
+
+    # =========================================================
+    # HISTORIAL DE CORRECCIONES
+    # =========================================================
+
+    correcciones = (
+        salida.correcciones
+        .select_related(
+            "producto_anterior__producto",
+            "producto_anterior__presentacion",
+            "producto_nuevo__producto",
+            "producto_nuevo__presentacion",
+            "usuario"
+        )
+        .order_by("fecha_correccion", "id")
+    )
+
+    return render(
+        request,
+        "ProductoTerminado/salidas/detalle_salida.html",
+        {
+            "salida": salida,
+            "detalles": detalles,
+            "total_salida": total_salida,
+            "es_hoy": es_hoy,
+            "variaciones": variaciones,
+            "correcciones": correcciones,
+        }
+    )
 
         
 

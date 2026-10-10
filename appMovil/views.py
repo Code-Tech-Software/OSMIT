@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from uuid import UUID
 from django.shortcuts import render
 from rest_framework import viewsets, status
 from django.utils.dateparse import parse_datetime, parse_date
@@ -164,39 +165,101 @@ def cerrar_mini_bodega(request):
     productos = data['productos']
 
     try:
-        mini_bodega = MiniBodega.objects.get(id=mini_bodega_id)
-    except MiniBodega.DoesNotExist:
-        return Response({"error": "Mini bodega no encontrada"}, status=404)
+        with transaction.atomic():
+            try:
+                mini_bodega = MiniBodega.objects.select_for_update().get(id=mini_bodega_id)
+            except MiniBodega.DoesNotExist:
+                return Response({"error": "Mini bodega no encontrada"}, status=404)
 
-    # 🚫 Evitar doble cierre
-    if not mini_bodega.estado:
-        return Response({"error": "La mini bodega ya está cerrada"}, status=400)
+            if not mini_bodega.estado:
+                return Response({"error": "La mini bodega ya está cerrada"}, status=400)
 
-    for item in productos:
-        try:
-            detalle = MiniBodegaDetalle.objects.get(
-                mini_bodega=mini_bodega,
-                producto_variacion_id=item['producto_variacion_id']
-            )
+            # Productos recibidos mediante rotaciones
+            entradas = {
+                item['producto_variacion_id']: item['total']
+                for item in RotacionDetalle.objects.filter(
+                    rotacion__mini_bodega=mini_bodega
+                ).values('producto_variacion_id').annotate(
+                    total=Sum('cantidad')
+                )
+            }
 
-            cantidad = item['cantidad_actual']
+            # Productos entregados como sustitución en rotaciones
+            salidas = {
+                item['producto_variacion_id']: item['total']
+                for item in RotacionSustitucion.objects.filter(
+                    rotacion__mini_bodega=mini_bodega
+                ).values('producto_variacion_id').annotate(
+                    total=Sum('cantidad')
+                )
+            }
 
-            # 🔹 Validaciones básicas
-            if cantidad < 0:
-                return Response({"error": "Cantidad negativa no permitida"}, status=400)
+            for item in productos:
+                producto_variacion_id = item['producto_variacion_id']
+                cantidad = Decimal(str(item['cantidad_actual']))
 
-            if cantidad > detalle.cantidad_inicial:
-                return Response({"error": "Cantidad mayor a la inicial"}, status=400)
+                if cantidad < 0:
+                    return Response({"error": "Cantidad negativa no permitida"}, status=400)
 
-            detalle.cantidad_actual = cantidad
-            detalle.save()
+                cantidad_recibida = entradas.get(producto_variacion_id, Decimal('0'))
+                cantidad_entregada = salidas.get(producto_variacion_id, Decimal('0'))
 
-        except MiniBodegaDetalle.DoesNotExist:
-            continue
+                try:
+                    detalle = MiniBodegaDetalle.objects.get(
+                        mini_bodega=mini_bodega,
+                        producto_variacion_id=producto_variacion_id
+                    )
 
-    # 🔹 Cerrar mini bodega
-    mini_bodega.estado = False
-    mini_bodega.save()
+                    cantidad_maxima = (
+                        detalle.cantidad_inicial
+                        + cantidad_recibida
+                        - cantidad_entregada
+                    )
+
+                    if cantidad > cantidad_maxima:
+                        return Response({
+                            "error": (
+                                f"Cantidad mayor a la permitida para el producto "
+                                f"{producto_variacion_id}. Máximo: {cantidad_maxima}"
+                            )
+                        }, status=400)
+
+                    detalle.cantidad_actual = cantidad
+                    detalle.save()
+
+                except MiniBodegaDetalle.DoesNotExist:
+                    # Solo permitir productos nuevos recibidos por rotación
+                    cantidad_maxima = cantidad_recibida - cantidad_entregada
+
+                    if cantidad_recibida <= 0:
+                        return Response({
+                            "error": (
+                                f"El producto {producto_variacion_id} no existe "
+                                f"en la minibodega ni fue recibido por rotación"
+                            )
+                        }, status=400)
+
+                    if cantidad > cantidad_maxima:
+                        return Response({
+                            "error": (
+                                f"Cantidad mayor a la recibida por rotación "
+                                f"para el producto {producto_variacion_id}. "
+                                f"Máximo: {cantidad_maxima}"
+                            )
+                        }, status=400)
+
+                    MiniBodegaDetalle.objects.create(
+                        mini_bodega=mini_bodega,
+                        producto_variacion_id=producto_variacion_id,
+                        cantidad_inicial=Decimal('0'),
+                        cantidad_actual=cantidad
+                    )
+
+            mini_bodega.estado = False
+            mini_bodega.save()
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
 
     return Response({"message": "Cierre realizado correctamente"})
 
@@ -811,7 +874,6 @@ def agregar_minibodega(request):
   ]
 }
 """
-
 @api_view(['POST'])
 @permission_classes([DispositivoActivoPermission])
 def sync_ventas(request):
@@ -1434,6 +1496,109 @@ def sync_cancelaciones_devoluciones(request):
         "message": "Cancelaciones de devoluciones sincronizadas correctamente"
     })
 
+
+@api_view(['POST'])
+@permission_classes([DispositivoActivoPermission])
+@transaction.atomic
+def sync_rotaciones(request):
+    rotaciones_data = request.data.get('rotaciones', [])
+    detalles_data = request.data.get('detalles', [])
+    sustituciones_data = request.data.get('sustituciones', [])
+
+    if not isinstance(rotaciones_data, list) or not isinstance(detalles_data, list) or not isinstance(sustituciones_data, list):
+        return Response({"error": "Formato de datos inválido"}, status=400)
+
+    def convertir_fecha(valor):
+        if not isinstance(valor, str):
+            raise ValueError("Fecha inválida")
+
+        fecha = parse_datetime(valor)
+        if fecha is None:
+            raise ValueError(f"Formato de fecha inválido: {valor}")
+
+        if timezone.is_naive(fecha):
+            fecha = timezone.make_aware(fecha)
+
+        return fecha
+
+    def convertir_decimal(valor):
+        numero = Decimal(str(valor))
+        if not numero.is_finite():
+            raise ValueError("Cantidad o precio inválido")
+        return numero
+
+    try:
+        # =========================
+        # ROTACIONES
+        # =========================
+        for item in rotaciones_data:
+            Rotacion.objects.get_or_create(
+                uuid=item['uuid'],
+                defaults={
+                    'cliente_id': item.get('cliente_id'),
+                    'usuario_id': item['usuario_id'],
+                    'mini_bodega_id': item['mini_bodega_id'],
+                    'fecha': convertir_fecha(item['fecha']),
+                    'descripcion': item.get('descripcion', ''),
+                    'created_at': convertir_fecha(item['created_at'])
+                }
+            )
+
+        # =========================
+        # DETALLES
+        # =========================
+        for item in detalles_data:
+            rotacion = Rotacion.objects.get(uuid=item['rotacion_uuid'])
+
+            RotacionDetalle.objects.get_or_create(
+                uuid=item['uuid'],
+                defaults={
+                    'rotacion': rotacion,
+                    'producto_variacion_id': item['producto_variacion_id'],
+                    'nombre_producto': item['nombre_producto'],
+                    'cantidad': convertir_decimal(item['cantidad']),
+                    'precio_unitario': convertir_decimal(item.get('precio_unitario', 0))
+                }
+            )
+
+        # =========================
+        # SUSTITUCIONES
+        # =========================
+        for item in sustituciones_data:
+            rotacion = Rotacion.objects.get(uuid=item['rotacion_uuid'])
+            detalle = RotacionDetalle.objects.get(uuid=item['rotacion_detalle_uuid'])
+
+            if detalle.rotacion_id != rotacion.id:
+                raise ValueError("La sustitución no corresponde al detalle de esta rotación")
+
+            RotacionSustitucion.objects.get_or_create(
+                uuid=item['uuid'],
+                defaults={
+                    'rotacion': rotacion,
+                    'rotacion_detalle': detalle,
+                    'producto_variacion_id': item['producto_variacion_id'],
+                    'nombre_producto': item['nombre_producto'],
+                    'cantidad': convertir_decimal(item['cantidad']),
+                    'precio_unitario': convertir_decimal(item.get('precio_unitario', 0)),
+                    'created_at': convertir_fecha(item['created_at']),
+                    'sincronizado': True
+                }
+            )
+
+        return Response({
+            "message": "Rotaciones sincronizadas correctamente",
+            "rotaciones": len(rotaciones_data),
+            "detalles": len(detalles_data),
+            "sustituciones": len(sustituciones_data)
+        })
+
+    except (KeyError, ValueError, TypeError, InvalidOperation, Rotacion.DoesNotExist, RotacionDetalle.DoesNotExist) as e:
+        transaction.set_rollback(True)
+        return Response({"error": str(e)}, status=400)
+
+    except Exception as e:
+        transaction.set_rollback(True)
+        return Response({"error": str(e)}, status=400)
 
 
 ##Solo para revisar
@@ -2424,6 +2589,15 @@ def dashboard_repartidor_api(request):
     )['total'] or Decimal('0.00')
 
     # =========================
+    # VENTAS A CRÉDITO
+    # =========================
+    ventas_credito = ventas_hoy.filter(
+        tipo_venta='CREDITO'
+    ).aggregate(
+        total=Sum('total')
+    )['total'] or Decimal('0.00')
+
+    # =========================
     # ABONOS DEL DÍA
     # =========================
     abonos_hoy = Abono.objects.filter(
@@ -2497,6 +2671,8 @@ def dashboard_repartidor_api(request):
             'ventas': {
                 'cantidad': cantidad_ventas,
                 'dinero': float(dinero_ventas),
+                'contado': float(ventas_contado),
+                'credito': float(ventas_credito),
             },
 
             'abonos': {
