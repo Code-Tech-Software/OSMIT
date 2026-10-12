@@ -3,215 +3,236 @@
 {% load static %}
 
 {% block content %}
-    <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
-    <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css">
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+<link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css">
 
-    <style>
-        .truncate-text {
-            max-width: 150px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        /* Ajuste para que la sub-tabla no rompa el diseño principal */
-        .sub-table-container {
-            padding: 0 !important;
-        }
-        .sub-table {
-            background-color: transparent;
-        }
-        .sub-table td {
-            padding: 0.5rem;
-            vertical-align: middle;
-        }
-    </style>
+<style>
+    .truncate-text {
+        max-width: 150px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .sub-table-container { padding: 0 !important; }
+    .sub-table { background-color: transparent; }
+    .sub-table td { padding: 0.5rem; vertical-align: middle; }
+</style>
 
-    <div>
-        <span class="fw-bold text-dark">Gestión de Productos</span>
-        <span class="mx-2 text-dark">|</span>
-        <span class="text-secondary">Productos Terminados (Agrupados)</span>
-    </div>
-    {% if user|has_role:"Administrador" %}
-    <div class="text-end">
-        <a href="{% url 'agregar_productoPT' %}" class="btn btn-custom-success btn-add mb-4">
-            <i class="bi bi-plus-circle"></i> Agregar Producto
-        </a>
-    </div>
-    {% endif %}
-    <div class="custom-card">
-        <div class="table-responsive">
-            <table id="productosPTTable" class="table table-striped table-bordered align-middle">
-                <thead>
-                    <tr>
-                        <th>Producto</th>
-                        <th>Variaciones (Presentación | Código | Costo | Precio | Stock)</th>
-                        <th class="text-center">Estado</th>
-                        
-                        {% if user|has_role:"Administrador" %}
-                            <th class="text-center">Acciones</th>
-                        {% endif %}
+<div>
+    <span class="fw-bold text-dark">Gestión de Productos</span>
+    <span class="mx-2 text-dark">|</span>
+    <span class="text-secondary">Productos Terminados (Agrupados)</span>
+</div>
 
-                    </tr>
-                </thead>
-                <tbody>
-                    {% regroup variaciones by producto as productos_agrupados %}
-                    
-                    {% for grupo in productos_agrupados %}
-                        <tr>
-                            <td class="fw-bold align-middle" title="{{ grupo.grouper.nombre }}">
-                                {{ grupo.grouper.nombre }}
-                            </td>
-                            
-                            <td class="sub-table-container">
-                                <table class="table table-sm table-borderless sub-table mb-0 w-100">
-                                    <tbody>
-                                    {% for var in grupo.list %}
-                                        <tr class="{% if not forloop.last %}border-bottom{% endif %}">
-                                            <td style="width: 30%;" class="truncate-text" title="{{ var.presentacion }}">
-                                                <i class="bi bi-box-seam text-secondary me-1"></i> {{ var.presentacion }}
-                                            </td>
-                                            <td style="width: 20%;" class="text-muted small">
-                                                <i class="bi bi-upc-scan"></i> {{ var.codigo_barras|default:"N/A" }}
-                                            </td>
-                                            <td style="width: 15%; text-align: center;">
-                                                <span class="text-muted">Costo:</span> ${{ var.costo }}
-                                            </td>
-                                            <td style="width: 15%; text-align: center;" class="fw-bold text-success">
-                                                <span class="text-dark fw-normal">Precio:</span> ${{ var.precio }}
-                                            </td>
-                                            <td style="width: 20%; text-align: right;">
-                                                <span class="badge bg-secondary">Stock: {{ var.stock }}</span>
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                    </tbody>
-                                </table>
-                            </td>
-                            
-                            <td class="text-center align-middle">
-                                {% if grupo.grouper.estado %}
-                                    <span class="badge bg-custom-success">Activo</span>
-                                {% else %}
-                                    <span class="badge bg-custom-danger">Inactivo</span>
-                                {% endif %}
-                            </td>
-                            
-                            {% if user|has_role:"Administrador" %}
-                                <td class="text-center align-middle">
-                                    <div class="d-flex justify-content-center gap-2">
-                                        <a href="{% url 'editar_productoPT' grupo.grouper.id %}" class="btn btn-custom-info btn-sm"
-                                           title="Editar Producto">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                    <a href="{% url 'eliminar_productoPT' grupo.grouper.id %}"
-                                       class="btn btn-custom-danger btn-sm btn-delete" title="Eliminar Producto">
-                                        <i class="bi bi-trash"></i>
-                                    </a>
-                                </div>
-                            </td>
-                            {% endif %}
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+{% if user|has_role:"Administrador" %}
+<div class="text-end">
+    <a href="{% url 'agregar_productoPT' %}" class="btn btn-custom-success btn-add mb-4">
+        <i class="bi bi-plus-circle"></i> Agregar Producto
+    </a>
+</div>
+{% endif %}
 
-        <div class="form-check form-switch mt-3">
-            <input class="form-check-input" type="checkbox" id="toggleEstado" {% if mostrar_todos %}checked{% endif %}>
-            <label class="form-check-label text-dark" for="toggleEstado">Mostrar todos los productos (incluir inactivos)</label>
+<div class="custom-card">
+
+    <!-- SWITCH ORDEN DE PRODUCTOS -->
+    <div class="d-flex justify-content-end align-items-center mb-3">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch"
+                   id="ordenPersonalizado" {% if usar_orden_personalizado %}checked{% endif %}>
+            <label class="form-check-label fw-semibold" for="ordenPersonalizado">
+                Orden de ruta
+            </label>
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
-
-    <script>
-        // Lógica del Switch para mostrar inactivos
-        $('#toggleEstado').on('change', function () {
-            const isChecked = $(this).is(':checked');
-            const url = new URL(window.location.href);
-
-            if (isChecked) {
-                url.searchParams.set('mostrar_todos', '1');
-            } else {
-                url.searchParams.delete('mostrar_todos');
-            }
-
-            window.location.href = url.toString();
-        });
-
-        $(document).ready(function () {
-            // Inicialización de DataTables ajustada a 4 columnas
-            $('#productosPTTable').DataTable({
-                columnDefs: [
-                    {width: "20%", targets: 0},
-                    {width: "55%", targets: 1, orderable: false},
-                    {width: "10%", targets: 2, className: "text-center"}
+    <div class="table-responsive">
+        <table id="productosPTTable" class="table table-striped table-bordered align-middle">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Variaciones (Presentación | Código | Costo | Precio | Stock)</th>
+                    <th class="text-center">Estado</th>
                     {% if user|has_role:"Administrador" %}
-                        ,{width: "15%", targets: 3, className: "text-center", orderable: false}
+                        <th class="text-center">Acciones</th>
                     {% endif %}
-                ],
-                language: {
-                    decimal: "",
-                    emptyTable: "No hay productos disponibles",
-                    info: "Mostrando _START_ a _END_ de _TOTAL_ productos",
-                    infoEmpty: "Mostrando 0 a 0 de 0 productos",
-                    infoFiltered: "(filtrado de _MAX_ productos totales)",
-                    lengthMenu: "Mostrar _MENU_ productos",
-                    loadingRecords: "Cargando...",
-                    processing: "Procesando...",
-                    search: "Buscar:",
-                    zeroRecords: "No se encontraron productos",
-                    paginate: {
-                        first: '<i class="bi bi-rewind-fill"></i>',
-                        last: '<i class="bi bi-fast-forward-fill"></i>',
-                        next: '<i class="bi bi-caret-right-fill"></i>',
-                        previous: '<i class="bi bi-caret-left-fill"></i>'
-                    }
-                },
-                responsive: true
-            });
+                </tr>
+            </thead>
+            <tbody>
+                {% regroup variaciones by producto as productos_agrupados %}
 
-            // Confirmación de SweetAlert2 para eliminar
-            $('.btn-delete').on('click', function (e) {
-                e.preventDefault();
-                const url = $(this).attr('href');
+                {% for grupo in productos_agrupados %}
+                <tr>
+                    <td class="fw-bold align-middle" title="{{ grupo.grouper.nombre }}">
+                        {{ grupo.grouper.nombre }}
+                    </td>
 
-                Swal.fire({
-                    title: '¿Estás seguro?',
-                    text: "¡Esta acción eliminará el producto y TODAS sus variaciones!",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: 'var(--danger-color)', // Asegúrate de que estas variables CSS existan en coloresCustom.css
-                    cancelButtonColor: 'var(--secondary-color)',
-                    confirmButtonText: 'Sí, eliminar',
-                    cancelButtonText: 'Cancelar'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.location.href = url;
-                    }
-                });
-            });
-        });
+                    <td class="sub-table-container">
+                        <table class="table table-sm table-borderless sub-table mb-0 w-100">
+                            <tbody>
+                            {% for var in grupo.list %}
+                                <tr class="{% if not forloop.last %}border-bottom{% endif %}">
+                                    <td style="width: 30%;" class="truncate-text" title="{{ var.presentacion }}">
+                                        <i class="bi bi-box-seam text-secondary me-1"></i> {{ var.presentacion }}
+                                    </td>
+                                    <td style="width: 20%;" class="text-muted small">
+                                        <i class="bi bi-upc-scan"></i> {{ var.codigo_barras|default:"N/A" }}
+                                    </td>
+                                    <td style="width: 15%; text-align: center;">
+                                        <span class="text-muted">Costo:</span> ${{ var.costo }}
+                                    </td>
+                                    <td style="width: 15%; text-align: center;" class="fw-bold text-success">
+                                        <span class="text-dark fw-normal">Precio:</span> ${{ var.precio }}
+                                    </td>
+                                    <td style="width: 20%; text-align: right;">
+                                        <span class="badge bg-secondary">Stock: {{ var.stock }}</span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </td>
 
-        // Configuración de Notyf para mensajes flash de Django
-        const notyf = new Notyf({
-            duration: 3000,
-            position: {x: 'right', y: 'bottom'},
-            dismissible: true
-        });
+                    <td class="text-center align-middle">
+                        {% if grupo.grouper.estado %}
+                            <span class="badge bg-custom-success">Activo</span>
+                        {% else %}
+                            <span class="badge bg-custom-danger">Inactivo</span>
+                        {% endif %}
+                    </td>
 
-        {% if messages %}
-            {% for message in messages %}
-                {% if message.tags == 'success' %}
-                    notyf.success("{{ message }}");
-                {% elif message.tags == 'error' %}
-                    notyf.error("{{ message }}");
+                    {% if user|has_role:"Administrador" %}
+                    <td class="text-center align-middle">
+                        <div class="d-flex justify-content-center gap-2">
+                            <a href="{% url 'editar_productoPT' grupo.grouper.id %}"
+                               class="btn btn-custom-info btn-sm" title="Editar Producto">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'eliminar_productoPT' grupo.grouper.id %}"
+                               class="btn btn-custom-danger btn-sm btn-delete" title="Eliminar Producto">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- SWITCH ORIGINAL: MOSTRAR TODOS -->
+    <div class="form-check form-switch mt-3">
+        <input class="form-check-input" type="checkbox" id="toggleEstado"
+               {% if mostrar_todos %}checked{% endif %}>
+        <label class="form-check-label text-dark" for="toggleEstado">
+            Mostrar todos los productos (incluir inactivos)
+        </label>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
+
+<script>
+    // SWITCH ORIGINAL: MOSTRAR PRODUCTOS INACTIVOS
+    $('#toggleEstado').on('change', function () {
+        const url = new URL(window.location.href);
+
+        if ($(this).is(':checked')) {
+            url.searchParams.set('mostrar_todos', '1');
+        } else {
+            url.searchParams.delete('mostrar_todos');
+        }
+
+        window.location.href = url.toString();
+    });
+
+    // NUEVO SWITCH: ORDEN DE RUTA
+    $('#ordenPersonalizado').on('change', function () {
+        const url = new URL(window.location.href);
+
+        if ($(this).is(':checked')) {
+            url.searchParams.set('orden', 'personalizado');
+        } else {
+            url.searchParams.delete('orden');
+        }
+
+        window.location.href = url.toString();
+    });
+
+    $(document).ready(function () {
+        $('#productosPTTable').DataTable({
+            pageLength: 50,
+            order: [],
+            columnDefs: [
+                {width: "20%", targets: 0},
+                {width: "55%", targets: 1, orderable: false},
+                {width: "10%", targets: 2, className: "text-center"}
+                {% if user|has_role:"Administrador" %}
+                    ,{width: "15%", targets: 3, className: "text-center", orderable: false}
                 {% endif %}
-            {% endfor %}
-        {% endif %}
-    </script>
+            ],
+            language: {
+                decimal: "",
+                emptyTable: "No hay productos disponibles",
+                info: "Mostrando _START_ a _END_ de _TOTAL_ productos",
+                infoEmpty: "Mostrando 0 a 0 de 0 productos",
+                infoFiltered: "(filtrado de _MAX_ productos totales)",
+                lengthMenu: "Mostrar _MENU_ productos",
+                loadingRecords: "Cargando...",
+                processing: "Procesando...",
+                search: "Buscar:",
+                zeroRecords: "No se encontraron productos",
+                paginate: {
+                    first: '<i class="bi bi-rewind-fill"></i>',
+                    last: '<i class="bi bi-fast-forward-fill"></i>',
+                    next: '<i class="bi bi-caret-right-fill"></i>',
+                    previous: '<i class="bi bi-caret-left-fill"></i>'
+                }
+            },
+            responsive: true
+        });
+
+        // CONFIRMACIÓN ORIGINAL PARA ELIMINAR
+        $('.btn-delete').on('click', function (e) {
+            e.preventDefault();
+            const url = $(this).attr('href');
+
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: "¡Esta acción eliminará el producto y TODAS sus variaciones!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: 'var(--danger-color)',
+                cancelButtonColor: 'var(--secondary-color)',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = url;
+                }
+            });
+        });
+    });
+
+    // NOTIFICACIONES ORIGINALES
+    const notyf = new Notyf({
+        duration: 3000,
+        position: {x: 'right', y: 'bottom'},
+        dismissible: true
+    });
+
+    {% if messages %}
+        {% for message in messages %}
+            {% if message.tags == 'success' %}
+                notyf.success("{{ message }}");
+            {% elif message.tags == 'error' %}
+                notyf.error("{{ message }}");
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+</script>
 {% endblock %}

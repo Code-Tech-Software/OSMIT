@@ -107,31 +107,95 @@ def agregar_producto(request):
     )
 
 
+
+
 @login_required
-@requiere_roles("Producto Terminado","Recursos Humanos")
+@requiere_roles("Producto Terminado", "Recursos Humanos")
 def listar_productos(request):
     """
     Muestra un listado agrupado con todas las variaciones de productos
-    terminados registrados respetando el switch de estado.
+    terminados, respetando los switches de estado y orden de ruta.
     """
     mostrar_todos = request.GET.get('mostrar_todos') == '1'
+    usar_orden_personalizado = request.GET.get('orden') == 'personalizado'
 
-    # Agregamos .order_by('producto__nombre') para poder agrupar en el template
+    # =========================================================
+    # ORDEN PERSONALIZADO DE PRODUCTOS
+    # =========================================================
+    orden_productos = [
+        "PISTACHE", "ENCHILADO", "JAPONES", "JAPONES FUEGO", "MACHO",
+        "HORNEADO", "CASCARITA", "SURTIDO", "HABA PELADA", "HABA CON CASCARA",
+        "GARBANZA", "GARAPIÑADO", "GOMITA", "LUNETA", "HUEVITO CHOCOLATE",
+        "GALLETA MARINA", "CIRUELA", "PASAS", "SEMILLA DE CALABAZA",
+        "SEMILLA DE GIRASOL", "NUEZ", "ALMENDRA", "GRANOLA", "CHILE DE ARBOL",
+        "CHILE PULLA", "CHILE CASCABEL", "CAMARON", "CAMARON MOLIDO",
+        "CHARAL NATURAL", "CHARAL ADOBADO", "CECINA NATURAL", "CECINA ADOBADA",
+        "CECINA DE LIMON", "CECINA CHILTEPIN", "CECINA CHIPOTLE",
+        "CECINA HABANERO", "CECINA ARTESANAL", "PAPA FRITA",
+        "CHURRO DE MASA", "CHURRO DELGADO", "CHICHARRON", "CHICHARRON CRAC",
+        "PLATANO", "TOSTADA", "MIEL", "TIRA DE CC MINI", "TIRA DE DULCE",
+        "MIX VERDE", "MIX ROJO"
+    ]
+
+    # =========================================================
+    # ORDEN FIJO DE PRESENTACIONES
+    # =========================================================
+    orden_presentaciones = [
+        "Minis", "Chico", "Mediano", "Grande", "250g", "500g",
+        "1kg", "Kiosko", "Grande 150g", "Grande 140g", "Pieza"
+    ]
+
+    normalizar = lambda nombre: " ".join(nombre.upper().split())
+
+    orden_productos_dict = {
+        normalizar(nombre): i for i, nombre in enumerate(orden_productos)
+    }
+    orden_presentaciones_dict = {
+        normalizar(nombre): i for i, nombre in enumerate(orden_presentaciones)
+    }
+
+    # =========================================================
+    # CONSULTA DE VARIACIONES
+    # =========================================================
     queryset = ProductoVariacion.objects.select_related(
-        'producto',
-        'presentacion'
+        'producto', 'presentacion'
     ).order_by('producto__nombre')
 
     if mostrar_todos:
-        variaciones = queryset.all()
+        variaciones = list(queryset.all())
     else:
-        # Filtramos basándonos en el estado del producto padre
-        variaciones = queryset.filter(producto__estado=True)
+        variaciones = list(queryset.filter(producto__estado=True))
+
+    # =========================================================
+    # ORDENAR PRODUCTOS Y PRESENTACIONES
+    # =========================================================
+    if usar_orden_personalizado:
+        variaciones.sort(
+            key=lambda item: (
+                orden_productos_dict.get(normalizar(item.producto.nombre), 9999),
+                normalizar(item.producto.nombre),
+                item.producto.id,
+                orden_presentaciones_dict.get(normalizar(item.presentacion.nombre), 9999),
+                normalizar(item.presentacion.nombre)
+            )
+        )
+    else:
+        variaciones.sort(
+            key=lambda item: (
+                normalizar(item.producto.nombre),
+                item.producto.id,
+                orden_presentaciones_dict.get(normalizar(item.presentacion.nombre), 9999),
+                normalizar(item.presentacion.nombre)
+            )
+        )
 
     return render(request, 'ProductoTerminado/productos/listar_productos.html', {
         'variaciones': variaciones,
-        'mostrar_todos': mostrar_todos
+        'mostrar_todos': mostrar_todos,
+        'usar_orden_personalizado': usar_orden_personalizado
     })
+
+from django.db.models import Case, When, Value, IntegerField
 
 @login_required
 @requiere_roles("Producto Terminado")
@@ -141,32 +205,72 @@ def editar_producto(request, pk):
     """
     producto = get_object_or_404(ProductoTerminado, pk=pk)
 
-    # Creamos el formset asociando el producto con sus variaciones
+    # =========================================================
+    # ORDEN FIJO DE PRESENTACIONES
+    # =========================================================
+    orden_presentaciones = [
+        "Minis", "Chico", "Mediano", "Grande", "250g", "500g",
+        "1kg", "Kiosko", "Grande 150g", "Grande 140g", "Pieza"
+    ]
+
+    orden_case = Case(
+        *[
+            When(presentacion__nombre__iexact=nombre, then=Value(i))
+            for i, nombre in enumerate(orden_presentaciones)
+        ],
+        default=Value(9999),
+        output_field=IntegerField()
+    )
+
+    variaciones_ordenadas = ProductoVariacion.objects.filter(
+        producto=producto
+    ).order_by(
+        orden_case,
+        'presentacion__nombre',
+        'id'
+    )
+
+    # =========================================================
+    # FORMSET DE VARIACIONES
+    # =========================================================
     VariacionFormSet = inlineformset_factory(
         ProductoTerminado,
         ProductoVariacion,
         form=ProductoVariacionForm,
         formset=ProductoVariacionBaseFormSet,
-        extra=0,  # No mostramos filas vacías por defecto, las agregaremos con JS
-        can_delete=True  # Habilita la opción de eliminar variaciones existentes
+        extra=0,
+        can_delete=True
     )
 
     if request.method == 'POST':
-        form = ProductoTerminadoForm(request.POST, request.FILES, instance=producto)
-        formset = VariacionFormSet(request.POST, instance=producto)
+        form = ProductoTerminadoForm(
+            request.POST, request.FILES, instance=producto
+        )
+        formset = VariacionFormSet(
+            request.POST,
+            instance=producto,
+            queryset=variaciones_ordenadas
+        )
 
         if form.is_valid() and formset.is_valid():
             form.save()
             formset.save()
-            messages.success(request, "Producto y variaciones actualizados correctamente.")
+            messages.success(
+                request,
+                "Producto y variaciones actualizados correctamente."
+            )
             return redirect('listar_productosPT')
-
         else:
-            # ESTO ES NUEVO: Avisar al usuario que hay errores
-            messages.error(request, "No se pudo guardar. Por favor, revisa los errores.")
+            messages.error(
+                request,
+                "No se pudo guardar. Por favor, revisa los errores."
+            )
     else:
         form = ProductoTerminadoForm(instance=producto)
-        formset = VariacionFormSet(instance=producto)
+        formset = VariacionFormSet(
+            instance=producto,
+            queryset=variaciones_ordenadas
+        )
 
     return render(request, 'ProductoTerminado/productos/editar_producto.html', {
         'form': form,
@@ -235,13 +339,13 @@ def registrar_entrada(request):
     orden_productos = [
         "PISTACHE", "ENCHILADO", "JAPONES", "JAPONES FUEGO", "MACHO",
         "HORNEADO", "CASCARITA", "SURTIDO", "HABA PELADA", "HABA CON CASCARA",
-        "GARBANZA", "GARAPIÑADO", "GOMITA", "LUNETA", "HUEVITO",
+        "GARBANZA", "GARAPIÑADO", "GOMITA", "LUNETA", "HUEVITO CHOCOLATE",
         "GALLETA MARINA", "CIRUELA", "PASAS", "SEMILLA DE CALABAZA",
         "SEMILLA DE GIRASOL", "NUEZ", "ALMENDRA", "GRANOLA", "CHILE DE ARBOL",
         "CHILE PULLA", "CHILE CASCABEL", "CAMARON", "CAMARON MOLIDO",
         "CHARAL NATURAL", "CHARAL ADOBADO", "CECINA NATURAL", "CECINA ADOBADA",
         "CECINA DE LIMON", "CECINA CHILTEPIN", "CECINA CHIPOTLE",
-        "CECINA HABANERO", "CECINA ARTESANAL PICANTE", "PAPA FRITA",
+        "CECINA HABANERO", "CECINA ARTESANAL", "PAPA FRITA",
         "CHURRO DE MASA", "CHURRO DELGADO", "CHICHARRON", "CHICHARRON CRAC",
         "PLATANO", "TOSTADA", "MIEL", "TIRA DE CC MINI", "TIRA DE DULCE",
         "MIX VERDE", "MIX ROJO"
@@ -3211,19 +3315,6 @@ def detalle_salida(request, salida_id):
         }
     )
 
-        
-
-    return render(
-        request,
-        "ProductoTerminado/salidas/detalle_salida.html",
-        {
-            "salida": salida,
-            "detalles": detalles,
-            "total_salida": total_salida,
-            "es_hoy": es_hoy,
-            "variaciones": variaciones,
-        }
-    )
 
 @login_required
 @requiere_roles("Producto Terminado","Producción")
