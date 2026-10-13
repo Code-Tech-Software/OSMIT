@@ -1,6 +1,6 @@
-
 {% extends "Base/Sidebar.html" %}
 {% load static %}
+{% load rol_tags %}
 
 {% block content %}
 
@@ -85,7 +85,7 @@
                         <th>Cantidad</th>
                         <th>Precio unitario</th>
                         <th>Precio total</th>
-                        {% if es_hoy %}
+                        {% if es_hoy and not user|has_role:"Recursos Humanos" %}
                         <th>Acciones</th>
                         {% endif %}
                     </tr>
@@ -117,7 +117,7 @@
                             {% endif %}
                         </td>
 
-                        {% if es_hoy %}
+                        {% if es_hoy and not user|has_role:"Recursos Humanos" %}
                         <td>
                             <button type="button" class="btn btn-warning btn-sm"
                                 data-bs-toggle="modal"
@@ -216,7 +216,7 @@
 </div>
 
 <!-- MODAL DE CORRECCIONES -->
-{% if es_hoy %}
+{% if es_hoy and not user|has_role:"Recursos Humanos" %}
 <div class="modal fade" id="modalCorreccion" tabindex="-1"
     aria-labelledby="modalCorreccionLabel" aria-hidden="true">
 

@@ -1,7 +1,9 @@
+
 {% extends "Base/Sidebar.html" %}
 {% load static %}
 
 {% block content %}
+
 <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
 
 <div class="section-title">
@@ -11,14 +13,45 @@
 </div>
 
 <div class="custom-card mt-4">
+
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
+
+        <!-- ====================================== -->
+        <!-- CONSERVAR FILTROS DEL LISTADO          -->
+        <!-- ====================================== -->
+
+        <input
+            type="hidden"
+            name="filtro_ruta"
+            value="{{ request.GET.ruta|default:'' }}"
+        >
+
+        <input
+            type="hidden"
+            name="filtro_dia"
+            value="{{ request.GET.dia|default:'' }}"
+        >
+
+        <input
+            type="hidden"
+            name="filtro_mostrar_todos"
+            value="{{ request.GET.mostrar_todos|default:'' }}"
+        >
+
+        <!-- ====================================== -->
+        <!-- DATOS DEL CLIENTE                     -->
+        <!-- ====================================== -->
 
         <div class="row">
 
             {% for field in form %}
             <div class="col-md-6 mb-3">
-                <label for="{{ field.id_for_label }}" class="form-label">
+
+                <label
+                    for="{{ field.id_for_label }}"
+                    class="form-label"
+                >
                     {{ field.label }}
                 </label>
 
@@ -29,37 +62,46 @@
                     {{ field.errors|striptags }}
                 </div>
                 {% endif %}
+
             </div>
             {% endfor %}
 
-            <!-- DÍA DE VISITA -->
-            <div class="col-md-6 mb-3">
-                <label for="{{ dias_form.dia.id_for_label }}" class="form-label">
-                    {{ dias_form.dia.label }}
-                </label>
+            <!-- ====================================== -->
+            <!-- DÍAS DE VISITA                        -->
+            <!-- ====================================== -->
 
-                {{ dias_form.dia }}
-
-                {% if dias_form.dia.errors %}
-                <div class="text-danger small">
-                    {{ dias_form.dia.errors|striptags }}
-                </div>
-                {% endif %}
-            </div>
+            {% include "VehiculosRutas/clientes/_dias_visita_formset.html" %}
 
         </div>
 
+        <!-- ====================================== -->
+        <!-- BOTONES                               -->
+        <!-- ====================================== -->
+
         <div class="mt-4 d-flex flex-column flex-sm-row gap-2">
-            <button type="submit" class="btn btn-custom-success btn-sm">
-                <i class="bi bi-save me-1"></i>Guardar Cambios
+
+            <!-- GUARDAR CAMBIOS -->
+            <button
+                type="submit"
+                class="btn btn-custom-success btn-sm"
+            >
+                <i class="bi bi-save me-1"></i>
+                Guardar Cambios
             </button>
 
-            <a href="{% url 'listar_clientes' %}" class="btn btn-custom-secondary btn-sm">
-                <i class="bi bi-arrow-return-left me-1"></i>Volver al listado
+            <!-- VOLVER CONSERVANDO FILTROS -->
+            <a
+                href="{% url 'listar_clientes' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
+                class="btn btn-custom-secondary btn-sm"
+            >
+                <i class="bi bi-arrow-return-left me-1"></i>
+                Volver al listado
             </a>
+
         </div>
 
     </form>
+
 </div>
 
 {% endblock %}

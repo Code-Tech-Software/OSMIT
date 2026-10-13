@@ -2,7 +2,7 @@ from django.db import transaction
 
 from ProductoGranel.models import User
 from ProductoTerminado.models import Vehiculo, Ruta, Cliente, ClienteDiasVisita, DetalleSalidaPTerminado, InventarioRuta, SalidaPTerminado
-from VehiculosRutas.forms import VehiculoForm, ClienteDiasVisitaForm
+from VehiculosRutas.forms import VehiculoForm, ClienteDiasVisitaForm,ClienteDiasVisitaFormSet
 from .forms import ClienteForm
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -11,7 +11,11 @@ from django.contrib import messages
 from django.template.loader import get_template
 from xhtml2pdf import pisa
 from django.http import HttpResponse
-
+from datetime import date, timedelta
+from django.db.models import Q, OuterRef, Subquery, IntegerField
+from django.db.models.functions import Coalesce
+from django.utils import timezone
+from urllib.parse import urlencode
 
 
 @login_required
@@ -128,118 +132,162 @@ def eliminar_ruta(request, pk):
 # -------------------------------------------------CLIENTES#
 
 
+from django.urls import reverse
 
 @login_required
 def agregar_cliente(request):
     """
-    Permite agregar un nuevo cliente.
+    Permite agregar un cliente con varios días de visita.
+    Valida los órdenes según la ruta seleccionada.
     """
+    cliente = Cliente()
 
     if request.method == 'POST':
-        form = ClienteForm(request.POST, request.FILES)
-        dias_form = ClienteDiasVisitaForm(request.POST)
-
-        if form.is_valid() and dias_form.is_valid():
-
-            # Guardar cliente
-            cliente = form.save()
-
-            # Guardar día de visita
-            ClienteDiasVisita.objects.create(
-                cliente=cliente,
-                dia_semana=dias_form.cleaned_data['dia']
-            )
-
-            messages.success(
-                request,
-                "Cliente agregado correctamente."
-            )
-
-            return redirect('listar_clientes')
-
-    else:
-        form = ClienteForm()
-        dias_form = ClienteDiasVisitaForm()
-
-    return render(
-        request,
-        'VehiculosRutas/clientes/agregar_cliente.html',
-        {
-            'form': form,
-            'dias_form': dias_form
-        }
-    )
-
-
-@login_required
-def editar_cliente(request, pk):
-    """
-    Permite editar un cliente existente.
-    """
-
-    cliente = get_object_or_404(Cliente, pk=pk)
-
-    # Obtener el día de visita actual
-    dia_visita = ClienteDiasVisita.objects.filter(
-        cliente=cliente
-    ).first()
-
-    if request.method == 'POST':
-
         form = ClienteForm(
             request.POST,
             request.FILES,
             instance=cliente
         )
 
-        dias_form = ClienteDiasVisitaForm(request.POST)
+        dias_formset = ClienteDiasVisitaFormSet(
+            request.POST,
+            instance=cliente
+        )
 
-        if form.is_valid() and dias_form.is_valid():
+        # Primero validar los datos del cliente
+        cliente_valido = form.is_valid()
 
-            # Actualizar datos del cliente
-            form.save()
+        if cliente_valido:
+            # La ruta debe estar disponible antes de validar el formset
+            cliente.ruta = form.cleaned_data.get('ruta')
+            cliente.estado = form.cleaned_data.get('estado')
 
-            # Nuevo día seleccionado
-            nuevo_dia = dias_form.cleaned_data['dia']
+        # Validar días y órdenes de visita
+        dias_validos = dias_formset.is_valid()
 
-            if dia_visita:
-                # Si ya tenía día, actualizarlo
-                dia_visita.dia_semana = nuevo_dia
-                dia_visita.save()
+        if cliente_valido and dias_validos:
+            with transaction.atomic():
+                cliente = form.save()
 
-            else:
-                # Si por alguna razón no tenía día, crearlo
-                ClienteDiasVisita.objects.create(
-                    cliente=cliente,
-                    dia_semana=nuevo_dia
-                )
+                dias_formset.instance = cliente
+                dias_formset.save()
+
+            messages.success(request, "Cliente agregado correctamente.")
+
+            url = reverse('listar_clientes')
+            filtros = request.GET.urlencode()
+
+            if filtros:
+                url += f'?{filtros}'
+
+            return redirect(url)
+
+        messages.error(
+            request,
+            "No se pudo guardar el cliente. Revisa los datos y órdenes de visita."
+        )
+
+    else:
+        form = ClienteForm(instance=cliente)
+
+        dias_formset = ClienteDiasVisitaFormSet(
+            instance=cliente
+        )
+
+    return render(
+        request,
+        'VehiculosRutas/clientes/agregar_cliente.html',
+        {
+            'form': form,
+            'dias_formset': dias_formset
+        }
+    )
+
+
+
+
+
+@login_required
+def editar_cliente(request, pk):
+    """
+    Permite editar un cliente y sus días de visita.
+    Conserva los filtros después de guardar correctamente.
+    """
+    cliente = get_object_or_404(Cliente, pk=pk)
+
+    if request.method == 'POST':
+        form = ClienteForm(
+            request.POST,
+            request.FILES,
+            instance=cliente
+        )
+
+        dias_formset = ClienteDiasVisitaFormSet(
+            request.POST,
+            instance=cliente
+        )
+
+        cliente_valido = form.is_valid()
+
+        if cliente_valido:
+            cliente.ruta = form.cleaned_data.get('ruta')
+            cliente.estado = form.cleaned_data.get('estado')
+
+        dias_validos = dias_formset.is_valid()
+
+        if cliente_valido and dias_validos:
+            with transaction.atomic():
+                form.save()
+                dias_formset.save()
 
             messages.success(
                 request,
                 "Cliente actualizado correctamente."
             )
 
-            return redirect('listar_clientes')
+            # Recuperar filtros enviados por el formulario
+            ruta = request.POST.get('filtro_ruta', '')
+            dia = request.POST.get('filtro_dia', '')
+            mostrar_todos = request.POST.get('filtro_mostrar_todos', '')
+
+            params = {}
+
+            if ruta:
+                params['ruta'] = ruta
+
+            if dia:
+                params['dia'] = dia
+
+            if mostrar_todos == '1':
+                params['mostrar_todos'] = '1'
+
+            url = reverse('listar_clientes')
+
+            if params:
+                url += '?' + urlencode(params)
+
+            return redirect(url)
+
+        messages.error(
+            request,
+            "No se pudieron guardar los cambios. Revisa los órdenes de visita."
+        )
 
     else:
-
         form = ClienteForm(instance=cliente)
-
-        # Cargar el día actual en el dropdown
-        dias_form = ClienteDiasVisitaForm(
-            initial={
-                'dia': dia_visita.dia_semana if dia_visita else None
-            }
-        )
+        dias_formset = ClienteDiasVisitaFormSet(instance=cliente)
 
     return render(
         request,
         'VehiculosRutas/clientes/editar_cliente.html',
         {
             'form': form,
-            'dias_form': dias_form
+            'dias_formset': dias_formset
         }
     )
+
+
+
 
 
 @login_required
@@ -276,42 +324,37 @@ def editar_dias_visita(request, cliente_id):
 
 @login_required
 def listar_clientes(request):
-
     ruta_id = request.GET.get('ruta')
     dia = request.GET.get('dia')
-
     mostrar_todos = request.GET.get('mostrar_todos') == '1'
 
-    if mostrar_todos:
-
-        clientes = Cliente.objects.all()
-    else:
-        clientes = Cliente.objects.filter(estado=True)
-
-    # Filtrar clientes activos
-    #  clientes = Cliente.objects.filter(estado=True)
+    clientes = Cliente.objects.all() if mostrar_todos else Cliente.objects.filter(estado=True)
 
     if ruta_id == "sin_ruta":
         clientes = clientes.filter(ruta__isnull=True)
-    elif ruta_id:
+    elif ruta_id and ruta_id != "todas":
         clientes = clientes.filter(ruta__id=ruta_id)
 
     if dia == "sin_dia":
         clientes = clientes.filter(clientediasvisita__isnull=True)
-    elif dia:
+    elif dia in dict(ClienteDiasVisita.DIAS):
         clientes = clientes.filter(clientediasvisita__dia_semana=dia)
 
     clientes = clientes.distinct()
-    rutas = Ruta.objects.all()
-    dias = ClienteDiasVisita.DIAS
+
+    if dia in dict(ClienteDiasVisita.DIAS):
+        clientes = ordenar_clientes_por_dia(clientes, dia)
+    else:
+        clientes = clientes.order_by('nombre', 'id')
 
     return render(request, 'VehiculosRutas/clientes/listar_clientes.html', {
         'clientes': clientes,
-        'rutas': rutas,
-        'dias': dias,
+        'rutas': Ruta.objects.all(),
+        'dias': ClienteDiasVisita.DIAS,
         'selected_ruta': ruta_id,
         'selected_dia': dia,
-        'mostrar_todos': mostrar_todos
+        'mostrar_todos': mostrar_todos,
+        'semana_actual': inicio_semana_operativa(timezone.localdate()).isoformat()
     })
 
 import json
@@ -322,15 +365,13 @@ from django.template.loader import render_to_string
 
 @login_required
 def clientes_data(request):
-    # Parámetros de DataTables
-    draw   = int(request.GET.get('draw', 1))
-    start  = int(request.GET.get('start', 0))
+    draw = int(request.GET.get('draw', 1))
+    start = int(request.GET.get('start', 0))
     length = int(request.GET.get('length', 10))
     search_value = request.GET.get('search[value]', '').strip()
 
-    # Filtros personalizados
     ruta_id = request.GET.get('ruta')
-    dia     = request.GET.get('dia')
+    dia = request.GET.get('dia')
     mostrar_todos = request.GET.get('mostrar_todos') == '1'
 
     qs = Cliente.objects.all()
@@ -339,15 +380,14 @@ def clientes_data(request):
 
     if ruta_id == "sin_ruta":
         qs = qs.filter(ruta__isnull=True)
-    elif ruta_id:
+    elif ruta_id and ruta_id != "todas":
         qs = qs.filter(ruta__id=ruta_id)
 
     if dia == "sin_dia":
         qs = qs.filter(clientediasvisita__isnull=True)
-    elif dia:
+    elif dia in dict(ClienteDiasVisita.DIAS):
         qs = qs.filter(clientediasvisita__dia_semana=dia)
 
-    # Búsqueda global por nombre o negocio
     if search_value:
         qs = qs.filter(
             Q(nombre__icontains=search_value) |
@@ -356,99 +396,126 @@ def clientes_data(request):
             Q(telefono__icontains=search_value)
         )
 
-    total_records    = qs.count()
-    qs = qs.distinct().order_by('nombre')[start:start+length]
+    qs = qs.distinct()
+    total_records = qs.count()
 
-    # Para evitar N+1
-    qs = qs.prefetch_related('clientediasvisita_set', 'ruta')
+    if dia in dict(ClienteDiasVisita.DIAS):
+        qs = ordenar_clientes_por_dia(qs, dia)
+    else:
+        qs = qs.order_by('nombre', 'id')
+
+    if length != -1:
+        qs = qs[start:start + length]
+
+    qs = qs.select_related('ruta').prefetch_related('clientediasvisita_set')
 
     data = []
     for cliente in qs:
-        # Compongo los días de visita
-        dias = cliente.clientediasvisita_set.all()
-        if dias:
-            lista_dias = ", ".join(d.get_dia_semana_display() for d in dias)
-        else:
-            lista_dias = "No asignados"
+        visitas = sorted(cliente.clientediasvisita_set.all(), key=lambda v: v.orden)
 
-        # Renderizo los botones de acciones desde un partial
-        acciones_html = render_to_string('VehiculosRutas/clientes/_acciones.html',
-                                         {'cliente': cliente},
-                                         request=request)
+        lista_dias = ", ".join(
+            f"{v.get_dia_semana_display()} (Orden {v.orden}, {'Semanal' if v.frecuencia_semanas == 1 else 'Quincenal'})"
+            for v in visitas
+        ) if visitas else "No asignados"
+
+        acciones_html = render_to_string(
+            'VehiculosRutas/clientes/_acciones.html',
+            {'cliente': cliente}, request=request
+        )
 
         data.append({
-            'nombre'       : cliente.nombre,
+            'nombre': cliente.nombre,
             'nombre_negocio': cliente.nombre_negocio,
-            'direccion'    : cliente.direccion,
-            'telefono'     : cliente.telefono,
-            'ruta'         : cliente.ruta.nombre if cliente.ruta else '',
-            'dias_visita'  : lista_dias,
-            'estado'       : '<span class="badge bg-custom-success">Activo</span>'
-                              if cliente.estado
-                              else '<span class="badge bg-custom-danger">Inactivo</span>',
-            'acciones'     : acciones_html,
+            'direccion': cliente.direccion,
+            'telefono': cliente.telefono,
+            'ruta': cliente.ruta.nombre if cliente.ruta else '',
+            'dias_visita': lista_dias,
+            'estado': '<span class="badge bg-custom-success">Activo</span>' if cliente.estado
+                      else '<span class="badge bg-custom-danger">Inactivo</span>',
+            'acciones': acciones_html,
         })
 
     return JsonResponse({
-        'draw'            : draw,
-        'recordsTotal'    : total_records,
-        'recordsFiltered' : total_records,
-        'data'            : data
+        'draw': draw,
+        'recordsTotal': total_records,
+        'recordsFiltered': total_records,
+        'data': data
     })
+
+
+@login_required
 def descargar_clientes_pdf(request):
     ruta = request.GET.get('ruta')
     dia = request.GET.get('dia')
+    semana_param = request.GET.get('semana')
+    mostrar_todos = request.GET.get('mostrar_todos') == '1'
 
-    # Normaliza valores inválidos (como 'None' o vacío) a None real
     ruta = ruta if ruta not in [None, '', 'None'] else None
     dia = dia if dia not in [None, '', 'None'] else None
 
+    try:
+        fecha = date.fromisoformat(semana_param) if semana_param else timezone.localdate()
+    except ValueError:
+        return HttpResponse('Semana inválida', status=400)
 
-    mostrar_todos = request.GET.get('mostrar_todos') == '1'
+    semana = inicio_semana_operativa(fecha)
+    fin_semana = semana + timedelta(days=6)
 
-    if mostrar_todos:
-        clientes = Cliente.objects.all()
-    else:
-        clientes = Cliente.objects.filter(estado=True)
-
+    clientes = Cliente.objects.all() if mostrar_todos else Cliente.objects.filter(estado=True)
     nombre_ruta = "Todas"
-    # Filtrado por ruta
+
     if ruta == "sin_ruta":
         clientes = clientes.filter(ruta__isnull=True)
         nombre_ruta = "Sin Ruta"
     elif ruta and ruta != "todas":
         try:
+            ruta_obj = Ruta.objects.filter(id=int(ruta)).first()
             clientes = clientes.filter(ruta__id=int(ruta))
-            ruta_obj = Ruta.objects.filter(id=ruta).first()
             if ruta_obj:
                 nombre_ruta = ruta_obj.nombre
         except ValueError:
             return HttpResponse('ID de ruta inválido', status=400)
 
-    # Filtrado por día
     if dia == "sin_dia":
-        clientes = clientes.exclude(clientediasvisita__isnull=False)
-        dia = "Sin día"
-    elif not dia or dia == "todos":
-        dia = "Todos"
-    else:
-        clientes = clientes.filter(clientediasvisita__dia_semana=dia)
+        clientes = clientes.filter(clientediasvisita__isnull=True)
+        nombre_dia = "Sin día"
+        clientes = clientes.order_by('nombre')
 
-    # Renderizado de PDF
-    template_path = 'VehiculosRutas/clientes/pdf_clientes.html'
-    context = { 'mostrar_todos': mostrar_todos,
+    elif dia in dict(ClienteDiasVisita.DIAS):
+        clientes = clientes.filter(clientediasvisita__dia_semana=dia)
+        nombre_dia = dict(ClienteDiasVisita.DIAS)[dia]
+
+        visitas = ClienteDiasVisita.objects.filter(
+            cliente__in=clientes, dia_semana=dia
+        ).select_related('cliente')
+
+        ids_clientes = [
+            visita.cliente_id for visita in visitas
+            if corresponde_visita(visita, semana)
+        ]
+
+        clientes = ordenar_clientes_por_dia(
+            clientes.filter(id__in=ids_clientes).distinct(), dia
+        )
+
+    else:
+        nombre_dia = "Todos"
+        clientes = clientes.distinct().order_by('nombre')
+
+    context = {
+        'mostrar_todos': mostrar_todos,
         'clientes': clientes,
         'ruta': nombre_ruta,
-        'dia': dia,
-
+        'dia': nombre_dia,
+        'semana_inicio': semana,
+        'semana_fin': fin_semana,
     }
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'inline; filename="clientes.pdf"'
 
-    template = get_template(template_path)
+    template = get_template('VehiculosRutas/clientes/pdf_clientes.html')
     html = template.render(context)
-
     pisa_status = pisa.CreatePDF(html, dest=response)
 
     if pisa_status.err:
@@ -456,5 +523,29 @@ def descargar_clientes_pdf(request):
 
     return response
 
-from django.shortcuts import render, get_object_or_404
+def inicio_semana_operativa(fecha):
+    return fecha - timedelta(days=(fecha.weekday() - 2) % 7)
+
+
+def corresponde_visita(visita, semana):
+    if visita.frecuencia_semanas == 1:
+        return True
+
+    if visita.frecuencia_semanas == 2 and visita.semana_referencia:
+        referencia = inicio_semana_operativa(visita.semana_referencia)
+        diferencia = (semana - referencia).days // 7
+        return diferencia % 2 == 0
+
+    return False
+
+
+def ordenar_clientes_por_dia(qs, dia):
+    orden_visita = ClienteDiasVisita.objects.filter(
+        cliente_id=OuterRef('pk'), dia_semana=dia
+    ).values('orden')[:1]
+
+    return qs.annotate(
+        orden_visita=Coalesce(Subquery(orden_visita, output_field=IntegerField()), 999999)
+    ).order_by('orden_visita', 'nombre', 'id')
+
 

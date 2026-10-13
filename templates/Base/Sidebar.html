@@ -182,7 +182,7 @@
 
 
                 <!-- TERMINADO -->
-                {% if user|has_role:"Administrador,Producto Terminado" %}
+                {% if user|has_role:"Administrador,Producto Terminado,Recursos Humanos" %}
                 <li
                     class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'registrar_entradaPT' or request.resolver_match.url_name == 'registrar_salidaPT'   or request.resolver_match.url_name == 'lista_cortes_producto_terminado' or request.resolver_match.url_name == 'ventas_por_dia' or request.resolver_match.url_name == 'lista_salidas_termindo' or request.resolver_match.url_name == 'lista_entradas_terminado' %}active{% endif %}">
                     <a href="#" class="menu-link">
@@ -191,19 +191,36 @@
                         <i class='bx bx-chevron-down'></i>
                     </a>
                     <ul class="sub-menu">
-                        <li><a href="{% url 'registrar_entradaPT' %}" class="sub-menu-link">Registrar Entrada</a></li>
-                        <li><a href="{% url 'registrar_entrada_especialPT' %}" class="sub-menu-link">Registrar Entrada
-                                Especial</a></li>
-                        <li><a href="{% url 'registrar_salidaPT' %}" class="sub-menu-link">Registrar Salida</a></li>
-                        <li><a href="{% url 'registrar_salida_especialPT' %}" class="sub-menu-link">Registrar Salida
-                                Especial</a></li>
-                        <li><a href="{% url 'historial_entradasPT' %}" class="sub-menu-link">Historial Entradas</a></li>
-                        <li><a href="{% url 'historial_salidasPT' %}" class="sub-menu-link">Historial Salidas</a></li>
-                        <li><a href="{% url 'lista_cortes_pt' %}" class="sub-menu-link">Cortes</a></li>
-                        <li><a href="{% url 'reporte_salidas_semanales_pt_html' %}" class="sub-menu-link">Reporte
-                                Semanal</a></li>
+                        {% if user|has_role:"Administrador,Producto Terminado" %}
+                        <li>
+                            <a href="{% url 'registrar_entradaPT' %}" class="sub-menu-link">Registrar Entrada</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'registrar_entrada_especialPT' %}" class="sub-menu-link">Registrar Entrada Especial</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'registrar_salidaPT' %}" class="sub-menu-link">Registrar Salida</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'registrar_salida_especialPT' %}" class="sub-menu-link">Registrar Salida Especial</a>
+                        </li>
+                        {% endif %}
+                        <!-- HISTORIALES: TAMBIÉN RECURSOS HUMANOS -->
+                        <li>
+                            <a href="{% url 'historial_entradasPT' %}" class="sub-menu-link">Historial Entradas</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'historial_salidasPT' %}" class="sub-menu-link">Historial Salidas</a>
+                        </li>
+                        {% if user|has_role:"Administrador,Producto Terminado" %}
+                        <li>
+                            <a href="{% url 'lista_cortes_pt' %}" class="sub-menu-link">Cortes</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'reporte_salidas_semanales_pt_html' %}" class="sub-menu-link">Reporte Semanal</a>
+                        </li>
 
-
+                        {% endif %}
 
                     </ul>
                 </li>
@@ -315,9 +332,7 @@
                 {% endif %}
 
                 {% if user|has_role:"Administrador" %}
-                <li
-                    class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'lista_pedidos_reparto' or request.resolver_match.url_name == 'minibodega_lista'  or request.resolver_match.url_name == 'detalle_pedido_reparto'  or request.resolver_match.url_name == 'minibodega_detalle' or request.resolver_match.url_name == 'lista_ventas' or request.resolver_match.url_name == 'detalle_venta' or request.resolver_match.url_name == 'lista_devoluciones' or request.resolver_match.url_name == 'detalle_devolucion'%}active{% endif %}">
-                    <a href="#" class="menu-link">
+                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'lista_dispositivos' %}active{% endif %}"><a href="#" class="menu-link">
                         <i class='bx bxs-mobile'></i>
                         <span>Dispositivos moviles</span>
                         <i class='bx bx-chevron-down'></i>

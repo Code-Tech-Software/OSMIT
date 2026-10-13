@@ -1,177 +1,160 @@
 <!DOCTYPE html>
 <html lang="es">
 
-<style>
+<head>
+    <meta charset="UTF-8">
 
-    @page {
-        size: A4 landscape;
-        margin: 1cm;
-    }
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 1cm;
+        }
 
-    body {
-        font-family: Arial, sans-serif;
-        font-size: 7px;
-    }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 7px;
+        }
 
-    /* Tabla */
-    table {
-        border-collapse: collapse;
-        table-layout: fixed;
-        width: 100%;
-    }
+        table {
+            border-collapse: collapse;
+            table-layout: fixed;
+            width: 100%;
+        }
 
-    th,
-    td {
-        border: 1px solid black;
-        padding: 2px 0px 0px 2px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
+        th, td {
+            border: 1px solid black;
+            padding: 2px 0px 0px 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
 
-    /* Ancho de las columnas */
-    .col-nombre {
-        width: 14%;
-    }
+        .col-nombre {
+            width: 14%;
+        }
 
-    .col-negocio {
-        width: 14%;
-    }
+        .col-negocio {
+            width: 14%;
+        }
 
-    .col-giro {
-        width: 10%;
-    }
+        .col-giro {
+            width: 10%;
+        }
 
-    .col-direccion {
-        width: 18%;
-    }
+        .col-direccion {
+            width: 18%;
+        }
 
-    .col-localidad {
-        width: 9%;
-    }
+        .col-localidad {
+            width: 9%;
+        }
 
-    .col-colonia {
-        width: 9%;
-    }
+        .col-colonia {
+            width: 9%;
+        }
 
-    .col-telefono {
-        width: 9%;
-    }
+        .col-telefono {
+            width: 9%;
+        }
 
-    .col-exhibidor {
-        width: 5%;
-    }
+        .col-exhibidor {
+            width: 5%;
+        }
 
-    .col-ventas {
-        width: 12%;
-    }
+        .col-ventas {
+            width: 12%;
+        }
 
-    /* Footer */
-    footer {
-        background-color: #eaeaea;
-        text-align: center;
-        position: fixed;
-        bottom: 0;
-        width: 100%;
-    }
+        footer {
+            background-color: #eaeaea;
+            text-align: center;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
 
-    .foo {
-        padding-top: 5px;
-    }
+        .foo {
+            padding-top: 5px;
+        }
 
-    /* Título */
-    h2 {
-        font-size: 16px;
-        text-align: center;
-    }
-
-</style>
+        h2 {
+            font-size: 16px;
+            text-align: center;
+        }
+    </style>
+</head>
 
 <body>
 
-<h2>Listado de Clientes</h2>
 
-<div style="font-size: 12px">
-    <span>
-        <strong>Ruta:</strong> {{ ruta|default:"Todas" }}
-    </span>
+    <!-- INFORMACIÓN DEL RECORRIDO -->
+    <div style="font-size: 12px; margin-bottom: 10px;">
 
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+         <span>
+            <strong>Listado de clientes de</strong>
+        </span>
 
-    <span>
-        <strong>Día:</strong> {{ dia|default:"Todos" }}
-    </span>
-</div>
+        <span>
+            {{ ruta|default:"Todas" }}
+        </span>
 
-<table>
-    <thead>
-    <tr>
-        <th class="col-nombre">Nombre</th>
-        <th class="col-negocio">Negocio</th>
-        <th class="col-giro">Giro</th>
-        <th class="col-direccion">Dirección</th>
-        <th class="col-localidad">Localidad</th>
-        <th class="col-colonia">Colonia</th>
-        <th class="col-telefono">Teléfono</th>
-        <th class="col-exhibidor">Exhibidor</th>
-        <th class="col-ventas">Ventas</th>
-    </tr>
-    </thead>
+        &nbsp;&nbsp;&nbsp;&nbsp;
 
-    <tbody>
+        <span>
+            <strong>Día:</strong> {{ dia|default:"Todos" }}
+        </span>
 
-    {% for cliente in clientes %}
+        &nbsp;&nbsp;&nbsp;&nbsp;
 
-        <tr>
-            <td class="col-nombre">
-                {{ cliente.nombre }}
-            </td>
+        <span>
+            <strong>Semana:</strong>
+            {{ semana_inicio|date:"d/m/Y" }} - {{ semana_fin|date:"d/m/Y" }}
+        </span>
 
-            <td class="col-negocio">
-                {{ cliente.nombre_negocio }}
-            </td>
+    </div>
 
-            <td class="col-giro">
-                {{ cliente.giro }}
-            </td>
+    <!-- TABLA DE CLIENTES -->
+    <table>
+        <thead>
+            <tr>
+                <th class="col-nombre">Nombre</th>
+                <th class="col-negocio">Negocio</th>
+                <th class="col-giro">Giro</th>
+                <th class="col-direccion">Dirección</th>
+                <th class="col-localidad">Localidad</th>
+                <th class="col-colonia">Colonia</th>
+                <th class="col-telefono">Teléfono</th>
+                <th class="col-exhibidor">Exhibidor</th>
+                <th class="col-ventas">Ventas</th>
+            </tr>
+        </thead>
 
-            <td class="col-direccion">
-                {{ cliente.direccion }}
-            </td>
+        <tbody>
+            {% for cliente in clientes %}
+            <tr>
+                <td class="col-nombre">{{ cliente.nombre }}</td>
+                <td class="col-negocio">{{ cliente.nombre_negocio }}</td>
+                <td class="col-giro">{{ cliente.giro }}</td>
+                <td class="col-direccion">{{ cliente.direccion }}</td>
+                <td class="col-localidad">{{ cliente.localidad }}</td>
+                <td class="col-colonia">{{ cliente.colonia }}</td>
+                <td class="col-telefono">{{ cliente.telefono }}</td>
+                <td class="col-exhibidor">{{ cliente.tipo_exhibidor }}</td>
+                <td class="col-ventas">-</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 
-            <td class="col-localidad">
-                {{ cliente.localidad }}
-            </td>
+    <!-- TOTAL DE CLIENTES -->
+    <div style="text-align: left; padding-top: 10px; white-space: nowrap;">
+        <strong>Número de Clientes:</strong> {{ clientes|length }}
+    </div>
 
-            <td class="col-colonia">
-                {{ cliente.colonia }}
-            </td>
-
-            <td class="col-telefono">
-                {{ cliente.telefono }}
-            </td>
-
-            <td class="col-exhibidor">
-                {{ cliente.tipo_exhibidor }}
-            </td>
-
-            <td class="col-ventas">
-                -
-            </td>
-        </tr>
-
-    {% endfor %}
-
-    </tbody>
-</table>
-
-<div style="text-align: left; padding-top: 10px; white-space: nowrap;">
-    <strong>Número de Clientes:</strong> {{ clientes|length }}
-</div>
-
-<footer>
-    <p class="foo">&copy; 2026 OSMIT SISTEM</p>
-</footer>
+    <!-- PIE DE PÁGINA -->
+    <footer>
+        <p class="foo">&copy; 2026 OSMIT SISTEM</p>
+    </footer>
 
 </body>
 </html>

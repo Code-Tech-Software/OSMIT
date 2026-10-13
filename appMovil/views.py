@@ -15,6 +15,7 @@ from django.contrib.auth.hashers import check_password
 from ProductoTerminado.models import SalidaPTerminado, DetalleSalidaPTerminado, EntradaPTerminado, \
     DetalleEntradaPTerminado
 from appMovil.serializers import *
+from datetime import date
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
@@ -2030,6 +2031,8 @@ from django.db.models import Sum, F, FloatField
 from .models import Devolucion
 
 
+
+
 @method_decorator(login_required, 'dispatch')
 @method_decorator(requiere_roles("Producto Terminado", "Recursos Humanos"), name='dispatch')
 class ListaDevolucionesView(ListView):
@@ -2091,13 +2094,10 @@ class ListaDevolucionesView(ListView):
 
         devoluciones_filtradas = self.get_queryset()
 
-        total_suma = devoluciones_filtradas.aggregate(
-            total_global=Sum(
-                F('devoluciondetalle__cantidad') *
-                F('devoluciondetalle__precio_unitario'),
-                output_field=FloatField()
-            )
-        )['total_global'] or 0.00
+        total_suma = sum(
+            devolucion.total or 0
+            for devolucion in devoluciones_filtradas
+        )
 
         context['total_suma'] = total_suma
 
@@ -2136,90 +2136,253 @@ from django.contrib import messages
 from .models import Cliente, Ruta
 from .forms import CargarCSVForm
 
+def visitas_coinciden(frecuencia_a, semana_a, frecuencia_b, semana_b):
+    if frecuencia_a == 1 or frecuencia_b == 1:
+        return True
+
+    if not semana_a or not semana_b:
+        return True
+
+    diferencia = (semana_a - semana_b).days // 7
+    return diferencia % 2 == 0
+
+
 @login_required
 @solo_administrador
 def cargar_clientes_csv(request):
     if request.method == 'POST':
         form = CargarCSVForm(request.POST, request.FILES)
+
         if form.is_valid():
             archivo = request.FILES['archivo_csv']
 
-            if not archivo.name.endswith('.csv'):
+            if not archivo.name.lower().endswith('.csv'):
                 messages.error(request, 'Por favor, sube un archivo con extensión .csv')
                 return redirect('cargar_clientes_csv')
 
             try:
-                # --- SOLUCIÓN PARA EXCEL ---
                 try:
-                    # Intenta decodificar eliminando el BOM de Excel (el caracter invisible)
                     data_set = archivo.read().decode('utf-8-sig')
                 except UnicodeDecodeError:
-                    # Si falla por acentos o eñes guardados en formato antiguo, usa latin-1
                     archivo.seek(0)
                     data_set = archivo.read().decode('latin-1')
 
-                io_string = io.StringIO(data_set)
-                reader = csv.DictReader(io_string)
-                # -----------------------------
+                reader = csv.DictReader(io.StringIO(data_set))
+                dias_validos = [dia for dia, _ in ClienteDiasVisita.DIAS]
 
-                # Usamos transaction.atomic para procesar de forma segura relaciones complejas
+                columnas_originales = [
+                    'nombre', 'nombre_negocio', 'giro', 'tipo_exhibidor',
+                    'direccion', 'localidad', 'colonia', 'telefono',
+                    'observaciones', 'limite_credito', 'saldo_adeudo',
+                    'porcentaje_descuento', 'ruta_id', 'estado', 'dias_visita'
+                ]
+
+                columnas_nuevas = [
+                    f'{campo}_{dia}'
+                    for dia in dias_validos
+                    for campo in ['orden', 'frecuencia', 'semana']
+                ]
+
+                columnas_esperadas = columnas_originales + columnas_nuevas
+
+                if reader.fieldnames != columnas_esperadas:
+                    raise ValueError(
+                        'Las columnas del CSV no coinciden con el formato esperado. '
+                        'Verifica los nombres y el orden de las 36 columnas.'
+                    )
+
+                contador_clientes = 0
+                contador_visitas = 0
+
                 with transaction.atomic():
-                    contador_clientes = 0
+                    for numero_fila, row in enumerate(reader, start=2):
 
-                    for row in reader:
-                        # 1. Buscar la Ruta por ID si viene en el CSV
-                        ruta_id = row.get('ruta_id')
+                        if None in row:
+                            raise ValueError(f'Fila {numero_fila}: hay más valores que columnas.')
+
+                        if all(not str(valor or '').strip() for valor in row.values()):
+                            continue
+
+                        nombre = (row.get('nombre') or '').strip()
+                        nombre_negocio = (row.get('nombre_negocio') or '').strip()
+
+                        if not nombre or not nombre_negocio:
+                            raise ValueError(
+                                f'Fila {numero_fila}: nombre y nombre_negocio son obligatorios.'
+                            )
+
+                        # RUTA
+                        ruta_id = (row.get('ruta_id') or '').strip()
                         ruta_obj = None
+
                         if ruta_id:
                             try:
                                 ruta_obj = Ruta.objects.get(id=int(ruta_id))
                             except (Ruta.DoesNotExist, ValueError):
-                                pass  # Si no existe, queda como None
+                                raise ValueError(
+                                    f'Fila {numero_fila}: la ruta {ruta_id} no existe.'
+                                )
 
-                        # 2. Conversión del estado booleano
-                        estado_str = str(row.get('estado', 'true')).lower()
-                        estado_bool = estado_str in ['true', '1', 'si', 'yes', 'active']
+                        # ESTADO
+                        estado_str = (row.get('estado') or 'true').strip().lower()
 
-                        # 3. Crear e insertar el Cliente con TODOS sus campos
-                        # Aplicamos .strip() al nombre para limpiar espacios residuales
+                        if estado_str not in ['true', 'false', '1', '0', 'si', 'sí', 'no', 'yes', 'active', 'inactive']:
+                            raise ValueError(f'Fila {numero_fila}: estado inválido.')
+
+                        estado_bool = estado_str in ['true', '1', 'si', 'sí', 'yes', 'active']
+
+                        # CAMPOS NUMÉRICOS
+                        valores_numericos = {}
+
+                        for campo in ['limite_credito', 'saldo_adeudo', 'porcentaje_descuento']:
+                            valor = (row.get(campo) or '0').strip()
+
+                            try:
+                                valores_numericos[campo] = Decimal(valor)
+                            except InvalidOperation:
+                                raise ValueError(
+                                    f'Fila {numero_fila}: valor inválido en {campo}.'
+                                )
+
+                        # DÍAS DE VISITA
+                        dias_texto = (row.get('dias_visita') or '').strip()
+                        lista_dias = [d.strip().lower() for d in dias_texto.split(',') if d.strip()]
+
+                        if len(lista_dias) != len(set(lista_dias)):
+                            raise ValueError(f'Fila {numero_fila}: hay días de visita repetidos.')
+
+                        for dia in lista_dias:
+                            if dia not in dias_validos:
+                                raise ValueError(
+                                    f'Fila {numero_fila}: día de visita inválido: {dia}.'
+                                )
+
+                        configuraciones = []
+
+                        for dia in dias_validos:
+                            orden_str = (row.get(f'orden_{dia}') or '').strip()
+                            frecuencia_str = (row.get(f'frecuencia_{dia}') or '').strip()
+                            semana_str = (row.get(f'semana_{dia}') or '').strip()
+
+                            if dia not in lista_dias:
+                                if orden_str or frecuencia_str or semana_str:
+                                    raise ValueError(
+                                        f'Fila {numero_fila}: hay datos de {dia}, '
+                                        'pero no está incluido en dias_visita.'
+                                    )
+                                continue
+
+                            if not orden_str:
+                                raise ValueError(
+                                    f'Fila {numero_fila}: falta orden_{dia}.'
+                                )
+
+                            try:
+                                orden = int(orden_str)
+                                frecuencia = int(frecuencia_str or '1')
+                            except ValueError:
+                                raise ValueError(
+                                    f'Fila {numero_fila}: orden o frecuencia inválidos para {dia}.'
+                                )
+
+                            if orden < 1:
+                                raise ValueError(
+                                    f'Fila {numero_fila}: orden_{dia} debe ser mayor a cero.'
+                                )
+
+                            if frecuencia not in [1, 2]:
+                                raise ValueError(
+                                    f'Fila {numero_fila}: frecuencia_{dia} debe ser 1 o 2.'
+                                )
+
+                            semana_referencia = None
+
+                            if frecuencia == 2:
+                                if not semana_str:
+                                    raise ValueError(
+                                        f'Fila {numero_fila}: falta semana_{dia} para visita quincenal.'
+                                    )
+
+                                try:
+                                    semana_referencia = date.fromisoformat(semana_str)
+                                except ValueError:
+                                    raise ValueError(
+                                        f'Fila {numero_fila}: semana_{dia} debe tener formato AAAA-MM-DD.'
+                                    )
+
+                                if semana_referencia.weekday() != 2:
+                                    raise ValueError(
+                                        f'Fila {numero_fila}: semana_{dia} debe ser un miércoles.'
+                                    )
+
+                            elif semana_str:
+                                raise ValueError(
+                                    f'Fila {numero_fila}: semana_{dia} debe estar vacía '
+                                    'cuando la visita es semanal.'
+                                )
+
+                            # VALIDAR POSICIÓN CONTRA CLIENTES EXISTENTES
+                            if ruta_obj and estado_bool:
+                                visitas_existentes = ClienteDiasVisita.objects.filter(
+                                    cliente__ruta=ruta_obj,
+                                    cliente__estado=True,
+                                    dia_semana=dia,
+                                    orden=orden
+                                )
+
+                                for existente in visitas_existentes:
+                                    if visitas_coinciden(
+                                        frecuencia, semana_referencia,
+                                        existente.frecuencia_semanas,
+                                        existente.semana_referencia
+                                    ):
+                                        raise ValueError(
+                                            f'Fila {numero_fila}: el orden {orden} de {dia} '
+                                            f'ya está ocupado en la ruta {ruta_obj.nombre} '
+                                            'por un cliente que coincide en la misma semana.'
+                                        )
+
+                            configuraciones.append({
+                                'dia_semana': dia,
+                                'orden': orden,
+                                'frecuencia_semanas': frecuencia,
+                                'semana_referencia': semana_referencia
+                            })
+
+                        # CREAR CLIENTE
                         cliente = Cliente.objects.create(
-                            nombre=row.get('nombre', '').strip(),
-                            nombre_negocio=row.get('nombre_negocio', '').strip(),
-                            giro=row.get('giro', None),
-                            tipo_exhibidor=row.get('tipo_exhibidor', None),
-                            direccion=row.get('direccion', '').strip(),
-                            localidad=row.get('localidad', None),
-                            colonia=row.get('colonia', None),
-                            telefono=row.get('telefono', None),
-                            limite_credito=float(row.get('limite_credito', 0.00) or 0.00),
-                            saldo_adeudo=float(row.get('saldo_adeudo', 0.00) or 0.00),
-                            porcentaje_descuento=float(row.get('porcentaje_descuento', 0.00) or 0.00),
-                            imagen=row.get('imagen', None),
-                            observaciones=row.get('observaciones', None),
+                            nombre=nombre,
+                            nombre_negocio=nombre_negocio,
+                            giro=row.get('giro') or None,
+                            tipo_exhibidor=row.get('tipo_exhibidor') or None,
+                            direccion=(row.get('direccion') or '').strip(),
+                            localidad=row.get('localidad') or None,
+                            colonia=row.get('colonia') or None,
+                            telefono=row.get('telefono') or None,
+                            observaciones=row.get('observaciones') or None,
+                            limite_credito=valores_numericos['limite_credito'],
+                            saldo_adeudo=valores_numericos['saldo_adeudo'],
+                            porcentaje_descuento=valores_numericos['porcentaje_descuento'],
                             ruta=ruta_obj,
                             estado=estado_bool
                         )
+
                         contador_clientes += 1
 
-                        # 4. Procesar los Días de Visita (ClienteDiasVisita)
-                        dias_visita_str = row.get('dias_visita', '')
-                        if dias_visita_str:
-                            lista_dias = [dia.strip().lower() for dia in dias_visita_str.split(',')]
-                            dias_validos = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+                        # CREAR VISITAS
+                        for configuracion in configuraciones:
+                            ClienteDiasVisita.objects.create(cliente=cliente, **configuracion)
+                            contador_visitas += 1
 
-                            for dia in lista_dias:
-                                if dia in dias_validos:
-                                    ClienteDiasVisita.objects.create(
-                                        cliente=cliente,
-                                        dia_semana=dia
-                                    )
-
-                messages.success(request,
-                                 f'¡Éxito! Se registraron {contador_clientes} clientes con sus configuraciones y días de visita.')
+                messages.success(
+                    request,
+                    f'¡Éxito! Se registraron {contador_clientes} clientes '
+                    f'y {contador_visitas} configuraciones de visita.'
+                )
                 return redirect('cargar_clientes_csv')
 
             except Exception as e:
-                messages.error(request, f'Error crítico al procesar el archivo: {e}')
+                messages.error(request, f'Error al procesar el CSV: {e}')
                 return redirect('cargar_clientes_csv')
 
     else:
@@ -2543,7 +2706,7 @@ def realizar_corte_minibodega(request,pk):
 
 
 @login_required
-@requiere_roles("Producto Terminado")
+@requiere_roles("Producto Terminado", "Recursos Humanos")
 def lista_cortes_minibodega(request):
     cortes =CorteInventarioMiniBodega.objects.select_related(
         'mini_bodega',
@@ -2567,7 +2730,7 @@ def lista_cortes_minibodega(request):
 
 
 @login_required
-@requiere_roles("Producto Terminado")
+@requiere_roles("Producto Terminado", "Recursos Humanos")
 def detalle_corte_minibodegas(request,corte_id):
     corte=get_object_or_404(
         CorteInventarioMiniBodega,
@@ -2646,6 +2809,7 @@ def ajustar_inventario_minibodega(request,corte_id):
 
 
 ###Dasboard
+
 
 @login_required
 def dashboard_repartidor_api(request):

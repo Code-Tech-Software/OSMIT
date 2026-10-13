@@ -1,0 +1,142 @@
+<div class="col-12 mt-3">
+    <h5 class="fw-bold text-dark mb-3">Días de visita</h5>
+
+    {{ dias_formset.management_form }}
+
+    {% if dias_formset.non_form_errors %}
+    <div class="alert alert-danger">{{ dias_formset.non_form_errors }}</div>
+    {% endif %}
+
+    <div id="dias-visita-container">
+        {% for dia_form in dias_formset %}
+        <div class="dia-visita-row border rounded p-3 mb-3">
+            {{ dia_form.id }}
+
+            <div class="row align-items-end">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Día de visita</label>
+                    {{ dia_form.dia_semana }}
+                    <div class="text-danger small">{{ dia_form.dia_semana.errors|striptags }}</div>
+                </div>
+
+                <div class="col-md-2 mb-3">
+                    <label class="form-label">Orden</label>
+                    {{ dia_form.orden }}
+                    <div class="text-danger small">{{ dia_form.orden.errors|striptags }}</div>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Frecuencia</label>
+                    {{ dia_form.frecuencia_semanas }}
+                    <div class="text-danger small">{{ dia_form.frecuencia_semanas.errors|striptags }}</div>
+                </div>
+
+                <div class="col-md-3 mb-3 semana-container">
+                    <label class="form-label">Semana de referencia</label>
+                    {{ dia_form.semana_referencia }}
+                    <div class="text-danger small">{{ dia_form.semana_referencia.errors|striptags }}</div>
+                </div>
+
+                <div class="col-md-1 mb-3 text-end">
+                    <div class="d-none">{{ dia_form.DELETE }}</div>
+                    <button type="button" class="btn btn-outline-danger btn-sm eliminar-dia" title="Eliminar día">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+
+            {% if dia_form.non_field_errors %}
+            <div class="text-danger small">{{ dia_form.non_field_errors }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <button type="button" id="agregar-dia" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-plus-circle me-1"></i>Agregar otro día
+    </button>
+</div>
+
+<template id="dia-form-template">
+    <div class="dia-visita-row border rounded p-3 mb-3">
+        {{ dias_formset.empty_form.id }}
+
+        <div class="row align-items-end">
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Día de visita</label>
+                {{ dias_formset.empty_form.dia_semana }}
+            </div>
+
+            <div class="col-md-2 mb-3">
+                <label class="form-label">Orden</label>
+                {{ dias_formset.empty_form.orden }}
+            </div>
+
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Frecuencia</label>
+                {{ dias_formset.empty_form.frecuencia_semanas }}
+            </div>
+
+            <div class="col-md-3 mb-3 semana-container">
+                <label class="form-label">Semana de referencia</label>
+                {{ dias_formset.empty_form.semana_referencia }}
+            </div>
+
+            <div class="col-md-1 mb-3 text-end">
+                <div class="d-none">{{ dias_formset.empty_form.DELETE }}</div>
+                <button type="button" class="btn btn-outline-danger btn-sm eliminar-dia" title="Eliminar día">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const container = document.getElementById('dias-visita-container');
+    const totalForms = document.getElementById('id_clientediasvisita_set-TOTAL_FORMS');
+    const template = document.getElementById('dia-form-template');
+
+    function actualizarFrecuencia(fila) {
+        const frecuencia = fila.querySelector('.frecuencia-semanas');
+        const semanaContainer = fila.querySelector('.semana-container');
+        const semana = fila.querySelector('.semana-referencia');
+
+        if (!frecuencia || !semana) return;
+
+        const quincenal = frecuencia.value === '2';
+        semanaContainer.classList.toggle('d-none', !quincenal);
+        semana.disabled = !quincenal;
+    }
+
+    container.querySelectorAll('.dia-visita-row').forEach(actualizarFrecuencia);
+
+    document.getElementById('agregar-dia').addEventListener('click', function () {
+        const indice = parseInt(totalForms.value, 10);
+        const html = template.innerHTML.replace(/__prefix__/g, indice);
+
+        container.insertAdjacentHTML('beforeend', html);
+        totalForms.value = indice + 1;
+
+        actualizarFrecuencia(container.lastElementChild);
+    });
+
+    container.addEventListener('change', function (event) {
+        if (event.target.classList.contains('frecuencia-semanas')) {
+            actualizarFrecuencia(event.target.closest('.dia-visita-row'));
+        }
+    });
+
+    container.addEventListener('click', function (event) {
+        const boton = event.target.closest('.eliminar-dia');
+        if (!boton) return;
+
+        const fila = boton.closest('.dia-visita-row');
+        const eliminar = fila.querySelector('input[name$="-DELETE"]');
+
+        if (eliminar) eliminar.checked = true;
+        fila.classList.add('d-none');
+    });
+});
+</script>

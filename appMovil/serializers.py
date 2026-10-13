@@ -62,7 +62,12 @@ class ClienteSerializer(serializers.ModelSerializer):
 class ClienteDiasVisitaSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClienteDiasVisita
-        fields = '__all__'
+        fields = [
+            'id',
+            'cliente',
+            'dia_semana',
+            'updated_at'
+        ]
 
 class MiniBodegaSerializer(serializers.ModelSerializer):
     class Meta:

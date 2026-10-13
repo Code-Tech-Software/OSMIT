@@ -73,12 +73,27 @@ class ClienteDiasVisita(models.Model):
         ('domingo', 'Domingo'),
     )
 
+    FRECUENCIAS = (
+        (1, 'Cada semana'),
+        (2, 'Cada 2 semanas'),
+    )
+
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
     dia_semana = models.CharField(max_length=255, choices=DIAS)
+    orden = models.PositiveIntegerField(default=0)
+    frecuencia_semanas = models.PositiveIntegerField(choices=FRECUENCIAS, default=1)
+    semana_referencia = models.DateField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['cliente', 'dia_semana'], name='unique_cliente_dia_visita')
+        ]
+
     def __str__(self):
-        return self.dia_semana
+        return f"{self.cliente.nombre} - {self.get_dia_semana_display()}"
+
+    
 
 class ProductoTerminado(models.Model):
     nombre = models.CharField(max_length=255)

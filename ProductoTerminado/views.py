@@ -2973,7 +2973,7 @@ def eliminar_presentacion(request, pk):
 
 
 @login_required
-@requiere_roles("Producto Terminado")
+@requiere_roles("Producto Terminado", "Recursos Humanos")
 def historial_entradas(request):
 
     hoy = timezone.localdate()
@@ -3008,7 +3008,7 @@ def historial_entradas(request):
     )
 
 @login_required
-@requiere_roles("Producto Terminado")
+@requiere_roles("Producto Terminado", "Recursos Humanos")
 def detalle_entrada(request, entrada_id):
 
     entrada = get_object_or_404(
@@ -3139,7 +3139,7 @@ def detalle_entrada(request, entrada_id):
 
 
 @login_required
-@requiere_roles("Producto Terminado")
+@requiere_roles("Producto Terminado", "Recursos Humanos")
 def historial_salidas(request):
     hoy=timezone.localdate()
 
@@ -3174,7 +3174,7 @@ def historial_salidas(request):
     )
 
 @login_required
-@requiere_roles("Producto Terminado")
+@requiere_roles("Producto Terminado", "Recursos Humanos")
 def detalle_salida(request, salida_id):
 
     salida = get_object_or_404(
