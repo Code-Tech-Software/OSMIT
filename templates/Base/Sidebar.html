@@ -183,8 +183,7 @@
 
                 <!-- TERMINADO -->
                 {% if user|has_role:"Administrador,Producto Terminado,Recursos Humanos" %}
-                <li
-                    class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'registrar_entradaPT' or request.resolver_match.url_name == 'registrar_salidaPT'   or request.resolver_match.url_name == 'lista_cortes_producto_terminado' or request.resolver_match.url_name == 'ventas_por_dia' or request.resolver_match.url_name == 'lista_salidas_termindo' or request.resolver_match.url_name == 'lista_entradas_terminado' %}active{% endif %}">
+                <li class="menu-item menu-item-dropdown {% if request.resolver_match.url_name == 'registrar_entradaPT' or request.resolver_match.url_name == 'registrar_entrada_especialPT' or request.resolver_match.url_name == 'registrar_salidaPT' or request.resolver_match.url_name == 'registrar_salida_especialPT' or request.resolver_match.url_name == 'historial_entradasPT' or request.resolver_match.url_name == 'historial_salidasPT' or request.resolver_match.url_name == 'lista_cortes_pt' or request.resolver_match.url_name == 'reporte_salidas_semanales_pt_html' %}active{% endif %}">
                     <a href="#" class="menu-link">
                         <i class='bx bx-box'></i>
                         <span>Terminado</span>
@@ -205,6 +204,7 @@
                             <a href="{% url 'registrar_salida_especialPT' %}" class="sub-menu-link">Registrar Salida Especial</a>
                         </li>
                         {% endif %}
+
                         <!-- HISTORIALES: TAMBIÉN RECURSOS HUMANOS -->
                         <li>
                             <a href="{% url 'historial_entradasPT' %}" class="sub-menu-link">Historial Entradas</a>
@@ -212,26 +212,20 @@
                         <li>
                             <a href="{% url 'historial_salidasPT' %}" class="sub-menu-link">Historial Salidas</a>
                         </li>
+
                         {% if user|has_role:"Administrador,Producto Terminado" %}
                         <li>
                             <a href="{% url 'lista_cortes_pt' %}" class="sub-menu-link">Cortes</a>
                         </li>
+                        {% endif %}
+
+                        <!-- REPORTE SEMANAL: TAMBIÉN RECURSOS HUMANOS -->
                         <li>
                             <a href="{% url 'reporte_salidas_semanales_pt_html' %}" class="sub-menu-link">Reporte Semanal</a>
                         </li>
-
-                        {% endif %}
-
                     </ul>
                 </li>
                 {% endif %}
-
-
-
-
-
-
-
 
 
                 <!-- ADMINISTRAR -->

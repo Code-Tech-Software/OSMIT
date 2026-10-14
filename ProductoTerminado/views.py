@@ -1,4 +1,4 @@
-from django.http import JsonResponse
+from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
@@ -3182,6 +3182,26 @@ def detalle_salida(request, salida_id):
         id=salida_id
     )
 
+    # =========================================================
+    # EDITAR NOTA DE LA SALIDA
+    # =========================================================
+    if request.method == "POST" and request.POST.get("accion") == "editar_nota":
+
+        if not request.user.is_superuser and (
+            not request.user.rol or
+            request.user.rol.nombre not in ["Administrador", "Producto Terminado"]
+        ):
+            return HttpResponseForbidden("No tienes permiso para editar la nota.")
+
+        nueva_nota = request.POST.get("nota", "").strip()
+
+        salida.nota = nueva_nota
+        salida.save(update_fields=["nota"])
+
+        messages.success(request, "La nota se actualizó correctamente.")
+
+        return redirect("detalle_salida", salida_id=salida.id)
+
     detalles = (
         DetalleSalidaPTerminado.objects
         .filter(salida_p_terminado=salida)
@@ -3621,25 +3641,19 @@ def reporte_salidas_semanales_pt(request):
         'destino',
         'todos'
     )
-
     destinos_validos = {
         'opcion1',
         'opcion2',
         'opcion3',
         'opcion4',
     }
-
     if destino not in destinos_validos:
         destino = 'todos'
-
-
     semanas_param = request.GET.get(
         'semanas',
         ''
     )
-
     semanas = []
-
     if semanas_param:
 
         for fecha_str in semanas_param.split(','):
@@ -3656,28 +3670,14 @@ def reporte_salidas_semanales_pt(request):
             except ValueError:
                 continue
 
-
     # Si no se seleccionó ninguna semana,
     # usamos la semana actual.
-
     if not semanas:
 
         hoy = now().date()
-
-        dias_desde_miercoles = (
-            hoy.weekday() - 2
-        ) % 7
-
-        inicio_semana = (
-            hoy -
-            timedelta(days=dias_desde_miercoles)
-        )
-
-        semanas = [
-            inicio_semana
-        ]
-
-
+        dias_desde_miercoles = (hoy.weekday() - 2) % 7
+        inicio_semana = (hoy -timedelta(days=dias_desde_miercoles))
+        semanas = [inicio_semana]
     # Construimos todos los rangos seleccionados
 
     filtros_semana = []
@@ -3706,16 +3706,11 @@ def reporte_salidas_semanales_pt(request):
                 salida_p_terminado__fecha_salida__date=domingo
             )
         )
-
-
     # Combinar todas las semanas con OR
 
     filtro_semanas = filtros_semana[0]
-
     for filtro in filtros_semana[1:]:
-
         filtro_semanas |= filtro
-
 
     salidas = (
         DetalleSalidaPTerminado.objects
@@ -3724,7 +3719,6 @@ def reporte_salidas_semanales_pt(request):
             cantidad__gt=0
         )
     )
-
 
     # Filtro de destino
 
@@ -4038,72 +4032,37 @@ def detalle_salida_semanal_pt(
     })
 
 
+
 @login_required
 @requiere_roles("Producto Terminado")
-def resumen_destinos_salida_semanal_pt(
-    request,
-    producto_variacion_id
-):
+def resumen_destinos_salida_semanal_pt(request, producto_variacion_id):
 
-    semanas_param = request.GET.get(
-        'semanas',
-        ''
-    )
-
+    semanas_param = request.GET.get('semanas', '')
     semanas = []
 
     if semanas_param:
-
         for fecha_str in semanas_param.split(','):
-
             try:
-
                 fecha = datetime.strptime(
-                    fecha_str,
-                    '%Y-%m-%d'
+                    fecha_str, '%Y-%m-%d'
                 ).date()
-
                 semanas.append(fecha)
-
             except ValueError:
                 continue
 
-
-    # Si no hay semanas, usar la actual
-
+    # Si no hay semanas seleccionadas, usar la actual
     if not semanas:
-
         hoy = now().date()
+        dias_desde_miercoles = (hoy.weekday() - 2) % 7
+        inicio_semana = hoy - timedelta(days=dias_desde_miercoles)
+        semanas = [inicio_semana]
 
-        dias_desde_miercoles = (
-            hoy.weekday() - 2
-        ) % 7
-
-        inicio_semana = (
-            hoy -
-            timedelta(days=dias_desde_miercoles)
-        )
-
-        semanas = [
-            inicio_semana
-        ]
-
-
-    # Filtros de semanas
-
+    # Construir filtros de semanas, excluyendo domingos
     filtros_semana = []
 
     for inicio_semana in semanas:
-
-        fin_semana = (
-            inicio_semana +
-            timedelta(days=6)
-        )
-
-        domingo = (
-            inicio_semana +
-            timedelta(days=4)
-        )
+        fin_semana = inicio_semana + timedelta(days=6)
+        domingo = inicio_semana + timedelta(days=4)
 
         filtros_semana.append(
             Q(
@@ -4118,102 +4077,105 @@ def resumen_destinos_salida_semanal_pt(
             )
         )
 
-
     filtro_semanas = filtros_semana[0]
 
     for filtro in filtros_semana[1:]:
-
         filtro_semanas |= filtro
-
 
     detalles = (
         DetalleSalidaPTerminado.objects
         .filter(
-            Q(
-                producto_variacion_id=producto_variacion_id
-            )
+            Q(producto_variacion_id=producto_variacion_id)
             & filtro_semanas
-            & Q(
-                cantidad__gt=0
-            )
+            & Q(cantidad__gt=0)
         )
-    )
-
-
-    totales = (
-        detalles
         .values(
-            'salida_p_terminado__destino'
+            'salida_p_terminado__destino',
+            'salida_p_terminado__fecha_salida__date'
         )
-        .annotate(
-            total=Sum('cantidad')
-        )
+        .annotate(total=Sum('cantidad'))
     )
 
+    dias = [
+        'miercoles',
+        'jueves',
+        'viernes',
+        'sabado',
+        'lunes',
+        'martes'
+    ]
 
-    destinos = {
-        'opcion1': 0,
-        'opcion2': 0,
-        'opcion3': 0,
-        'opcion4': 0,
+    nombres_destinos = {
+        'opcion1': 'Ruta',
+        'opcion2': 'Mitsu',
+        'opcion3': 'Maestro',
+        'opcion4': 'Otros'
     }
 
+    destinos = {}
 
-    for item in totales:
+    for codigo, nombre in nombres_destinos.items():
+        destinos[codigo] = {
+            'nombre': nombre,
+            **{dia: 0 for dia in dias},
+            'total': 0
+        }
 
-        destino = item[
-            'salida_p_terminado__destino'
-        ]
+    dias_por_weekday = {
+        2: 'miercoles',
+        3: 'jueves',
+        4: 'viernes',
+        5: 'sabado',
+        0: 'lunes',
+        1: 'martes'
+    }
 
-        if destino in destinos:
+    for item in detalles:
 
-            destinos[destino] = float(
-                item['total']
-            )
+        codigo = item['salida_p_terminado__destino']
+        fecha = item['salida_p_terminado__fecha_salida__date']
 
+        if codigo not in destinos or fecha is None:
+            continue
 
-    total = sum(
-        destinos.values()
+        dia = dias_por_weekday.get(fecha.weekday())
+
+        if not dia:
+            continue
+
+        cantidad = float(item['total'])
+
+        destinos[codigo][dia] += cantidad
+        destinos[codigo]['total'] += cantidad
+
+    totales_dias = {
+        dia: sum(destino[dia] for destino in destinos.values())
+        for dia in dias
+    }
+
+    total_general = sum(
+        destino['total'] for destino in destinos.values()
     )
 
-
     return JsonResponse({
-
-        'producto_variacion_id':
-            producto_variacion_id,
-
+        'producto_variacion_id': producto_variacion_id,
         'semanas': [
             {
                 'inicio': str(fecha),
-                'fin': str(
-                    fecha + timedelta(days=6)
-                )
+                'fin': str(fecha + timedelta(days=6))
             }
             for fecha in semanas
         ],
-
-        'destinos': {
-
-            'ruta':
-                destinos['opcion1'],
-
-            'mitsu':
-                destinos['opcion2'],
-
-            'maestro':
-                destinos['opcion3'],
-
-            'otros':
-                destinos['opcion4'],
-        },
-
-        'total': total,
+        'destinos': list(destinos.values()),
+        'totales_dias': totales_dias,
+        'total': total_general
     })
 
 
 
+
 @login_required
-@requiere_roles("Producto Terminado")
+@requiere_roles("Producto Terminado","Recursos Humanos")
 def semanas_disponibles_salidas_pt(request):
 
     primer_detalle = (
@@ -4352,7 +4314,7 @@ def semanas_disponibles_salidas_pt(request):
 
 
 @login_required
-@requiere_roles("Producto Terminado")
+@requiere_roles("Producto Terminado","Recursos Humanos")
 def reporte_salidas_semanales_pt_html(request):
     return render(
         request,

@@ -45,52 +45,35 @@
                     </button>
 
 
-                    <div class="dropdown-menu p-3" style="width: 350px; max-height: 500px; overflow-y: auto;"
-                        aria-labelledby="btnSemanas">
+                    
+                    <div class="dropdown-menu p-3" style="width: 350px;" aria-labelledby="btnSemanas">
 
-                        <!-- BUSCADOR -->
-
+                        <!-- BUSCADOR FIJO -->
                         <div class="mb-3">
-
-                            <input type="text" id="buscarSemana" class="form-control" placeholder="Buscar semana...">
-
+                            <input type="text" id="buscarSemana" class="form-control" placeholder="Buscar semana o mes...">
                         </div>
 
-
-                        <!-- LISTA DE SEMANAS -->
-
-                        <div id="listaSemanas">
-
+                        <!-- LISTA CON SCROLL -->
+                        <div id="listaSemanas" style="max-height: 350px; overflow-y: auto;">
                             <div class="text-center text-muted">
                                 Cargando semanas...
                             </div>
-
                         </div>
-
 
                         <hr>
 
-
-                        <!-- BOTONES -->
-
+                        <!-- BOTONES FIJOS -->
                         <div class="d-flex justify-content-between">
-
                             <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLimpiarSemanas">
-
                                 Limpiar
-
                             </button>
-
-
                             <button type="button" class="btn btn-sm btn-primary" id="btnAplicarSemanas">
-
                                 Aplicar
-
                             </button>
-
                         </div>
 
                     </div>
+
 
                 </div>
 
@@ -313,98 +296,84 @@
 </div>
 
 
+
 <!-- ========================================================= -->
-<!-- MODAL RESUMEN POR DESTINO -->
+<!-- MODAL RESUMEN POR DESTINO Y DÍA -->
 <!-- ========================================================= -->
 
-<div class="modal fade" id="modalResumenDestinos" tabindex="-1" aria-labelledby="modalResumenDestinosLabel"
-    aria-hidden="true">
+<div class="modal fade"
+     id="modalResumenDestinos"
+     tabindex="-1"
+     aria-labelledby="modalResumenDestinosLabel"
+     aria-hidden="true">
 
-    <div class="modal-dialog modal-md modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
 
         <div class="modal-content">
 
             <div class="modal-header">
 
                 <div>
-
-                    <h5 class="modal-title" id="modalResumenDestinosLabel">
-
-                        Resumen por destino
-
+                    <h5 class="modal-title"
+                        id="modalResumenDestinosLabel">
+                        Detalle de salidas por destino
                     </h5>
 
-
-                    <small class="text-muted" id="modalResumenPeriodo">
-
+                    <small class="text-muted"
+                           id="modalResumenPeriodo">
                     </small>
-
                 </div>
 
-
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar">
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Cerrar">
                 </button>
 
             </div>
 
-
             <div class="modal-body">
 
-                <div id="modalResumenProductoInfo" class="mb-3">
-
+                <div id="modalResumenProductoInfo"
+                     class="mb-3">
                 </div>
-
 
                 <div class="table-responsive">
 
-                    <table class="table table-bordered">
+                    <table class="table table-bordered table-hover text-center align-middle">
 
-                        <thead>
-
+                        <thead class="table-light">
                             <tr>
-
-                                <th>
-                                    Destino
-                                </th>
-
-                                <th>
-                                    Total
-                                </th>
-
+                                <th class="text-start">Destino</th>
+                                <th>Mié</th>
+                                <th>Jue</th>
+                                <th>Vie</th>
+                                <th>Sáb</th>
+                                <th>Lun</th>
+                                <th>Mar</th>
+                                <th>Total</th>
                             </tr>
-
                         </thead>
 
-
                         <tbody id="tablaResumenDestinos">
-
                             <tr>
-
-                                <td colspan="2" class="text-center">
-
+                                <td colspan="8" class="text-center">
                                     Cargando...
-
                                 </td>
-
                             </tr>
-
                         </tbody>
 
-
-                        <tfoot>
-
+                        <tfoot class="table-light fw-bold">
                             <tr>
-
-                                <th>
-                                    Total
-                                </th>
-
-                                <th id="totalResumenDestinos">
-                                    0
-                                </th>
-
+                                <th class="text-start">Total general</th>
+                                <th id="totalMiercoles">0</th>
+                                <th id="totalJueves">0</th>
+                                <th id="totalViernes">0</th>
+                                <th id="totalSabado">0</th>
+                                <th id="totalLunes">0</th>
+                                <th id="totalMartes">0</th>
+                                <th id="totalResumenDestinos">0</th>
                             </tr>
-
                         </tfoot>
 
                     </table>
@@ -418,6 +387,7 @@
     </div>
 
 </div>
+
 
 
 <script>
@@ -631,229 +601,158 @@
     /* RENDERIZAR SEMANAS */
     /* ========================================================= */
 
-    function renderizarSemanas() {
+    
+function renderizarSemanas() {
 
-        const textoBusqueda =
-            buscarSemana.value
-                .toLowerCase()
-                .trim();
+    const textoBusqueda = buscarSemana.value
+        .toLowerCase()
+        .trim();
 
+    listaSemanas.innerHTML = '';
 
-        listaSemanas.innerHTML = '';
-
-
-        if (
-            semanasDisponibles.length === 0
-        ) {
-
-            listaSemanas.innerHTML = `
+    if (semanasDisponibles.length === 0) {
+        listaSemanas.innerHTML = `
             <div class="text-center text-muted">
                 No hay semanas disponibles.
             </div>
         `;
+        return;
+    }
 
-            return;
+    const nombresMeses = [
+        'Enero', 'Febrero', 'Marzo',
+        'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre',
+        'Octubre', 'Noviembre', 'Diciembre'
+    ];
 
-        }
+    // Filtrar semanas por búsqueda
+    const semanasFiltradas = semanasDisponibles.filter(semana => {
 
+        const fechaInicio = formatearFecha(semana.inicio);
+        const fechaFin = formatearFecha(semana.fin);
 
-        /*
-         * Filtrar semanas.
-         */
+        // El mes se determina por la fecha de inicio
+        const mes = Number(semana.inicio.split('-')[1]) - 1;
+        const nombreMes = nombresMeses[mes];
 
-        const semanasFiltradas =
-            semanasDisponibles.filter(
-                semana => {
+        const texto = `
+            ${semana.inicio}
+            ${semana.fin}
+            ${fechaInicio}
+            ${fechaFin}
+            ${semana.anio}
+            ${nombreMes}
+        `.toLowerCase();
 
-                    const fechaInicio =
-                        formatearFecha(
-                            semana.inicio
-                        );
+        return texto.includes(textoBusqueda);
+    });
 
-                    const fechaFin =
-                        formatearFecha(
-                            semana.fin
-                        );
-
-
-                    const texto =
-                        `
-                    ${semana.inicio}
-                    ${semana.fin}
-                    ${fechaInicio}
-                    ${fechaFin}
-                    ${semana.anio}
-                    `
-                            .toLowerCase();
-
-
-                    return texto.includes(
-                        textoBusqueda
-                    );
-
-                }
-            );
-
-
-        if (
-            semanasFiltradas.length === 0
-        ) {
-
-            listaSemanas.innerHTML = `
+    if (semanasFiltradas.length === 0) {
+        listaSemanas.innerHTML = `
             <div class="text-center text-muted">
                 No se encontraron semanas.
             </div>
         `;
+        return;
+    }
 
-            return;
+    // Agrupar por año y mes de inicio
+    const grupos = {};
 
+    semanasFiltradas.forEach(semana => {
+
+        const [anio, mes] = semana.inicio.split('-').map(Number);
+
+        if (!grupos[anio]) {
+            grupos[anio] = {};
         }
 
+        if (!grupos[anio][mes]) {
+            grupos[anio][mes] = [];
+        }
 
-        /*
-         * Agrupar por año.
-         */
+        grupos[anio][mes].push(semana);
+    });
 
-        const grupos = {};
+    // Mostrar años: más reciente primero
+    Object.keys(grupos)
+        .sort((a, b) => Number(b) - Number(a))
+        .forEach(anio => {
 
+            const tituloAnio = document.createElement('div');
 
-        semanasFiltradas.forEach(
-            semana => {
+            tituloAnio.className =
+                'fw-bold fs-5 mt-3 mb-2 border-bottom pb-1';
 
-                if (
-                    !grupos[semana.anio]
-                ) {
+            tituloAnio.textContent = anio;
 
-                    grupos[semana.anio] = [];
+            listaSemanas.appendChild(tituloAnio);
 
-                }
+            // Mostrar meses: más reciente primero
+            Object.keys(grupos[anio])
+                .sort((a, b) => Number(b) - Number(a))
+                .forEach(mes => {
 
+                    const tituloMes = document.createElement('div');
 
-                grupos[semana.anio].push(
-                    semana
-                );
+                    tituloMes.className =
+                        'fw-semibold text-primary mt-3 mb-2 ms-2';
 
-            }
-        );
+                    tituloMes.textContent =
+                        nombresMeses[Number(mes) - 1];
 
+                    listaSemanas.appendChild(tituloMes);
 
-        /*
-         * Mostrar años de más reciente
-         * a más antiguo.
-         */
-
-        Object.keys(grupos)
-            .sort(
-                (a, b) => b - a
-            )
-            .forEach(
-                anio => {
-
-                    const tituloAnio =
-                        document.createElement(
-                            'div'
-                        );
-
-
-                    tituloAnio.className =
-                        'fw-bold mt-2 mb-2';
-
-
-                    tituloAnio.textContent =
-                        anio;
-
-
-                    listaSemanas.appendChild(
-                        tituloAnio
-                    );
-
-
-                    grupos[anio].forEach(
-                        semana => {
+                    // Mostrar semanas dentro del mes
+                    grupos[anio][mes]
+                        .sort((a, b) =>
+                            b.inicio.localeCompare(a.inicio)
+                        )
+                        .forEach(semana => {
 
                             const contenedor =
-                                document.createElement(
-                                    'div'
-                                );
-
+                                document.createElement('div');
 
                             contenedor.className =
-                                'form-check mb-2';
-
+                                'form-check mb-2 ms-3';
 
                             const checkbox =
-                                document.createElement(
-                                    'input'
-                                );
+                                document.createElement('input');
 
-
-                            checkbox.type =
-                                'checkbox';
-
-
-                            checkbox.className =
-                                'form-check-input';
-
-
-                            checkbox.value =
-                                semana.inicio;
-
-
-                            checkbox.id =
-                                `semana-${semana.inicio}`;
-
+                            checkbox.type = 'checkbox';
+                            checkbox.className = 'form-check-input';
+                            checkbox.value = semana.inicio;
+                            checkbox.id = `semana-${semana.inicio}`;
 
                             checkbox.checked =
                                 semanasSeleccionadas.includes(
                                     semana.inicio
                                 );
 
-
                             checkbox.addEventListener(
                                 'change',
                                 actualizarSeleccionSemanas
                             );
 
-
                             const label =
-                                document.createElement(
-                                    'label'
-                                );
+                                document.createElement('label');
 
-
-                            label.className =
-                                'form-check-label';
-
-
-                            label.htmlFor =
-                                checkbox.id;
-
+                            label.className = 'form-check-label';
+                            label.htmlFor = checkbox.id;
 
                             label.textContent =
                                 `Semana del ${formatearFecha(semana.inicio)} al ${formatearFecha(semana.fin)}`;
 
+                            contenedor.appendChild(checkbox);
+                            contenedor.appendChild(label);
 
-                            contenedor.appendChild(
-                                checkbox
-                            );
+                            listaSemanas.appendChild(contenedor);
+                        });
+                });
+        });
+}
 
-
-                            contenedor.appendChild(
-                                label
-                            );
-
-
-                            listaSemanas.appendChild(
-                                contenedor
-                            );
-
-                        }
-                    );
-
-                }
-            );
-
-    }
 
 
     /* ========================================================= */
@@ -1580,254 +1479,177 @@
     /* MODAL RESUMEN POR DESTINO */
     /* ========================================================= */
 
-    async function abrirResumenDestinos(
-        item
-    ) {
+    
+async function abrirResumenDestinos(item) {
 
-        const modalPeriodo =
-            document.getElementById(
-                'modalResumenPeriodo'
-            );
+    const modalPeriodo =
+        document.getElementById('modalResumenPeriodo');
 
+    const modalProductoInfo =
+        document.getElementById('modalResumenProductoInfo');
 
-        const modalProductoInfo =
-            document.getElementById(
-                'modalResumenProductoInfo'
-            );
+    const tabla =
+        document.getElementById('tablaResumenDestinos');
 
+    const modalTitulo =
+        document.getElementById('modalResumenDestinosLabel');
 
-        const tabla =
-            document.getElementById(
-                'tablaResumenDestinos'
-            );
+    const dias = [
+        ['miercoles', 'totalMiercoles'],
+        ['jueves', 'totalJueves'],
+        ['viernes', 'totalViernes'],
+        ['sabado', 'totalSabado'],
+        ['lunes', 'totalLunes'],
+        ['martes', 'totalMartes']
+    ];
 
+    const formatearCantidad = valor =>
+        Number(valor || 0).toLocaleString('es-MX', {
+            maximumFractionDigits: 2
+        });
 
-        const total =
-            document.getElementById(
-                'totalResumenDestinos'
-            );
+    modalTitulo.textContent =
+        `${item.producto} - ${item.presentacion}`;
 
+    modalProductoInfo.textContent =
+        `Producto: ${item.producto} | Presentación: ${item.presentacion}`;
 
-        /*
-         * Información del producto.
-         */
-
-        modalProductoInfo.innerHTML = `
-        <strong>Producto:</strong>
-        ${item.producto}
-
-        <br>
-
-        <strong>Presentación:</strong>
-        ${item.presentacion}
-    `;
-
-
-        /*
-         * Mostrar cargando.
-         */
-
-        tabla.innerHTML = `
+    tabla.innerHTML = `
         <tr>
-
-            <td
-                colspan="2"
-                class="text-center">
-
+            <td colspan="8" class="text-center">
                 Cargando...
-
             </td>
-
         </tr>
     `;
 
+    dias.forEach(([, id]) => {
+        document.getElementById(id).textContent = '0';
+    });
 
-        total.textContent =
-            '0';
+    document.getElementById(
+        'totalResumenDestinos'
+    ).textContent = '0';
 
+    const modalElement =
+        document.getElementById('modalResumenDestinos');
 
-        /*
-         * Abrir modal.
-         */
+    const modal = bootstrap.Modal.getOrCreateInstance(
+        modalElement
+    );
 
-        const modalElement =
-            document.getElementById(
-                'modalResumenDestinos'
-            );
+    modal.show();
 
+    try {
 
-        const modal =
-            new bootstrap.Modal(
-                modalElement
-            );
-
-
-        modal.show();
-
-
-        try {
-
-            let url =
-                `{% url 'resumen_destinos_salida_semanal_pt' producto_variacion_id=0 %}`
-                    .replace(
-                        '/0/',
-                        `/${item.producto_variacion_id}/`
-                    );
-
-
-            const semanas =
-                obtenerParametroSemanas();
-
-
-            if (semanas) {
-
-                url +=
-                    `?semanas=${encodeURIComponent(semanas)}`;
-
-            }
-
-
-            console.log(
-                "URL resumen:",
-                url
-            );
-
-
-            const response =
-                await fetch(url);
-
-
-            console.log(
-                "Status resumen:",
-                response.status
-            );
-
-
-            if (!response.ok) {
-
-                throw new Error(
-                    'Error al obtener el resumen'
+        let url =
+            `{% url 'resumen_destinos_salida_semanal_pt' producto_variacion_id=0 %}`
+                .replace(
+                    '/0/',
+                    `/${item.producto_variacion_id}/`
                 );
 
-            }
+        const semanas = obtenerParametroSemanas();
 
+        if (semanas) {
+            url += `?semanas=${encodeURIComponent(semanas)}`;
+        }
 
-            const data =
-                await response.json();
+        const response = await fetch(url);
 
+        if (!response.ok) {
+            throw new Error('Error al obtener el resumen');
+        }
 
-            /*
-             * Periodo.
-             */
+        const data = await response.json();
 
-            if (
-                semanasSeleccionadas.length === 0
-            ) {
+        if (semanasSeleccionadas.length === 0) {
 
-                const semanaActual =
-                    obtenerSemanaActual();
+            const semanaActual = obtenerSemanaActual();
 
+            modalPeriodo.textContent =
+                `Semana del ${formatearFecha(semanaActual.inicio)} al ${formatearFecha(semanaActual.fin)}`;
 
-                modalPeriodo.textContent =
-                    `Semana del ${formatearFecha(semanaActual.inicio)} al ${formatearFecha(semanaActual.fin)}`;
+        } else {
 
-            } else {
-
-                modalPeriodo.textContent =
-                    `${semanasSeleccionadas.length} semanas seleccionadas`;
-
-            }
-
-
-            /*
-             * Crear tabla.
-             */
-
-            tabla.innerHTML = '';
-
-
-            const destinos = [
-
-                {
-                    nombre: 'Ruta',
-                    valor: data.destinos.ruta
-                },
-
-                {
-                    nombre: 'Mitsu',
-                    valor: data.destinos.mitsu
-                },
-
-                {
-                    nombre: 'Maestro',
-                    valor: data.destinos.maestro
-                },
-
-                {
-                    nombre: 'Otros',
-                    valor: data.destinos.otros
-                }
-
-            ];
-
-
-            destinos.forEach(
-                destino => {
-
-                    const fila =
-                        document.createElement(
-                            'tr'
-                        );
-
-
-                    fila.innerHTML = `
-
-                    <td>
-                        ${destino.nombre}
-                    </td>
-
-                    <td>
-                        ${destino.valor}
-                    </td>
-
-                `;
-
-
-                    tabla.appendChild(
-                        fila
-                    );
-
-                }
-            );
-
-
-            total.textContent =
-                data.total;
-
-
-        } catch (error) {
-
-            console.error(error);
-
-
-            tabla.innerHTML = `
-            <tr>
-
-                <td
-                    colspan="2"
-                    class="text-center text-danger">
-
-                    No fue posible cargar
-                    el resumen.
-
-                </td>
-
-            </tr>
-        `;
+            modalPeriodo.textContent =
+                `${semanasSeleccionadas.length} semanas seleccionadas`;
 
         }
 
+        tabla.innerHTML = '';
+
+        const destinos = data.destinos || [];
+
+        if (destinos.length === 0) {
+            tabla.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center">
+                        No hay salidas en el periodo seleccionado.
+                    </td>
+                </tr>
+            `;
+        }
+
+        destinos.forEach(destino => {
+
+            const fila = document.createElement('tr');
+
+            const celdaNombre = document.createElement('td');
+            celdaNombre.className = 'text-start fw-semibold';
+            celdaNombre.textContent = destino.nombre;
+            fila.appendChild(celdaNombre);
+
+            dias.forEach(([dia]) => {
+
+                const celda = document.createElement('td');
+
+                celda.textContent =
+                    formatearCantidad(destino[dia]);
+
+                fila.appendChild(celda);
+
+            });
+
+            const celdaTotal = document.createElement('td');
+            celdaTotal.className = 'fw-bold';
+            celdaTotal.textContent =
+                formatearCantidad(destino.total);
+
+            fila.appendChild(celdaTotal);
+
+            tabla.appendChild(fila);
+
+        });
+
+        const totales = data.totales_dias || {};
+
+        dias.forEach(([dia, id]) => {
+
+            document.getElementById(id).textContent =
+                formatearCantidad(totales[dia]);
+
+        });
+
+        document.getElementById(
+            'totalResumenDestinos'
+        ).textContent = formatearCantidad(data.total);
+
+    } catch (error) {
+
+        console.error(error);
+
+        tabla.innerHTML = `
+            <tr>
+                <td colspan="8"
+                    class="text-center text-danger">
+                    No fue posible cargar el resumen.
+                </td>
+            </tr>
+        `;
+
     }
+}
+
 
 
     /* ========================================================= */

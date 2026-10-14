@@ -56,8 +56,16 @@
             </div>
 
             <div class="col-md-8 mb-3">
-                <span class="text-muted d-block">Nota</span>
-                <strong>{{ salida.nota|default:"-" }}</strong>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-muted">Nota</span>
+                    {% if user|has_role:"Administrador,Producto Terminado" %}
+                    <button type="button" class="btn btn-outline-primary btn-sm"
+                            data-bs-toggle="modal" data-bs-target="#modalEditarNota">
+                        <i class="bi bi-pencil-square"></i> Editar nota
+                    </button>
+                    {% endif %}
+                </div>
+                <strong style="white-space: pre-wrap;">{{ salida.nota|default:"-" }}</strong>
             </div>
 
             <!-- TOTAL DE LA SALIDA -->
@@ -214,6 +222,39 @@
     {% endif %}
 
 </div>
+
+<!-- MODAL EDITAR NOTA -->
+{% if user|has_role:"Producto Terminado" %}
+<div class="modal fade" id="modalEditarNota" tabindex="-1" aria-labelledby="modalEditarNotaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="{% url 'detalle_salida' salida.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="editar_nota">
+
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="modalEditarNotaLabel">Editar nota de salida #{{ salida.id }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <label for="notaSalida" class="form-label fw-semibold">Nota de la salida</label>
+                    <textarea name="nota" id="notaSalida" class="form-control" rows="5"
+                              placeholder="Escribe la nota de la salida...">{{ salida.nota|default_if_none:"" }}</textarea>
+                    <small class="text-muted">Puedes modificar o eliminar el contenido de la nota.</small>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Guardar cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- MODAL DE CORRECCIONES -->
 {% if es_hoy and not user|has_role:"Recursos Humanos" %}

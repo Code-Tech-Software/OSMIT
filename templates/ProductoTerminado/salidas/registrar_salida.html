@@ -4,7 +4,19 @@
 {% block content %}
     <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
     <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/4.0.1/css/fixedHeader.dataTables.min.css">
     <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
+
+    <style>
+        #productosTable thead th,
+        table.fixedHeader-floating thead th {
+            background-color: #f8f9fa !important;
+            color: #212529 !important;
+            font-weight: 700;
+            vertical-align: middle;
+            z-index: 10;
+        }
+    </style>
 
     <div>
         <span class="fw-bold text-dark">Inventario</span>
@@ -145,12 +157,17 @@
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/fixedheader/4.0.1/js/dataTables.fixedHeader.min.js"></script>
 
     <script>
         $(document).ready(function () {
             window.productosDT = $('#productosTable').DataTable({
                 pageLength: 50,
                 responsive: true,
+                 fixedHeader: {
+                    header: true,
+                    headerOffset: 70
+                },
                 order: [],
                 language: {
                     "decimal": "",
