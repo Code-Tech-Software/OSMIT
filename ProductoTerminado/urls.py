@@ -8,6 +8,7 @@ urlpatterns = [
     path('registrar-entrada/', views.registrar_entrada, name='registrar_entradaPT'),
 
     path('registrar-salida/', views.registrar_salida, name='registrar_salidaPT'),
+    path('salidas/stock-actual/', views.obtener_stock_productos_pt, name='obtener_stock_productos_pt'),
 
     path('registrar-entrada-especial/', views.registrar_entrada_especial, name='registrar_entrada_especialPT'),
 

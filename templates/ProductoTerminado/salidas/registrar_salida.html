@@ -96,7 +96,7 @@
 
                                         <div class="mb-1" style="font-size: 0.8rem; opacity:0.6;">
                                             <span class="text-muted">Stock:</span>
-                                            <span class="{% if celda.stock == 0 %}text-danger fw-bold{% elif celda.stock <= celda.stock_min %}text-warning fw-bold{% else %}text-muted{% endif %}">
+                                            <span class="stock-valor {% if celda.stock == 0 %}text-danger fw-bold{% elif celda.stock <= celda.stock_min %}text-warning fw-bold{% else %}text-muted{% endif %}">
                                                 {{ celda.stock }}
                                             </span>
                                         </div>
@@ -193,6 +193,92 @@
 
     {% include 'Partials/notificaciones.html' %}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // =========================================================
+        // ACTUALIZACIÓN AUTOMÁTICA DEL STOCK
+        // =========================================================
+        let actualizandoStockPT = false;
+
+        async function actualizarStockPT() {
+            if (actualizandoStockPT) return;
+            actualizandoStockPT = true;
+
+            try {
+                const respuesta = await fetch("{% url 'obtener_stock_productos_pt' %}", {
+                    method: "GET",
+                    cache: "no-store",
+                    headers: { "X-Requested-With": "XMLHttpRequest" }
+                });
+
+                if (!respuesta.ok) throw new Error("No se pudo consultar el stock.");
+
+                const datos = await respuesta.json();
+                const stocks = datos.stocks || {};
+
+                // Incluye las filas de todas las páginas de DataTables
+                const inputs = window.productosDT
+                    ? window.productosDT.$('input.cantidad-input')
+                    : $('input.cantidad-input');
+
+                inputs.each(function () {
+                    const input = this;
+                    const variacionId = input.name.replace("cantidad_", "");
+                    const info = stocks[variacionId];
+
+                    if (!info) return;
+
+                    const nuevoStock = info.stock;
+                    const stockMin = info.stock_min;
+                    const stockAnterior = parseFloat(input.dataset.stock);
+
+                    if (stockAnterior === nuevoStock) return;
+
+                    // Actualizar validación y límite del input
+                    input.dataset.stock = nuevoStock;
+                    input.max = nuevoStock;
+
+                    // Actualizar únicamente el stock visible
+                    const celda = input.closest("td");
+                    const stockValor = celda?.querySelector(".stock-valor");
+
+                    if (stockValor) {
+                        stockValor.textContent = nuevoStock;
+
+                        stockValor.classList.remove(
+                            "text-danger", "text-warning", "text-muted", "fw-bold"
+                        );
+
+                        if (nuevoStock <= 0) {
+                            stockValor.classList.add("text-danger", "fw-bold");
+                        } else if (nuevoStock <= stockMin) {
+                            stockValor.classList.add("text-warning", "fw-bold");
+                        } else {
+                            stockValor.classList.add("text-muted");
+                        }
+                    }
+
+                    // Advertir visualmente si la cantidad supera el nuevo stock
+                    const cantidadCapturada = parseFloat(input.value);
+
+                    if (!isNaN(cantidadCapturada) && cantidadCapturada > nuevoStock) {
+                        input.classList.add("is-invalid");
+                    } else {
+                        input.classList.remove("is-invalid");
+                    }
+                });
+
+            } catch (error) {
+                console.warn("No se pudo actualizar el stock:", error);
+            } finally {
+                actualizandoStockPT = false;
+            }
+        }
+
+        // Primera consulta al cargar y después cada 5 segundos
+        actualizarStockPT();
+        setInterval(actualizarStockPT, 5000);
+    </script>
 
     <script>
         // CAMBIAR ORDEN DE PRODUCTOS

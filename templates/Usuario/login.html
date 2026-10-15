@@ -28,6 +28,19 @@
         .img-custom {
             border-radius: 1rem 0 0 1rem;
         }
+        #id_password {
+            padding-right: 45px;
+        }
+
+        #togglePassword {
+            color: #6c757d;
+            cursor: pointer;
+        }
+
+        #togglePassword:hover {
+            color: #212529;
+        }
+
     </style>
 </head>
 <body>
@@ -64,9 +77,13 @@
                                     </div>
                                     <!-- Campo de contraseña -->
                                     <div data-mdb-input-init class="form-outline mb-4">
-                                        {{ form.password }}
-                                        <label class="form-label"
-                                               for="{{ form.password.id_for_label }}">Contraseña</label>
+                                        <div class="position-relative">
+                                            {{ form.password }}
+                                            <button type="button" id="togglePassword" class="btn position-absolute top-50 end-0 translate-middle-y border-0 bg-transparent" style="z-index: 2; padding: 8px 12px;" aria-label="Mostrar contraseña" aria-pressed="false">
+                                                <i id="iconPassword" class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                        <label class="form-label" for="{{ form.password.id_for_label }}">Contraseña</label>
                                     </div>
 
                                     <div class="pt-1 mb-4">
@@ -127,6 +144,27 @@
         spinner.classList.remove('d-none');
         btnText.textContent = 'Ingresando...';
         btn.disabled = true;
+    });
+</script>
+
+<script>
+    document.getElementById('togglePassword').addEventListener('click', function () {
+        const passwordInput = document.getElementById('{{ form.password.id_for_label }}');
+        const icon = document.getElementById('iconPassword');
+
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+            this.setAttribute('aria-label', 'Ocultar contraseña');
+            this.setAttribute('aria-pressed', 'true');
+        } else {
+            passwordInput.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+            this.setAttribute('aria-label', 'Mostrar contraseña');
+            this.setAttribute('aria-pressed', 'false');
+        }
     });
 </script>
 

@@ -772,19 +772,19 @@ def registrar_salida(request):
     # ORDEN DE PRODUCTOS
     # =========================================================
     orden_productos = [
-        "PISTACHE", "ENCHILADO", "JAPONES", "JAPONES FUEGO", "MACHO",
-        "HORNEADO", "CASCARITA", "SURTIDO", "HABA PELADA", "HABA CON CASCARA",
-        "GARBANZA", "GARAPIÑADO", "GOMITA", "LUNETA", "HUEVITO",
-        "GALLETA MARINA", "CIRUELA", "PASAS", "SEMILLA DE CALABAZA",
-        "SEMILLA DE GIRASOL", "NUEZ", "ALMENDRA", "GRANOLA", "CHILE DE ARBOL",
-        "CHILE PULLA", "CHILE CASCABEL", "CAMARON", "CAMARON MOLIDO",
-        "CHARAL NATURAL", "CHARAL ADOBADO", "CECINA NATURAL", "CECINA ADOBADA",
-        "CECINA DE LIMON", "CECINA CHILTEPIN", "CECINA CHIPOTLE",
-        "CECINA HABANERO", "CECINA ARTESANAL PICANTE", "PAPA FRITA",
-        "CHURRO DE MASA", "CHURRO DELGADO", "CHICHARRON", "CHICHARRON CRAC",
-        "PLATANO", "TOSTADA", "MIEL", "TIRA DE CC MINI", "TIRA DE DULCE",
-        "MIX VERDE", "MIX ROJO"
-    ]
+            "PISTACHE", "ENCHILADO", "JAPONES", "JAPONES FUEGO", "MACHO",
+            "HORNEADO", "CASCARITA", "SURTIDO", "HABA PELADA", "HABA CON CASCARA",
+            "GARBANZA", "GARAPIÑADO", "GOMITA", "LUNETA", "HUEVITO CHOCOLATE",
+            "GALLETA MARINA", "CIRUELA", "PASAS", "SEMILLA DE CALABAZA",
+            "SEMILLA DE GIRASOL", "NUEZ", "ALMENDRA", "GRANOLA", "CHILE DE ARBOL",
+            "CHILE PULLA", "CHILE CASCABEL", "CAMARON", "CAMARON MOLIDO",
+            "CHARAL NATURAL", "CHARAL ADOBADO", "CECINA NATURAL", "CECINA ADOBADA",
+            "CECINA DE LIMON", "CECINA CHILTEPIN", "CECINA CHIPOTLE",
+            "CECINA HABANERO", "CECINA ARTESANAL", "PAPA FRITA",
+            "CHURRO DE MASA", "CHURRO DELGADO", "CHICHARRON", "CHICHARRON CRAC",
+            "PLATANO", "TOSTADA", "MIEL", "TIRA DE CC MINI", "TIRA DE DULCE",
+            "MIX VERDE", "MIX ROJO"
+        ]
 
     usar_orden_personalizado = request.GET.get('orden') == 'personalizado'
 
@@ -962,7 +962,24 @@ def registrar_salida(request):
         'usar_orden_personalizado': usar_orden_personalizado
     })
 
+##Hacer asicnrono el stock en las salidas
+@login_required
+@requiere_roles("Producto Terminado")
+def obtener_stock_productos_pt(request):
+    variaciones = ProductoVariacion.objects.filter(
+        producto__estado=True,
+        presentacion__estado=True
+    ).values("id", "stock", "stock_min")
 
+    return JsonResponse({
+        "stocks": {
+            str(v["id"]): {
+                "stock": float(v["stock"]),
+                "stock_min": float(v["stock_min"])
+            }
+            for v in variaciones
+        }
+    })
 
 
 @login_required
@@ -3729,6 +3746,32 @@ def reporte_salidas_semanales_pt(request):
         )
 
 
+        # =========================================================
+    # ORDEN PERSONALIZADO DE PRODUCTOS Y PRESENTACIONES
+    # =========================================================
+    orden_productos = [
+                "PISTACHE", "ENCHILADO", "JAPONES", "JAPONES FUEGO", "MACHO",
+                "HORNEADO", "CASCARITA", "SURTIDO", "HABA PELADA", "HABA CON CASCARA",
+                "GARBANZA", "GARAPIÑADO", "GOMITA", "LUNETA", "HUEVITO CHOCOLATE",
+                "GALLETA MARINA", "CIRUELA", "PASAS", "SEMILLA DE CALABAZA",
+                "SEMILLA DE GIRASOL", "NUEZ", "ALMENDRA", "GRANOLA", "CHILE DE ARBOL",
+                "CHILE PULLA", "CHILE CASCABEL", "CAMARON", "CAMARON MOLIDO",
+                "CHARAL NATURAL", "CHARAL ADOBADO", "CECINA NATURAL", "CECINA ADOBADA",
+                "CECINA DE LIMON", "CECINA CHILTEPIN", "CECINA CHIPOTLE",
+                "CECINA HABANERO", "CECINA ARTESANAL", "PAPA FRITA",
+                "CHURRO DE MASA", "CHURRO DELGADO", "CHICHARRON", "CHICHARRON CRAC",
+                "PLATANO", "TOSTADA", "MIEL", "TIRA DE CC MINI", "TIRA DE DULCE",
+                "MIX VERDE", "MIX ROJO"
+            ]
+
+    orden_presentaciones = [
+        "Minis", "Chico", "Mediano", "Grande", "250g", "500g",
+        "1kg", "Kiosko", "Grande 150g", "Grande 140g", "Pieza"
+    ]
+
+    # =========================================================
+    # CONSULTAR PRODUCTOS
+    # =========================================================
     productos = (
         salidas
         .values(
@@ -3736,12 +3779,40 @@ def reporte_salidas_semanales_pt(request):
             'producto_variacion__producto__nombre',
             'producto_variacion__presentacion__nombre'
         )
-        .annotate(
-            total_salidas=Sum('cantidad')
-        )
-        .order_by(
-            'producto_variacion__producto__nombre',
-            'producto_variacion__presentacion__nombre'
+        .annotate(total_salidas=Sum('cantidad'))
+    )
+
+    # =========================================================
+    # CREAR ÍNDICES DE ORDEN
+    # =========================================================
+    mapa_productos = {
+        nombre.upper(): indice
+        for indice, nombre in enumerate(orden_productos)
+    }
+
+    mapa_presentaciones = {
+        nombre.upper(): indice
+        for indice, nombre in enumerate(orden_presentaciones)
+    }
+
+    # =========================================================
+    # ORDENAR RESULTADOS
+    # =========================================================
+    productos = sorted(
+        productos,
+        key=lambda item: (
+            mapa_productos.get(
+                (item['producto_variacion__producto__nombre'] or '').strip().upper(),
+                len(orden_productos)
+            ),
+            (item['producto_variacion__producto__nombre'] or '').strip().upper()
+            if (item['producto_variacion__producto__nombre'] or '').strip().upper() not in mapa_productos
+            else '',
+            mapa_presentaciones.get(
+                (item['producto_variacion__presentacion__nombre'] or '').strip().upper(),
+                len(orden_presentaciones)
+            ),
+            (item['producto_variacion__presentacion__nombre'] or '').strip().upper()
         )
     )
 
@@ -4034,7 +4105,7 @@ def detalle_salida_semanal_pt(
 
 
 @login_required
-@requiere_roles("Producto Terminado")
+@requiere_roles("Producto Terminado","Recursos Humanos")
 def resumen_destinos_salida_semanal_pt(request, producto_variacion_id):
 
     semanas_param = request.GET.get('semanas', '')
