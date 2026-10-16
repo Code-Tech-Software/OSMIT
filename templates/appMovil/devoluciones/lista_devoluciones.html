@@ -110,7 +110,6 @@
                         <th>Repartidor</th>
                         <th>Tipo</th>
                         <th>Cambio de producto</th>
-                        <th>Bodega Destino</th>
                         <th>Valor Total</th>
                         <th>Acciones</th>
                     </tr>
@@ -138,7 +137,6 @@
                                 </span>
                             {% endif %}
                         </td>
-                        <td>{{ devolucion.mini_bodega.nombre|default:"N/A" }}</td>
                         <td><strong>${{ devolucion.total|default:0|floatformat:2 }}</strong></td>
                         <td>
                             <a href="{% url 'detalle_devolucion' devolucion.id %}" class="btn btn-sm btn-custom-info text-white">

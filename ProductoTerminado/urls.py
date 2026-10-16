@@ -44,6 +44,9 @@ urlpatterns = [
     path('reportes/salidas-semanales-pt/<int:producto_variacion_id>/resumen-destinos/',views.resumen_destinos_salida_semanal_pt,name='resumen_destinos_salida_semanal_pt'),
     path('reportes/salidas-semanales-pt/semanas/',views.semanas_disponibles_salidas_pt,name='semanas_disponibles_salidas_pt'),
 
+    path('producto-terminado/reporte-diario/',views.reporte_diario_pt_html,name='reporte_diario_pt_html'),
+    path('producto-terminado/reporte-diario/datos/',views.reporte_diario_pt_datos,name='reporte_diario_pt_datos'),
+
     # DASBOAR
 
     path('api/stock_productos/', views.stock_productos),

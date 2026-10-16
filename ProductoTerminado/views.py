@@ -1,3 +1,5 @@
+import decimal
+
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
@@ -3859,6 +3861,168 @@ def reporte_salidas_semanales_pt(request):
 
 
 
+#Reporte diario
+
+@login_required
+@requiere_roles("Administrador", "Producto Terminado", "Recursos Humanos")
+def reporte_diario_pt_html(request):
+    return render(request, "ProductoTerminado/reportes/reporte_diario_pt.html", {
+        "fecha_actual": timezone.localdate().isoformat()
+    })
+
+ORDEN_PRESENTACIONES_REPORTE_DIARIO_PT = [
+    "Minis", "Chico", "Mediano", "Grande", "250g", "500g",
+    "1kg", "Kiosko", "Grande 150g", "Grande 140g", "Pieza"
+]
+
+ORDEN_PRODUCTOS_REPORTE_DIARIO_PT = [
+    "PISTACHE", "ENCHILADO", "JAPONES", "JAPONES FUEGO", "MACHO",
+    "HORNEADO", "CASCARITA", "SURTIDO", "HABA PELADA", "HABA CON CASCARA",
+    "GARBANZA", "GARAPIÑADO", "GOMITA", "LUNETA", "HUEVITO CHOCOLATE",
+    "GALLETA MARINA", "CIRUELA", "PASAS", "SEMILLA DE CALABAZA",
+    "SEMILLA DE GIRASOL", "NUEZ", "ALMENDRA", "GRANOLA", "CHILE DE ARBOL",
+    "CHILE PULLA", "CHILE CASCABEL", "CAMARON", "CAMARON MOLIDO",
+    "CHARAL NATURAL", "CHARAL ADOBADO", "CECINA NATURAL", "CECINA ADOBADA",
+    "CECINA DE LIMON", "CECINA CHILTEPIN", "CECINA CHIPOTLE",
+    "CECINA HABANERO", "CECINA ARTESANAL", "PAPA FRITA",
+    "CHURRO DE MASA", "CHURRO DELGADO", "CHICHARRON", "CHICHARRON CRAC",
+    "PLATANO", "TOSTADA", "MIEL", "TIRA DE CC MINI", "TIRA DE DULCE",
+    "MIX VERDE", "MIX ROJO"
+]
+
+
+@login_required
+@requiere_roles("Producto Terminado","Recursos Humanos")
+def reporte_diario_pt_datos(request):
+    fecha_texto=request.GET.get('fecha', timezone.localdate().isoformat())
+    movimiento=request.GET.get('movimiento', 'salidas')
+    destino=request.GET.get('destino', 'general')
+
+    try:
+        fecha=datetime.strptime(fecha_texto, '%Y-%m-%d').date()
+    except ValueError:
+        return JsonResponse({'error': 'Formato de fecha inválido.'}, status=400)
+    if movimiento not in ('salidas', 'entradas'):
+        return JsonResponse({'error': 'Movimiento inválido.'}, status=400)
+    destinos_validos = {'general', 'opcion1', 'opcion2', 'opcion3', 'opcion4'}
+    if movimiento == 'salidas' and destino not in destinos_validos:
+        return JsonResponse({'error': 'Destino inválido.'}, status=400)
+
+    if movimiento == 'entradas':
+        detalles=DetalleEntradaPTerminado.objects.filter(
+            entrada_p_terminado__fecha_entrada__date=fecha,
+        )
+    else:
+        detalles=DetalleSalidaPTerminado.objects.filter(
+            salida_p_terminado__fecha_salida__date=fecha,
+        )
+        if destino != 'general':
+            detalles=detalles.filter(
+                salida_p_terminado__destino=destino
+            )
+    movimientos=(
+        detalles.values(
+            "producto_variacion__producto_id",
+            "producto_variacion__producto__nombre",
+            "producto_variacion__presentacion__nombre"
+        )
+        .annotate(total=Sum('cantidad'))
+        .order_by()
+    )
+    presentaciones=ORDEN_PRESENTACIONES_REPORTE_DIARIO_PT
+    orden_productos=ORDEN_PRODUCTOS_REPORTE_DIARIO_PT
+    mapa_productos={}
+    cero=Decimal('0.00')
+    for movimiento_item in movimientos:
+        producto_id = movimiento_item["producto_variacion__producto_id"]
+        nombre_producto = movimiento_item["producto_variacion__producto__nombre"]
+        nombre_presentacion = movimiento_item["producto_variacion__presentacion__nombre"]
+        cantidad = movimiento_item["total"] or cero
+
+        # El reporte utiliza las presentaciones definidas.
+        if nombre_presentacion not in presentaciones:
+            continue
+
+        if producto_id not in mapa_productos:
+            mapa_productos[producto_id] = {
+                "id": producto_id,
+                "producto": nombre_producto,
+                "cantidades": {p: cero for p in presentaciones},
+                "total": cero
+            }
+
+        mapa_productos[producto_id]["cantidades"][nombre_presentacion] += cantidad
+        mapa_productos[producto_id]["total"] += cantidad
+
+    indice_productos = {
+        nombre.upper(): indice
+        for indice, nombre in enumerate(orden_productos)
+    }
+
+    productos_ordenados = sorted(
+        mapa_productos.values(),
+        key=lambda item: (
+            indice_productos.get(
+                item["producto"].strip().upper(),
+                len(orden_productos)
+            ),
+            item["producto"].upper()
+        )
+    )
+
+    totales_presentaciones = {p: cero for p in presentaciones}
+    total_general = cero
+    filas = []
+
+    stocks = {
+        (variacion.producto_id, variacion.presentacion.nombre): variacion.stock
+        for variacion in ProductoVariacion.objects.select_related(
+            "presentacion"
+        ).filter(
+            producto_id__in=mapa_productos.keys()
+        )
+    }
+
+    for producto in productos_ordenados:
+        cantidades = [
+            float(producto["cantidades"][p])
+            for p in presentaciones
+        ]
+
+        for presentacion in presentaciones:
+            totales_presentaciones[presentacion] += producto["cantidades"][presentacion]
+
+        total_general += producto["total"]
+
+        filas.append({
+            "id": producto["id"],
+            "producto": producto["producto"],
+            "cantidades": cantidades,
+            "stocks": [
+                float(stocks.get((producto["id"], p), cero))
+                for p in presentaciones
+            ],
+            "variaciones_existentes": [
+                (producto["id"], p) in stocks
+                for p in presentaciones
+            ],
+            "total": float(producto["total"])
+        })
+
+    return JsonResponse({
+        "fecha": fecha.isoformat(),
+        "movimiento": movimiento,
+        "destino": destino if movimiento == "salidas" else None,
+        "presentaciones": presentaciones,
+        "productos": filas,
+        "totales_presentaciones": [
+            float(totales_presentaciones[p])
+            for p in presentaciones
+        ],
+        "total_general": float(total_general)
+    })
+
+    
 
 @login_required
 @requiere_roles("Producto Terminado")

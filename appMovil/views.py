@@ -12,6 +12,7 @@ import secrets
 import json
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.hashers import check_password
+from ProductoGranel.views import get_pusher_client
 from ProductoTerminado.models import SalidaPTerminado, DetalleSalidaPTerminado, EntradaPTerminado, \
     DetalleEntradaPTerminado
 from appMovil.serializers import *
@@ -285,7 +286,7 @@ def crear_reabastecimiento(request):
 
     ruta_id = data.get('ruta_id')
     productos = data.get('productos')
-    pedido_uuid = data.get('uuid')  # 🔥 UUID del pedido
+    pedido_uuid = data.get('uuid')
 
     if not ruta_id:
         return Response({"error": "ruta_id es requerido"}, status=400)
@@ -306,28 +307,51 @@ def crear_reabastecimiento(request):
     if not usuario:
         return Response({"error": "La ruta no tiene usuario asignado"}, status=400)
 
-    # 🔥 Evitar duplicados
+    # Evitar duplicados
     if PedidoReabastecimiento.objects.filter(uuid=pedido_uuid).exists():
         return Response({
             "message": "Este pedido ya fue registrado",
             "pedido_uuid": pedido_uuid
         }, status=200)
 
-    # 🔥 Crear pedido
-    pedido = PedidoReabastecimiento.objects.create(
-        uuid=pedido_uuid,
-        ruta=ruta,
-        usuario=usuario
-    )
+    # Crear pedido y detalles
+    with transaction.atomic():
 
-    # 🔥 Crear detalles
-    for item in productos:
-        PedidoReabastecimientoDetalle.objects.create(
-            pedido=pedido,
-            pedido_uuid=pedido_uuid,
-            producto_variacion_id=item['producto_variacion_id'],
-            cantidad=item['cantidad']
+        pedido = PedidoReabastecimiento.objects.create(
+            uuid=pedido_uuid,
+            ruta=ruta,
+            usuario=usuario
         )
+
+        for item in productos:
+            PedidoReabastecimientoDetalle.objects.create(
+                pedido=pedido,
+                pedido_uuid=pedido_uuid,
+                producto_variacion_id=item['producto_variacion_id'],
+                cantidad=item['cantidad']
+            )
+
+        # Notificar únicamente después de guardar correctamente
+        def enviar_notificacion():
+            try:
+                pusher_client = get_pusher_client()
+
+                pusher_client.trigger(
+                    'reabastecimiento-channel',
+                    'nuevo-reabastecimiento',
+                    {
+                        'message': 'Nuevo pedido de reabastecimiento',
+                        'pedido_id': pedido.id,
+                        'pedido_uuid': str(pedido.uuid),
+                        'usuario': usuario.username,
+                        'ruta': str(ruta)
+                    }
+                )
+
+            except Exception as e:
+                print(f"Error al enviar notificación de reabastecimiento: {e}")
+
+        transaction.on_commit(enviar_notificacion)
 
     return Response({
         "message": "Pedido creado correctamente",

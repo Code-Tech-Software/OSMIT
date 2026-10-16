@@ -223,6 +223,9 @@
                         <li>
                             <a href="{% url 'reporte_salidas_semanales_pt_html' %}" class="sub-menu-link">Reporte Semanal</a>
                         </li>
+                        <li>
+                            <a href="{% url 'reporte_diario_pt_html' %}" class="sub-menu-link">Reporte Diario</a>
+                        </li>
                     </ul>
                 </li>
                 {% endif %}
@@ -424,7 +427,7 @@
 
 
 
-{% if user|has_role:"Administrador,Producto a Granel" %}
+{% if user|has_role:"Administrador,Producto a Granel,Producto Terminado" %}
 
 <!-- Librerías -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -484,6 +487,7 @@
         encrypted: true
     });
 
+    {% if user|has_role:"Administrador,Producto a Granel" %}
     const channel = pusher.subscribe('pedidos-channel');
     channel.bind('nuevo-pedido', function (data) {
         if (!notificationsEnabled) return;
@@ -517,6 +521,39 @@
             });
         }
     });
+    {% endif %}
+
+    {% if user|has_role:"Administrador,Producto Terminado" %}
+    const reabastecimientoChannel = pusher.subscribe('reabastecimiento-channel');
+    reabastecimientoChannel.bind('nuevo-reabastecimiento', function (data) {
+        if (!notificationsEnabled) return;
+
+        Swal.fire({
+            title: '¡Nuevo pedido de reabastecimiento!',
+            text: `El repartidor ${data.usuario} ha enviado un pedido.`,
+            icon: 'success',
+            position: 'bottom-end',
+            background: '#343a40',
+            color: '#fff',
+            showConfirmButton: false,
+            timer: 9000,
+            toast: true
+        });
+
+        if (soundEnabled) {
+            notificationSound.play().catch(e => {
+                Swal.fire({
+                    title: '🔔 Activa el sonido',
+                    text: 'Haz clic para permitir notificaciones con audio.',
+                    icon: 'info',
+                    confirmButtonText: 'Entendido'
+                }).then(() => {
+                    notificationSound.play().catch(err => console.log("Error al reproducir sonido:", err));
+                });
+            });
+        }
+    });
+    {% endif %}
 </script>
 
 <style>

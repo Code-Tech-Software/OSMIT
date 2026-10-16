@@ -1,0 +1,533 @@
+
+{% extends "Base/Sidebar.html" %}
+{% load static %}
+
+{% block content %}
+<style>
+    .titulo-pagina {
+        font-weight: 700;
+        color: #333;
+    }
+    .filtros-card, .tabla-card {
+        background: #fff;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    .tabla-reporte {
+        font-size: 13px;
+        white-space: nowrap;
+    }
+    .tabla-reporte th, .tabla-reporte td {
+        padding: 9px 12px;
+        vertical-align: middle;
+    }
+    .tabla-reporte thead th {
+        background: #343a40;
+        color: white;
+        text-align: center;
+    }
+    .tabla-reporte tbody td {
+        text-align: center;
+    }
+    .tabla-reporte tbody td:first-child {
+        text-align: left;
+        font-weight: 600;
+    }
+    .tabla-reporte tfoot td {
+        background: #e9ecef;
+        font-weight: 700;
+        text-align: center;
+    }
+    .tabla-reporte tfoot td:first-child {
+        text-align: left;
+    }
+    .tabla-reporte .col-total {
+        background: #e9eff5 !important;
+        color: #263746;
+        font-weight: 700;
+    }
+    .tabla-reporte tfoot .col-total {
+        background: #d5e0eb !important;
+        color: #263746;
+        font-weight: 700;
+    }
+    .tabla-reporte tbody tr:hover td {
+        background: #f5f8fc;
+    }
+    .celda-cantidades {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+    }
+    .cantidad-movimiento {
+        font-size: 16px;
+        font-weight: 800;
+        color: #212529;
+    }
+    .cantidad-stock {
+        font-size: 11px;
+        font-weight: 400;
+        color: #858c94;
+    }
+
+    .reporte-imagen {
+        background: #ffffff;
+        padding: 25px;
+        width: max-content;
+        min-width: 0;
+    }
+    .reporte-imagen-encabezado {
+        margin-bottom: 20px;
+        color: #212529;
+    }
+    .reporte-imagen-encabezado h3 {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+    .reporte-imagen-encabezado p {
+        margin-bottom: 4px;
+        font-size: 14px;
+    }
+
+</style>
+
+<div class="container-fluid py-4">
+    <div class="mb-4">
+        <h2 class="titulo-pagina">Inventario | Reporte Diario de Entradas y Salidas</h2>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="filtros-card mb-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="filtroMovimiento" class="form-label fw-bold">Movimiento</label>
+                <select id="filtroMovimiento" class="form-select">
+                    <option value="salidas">Salidas</option>
+                    <option value="entradas">Entradas</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="filtroFecha" class="form-label fw-bold">Fecha</label>
+                <input type="date" id="filtroFecha" class="form-control" value="{{ fecha_actual }}">
+            </div>
+            <div class="col-md-3" id="contenedorDestino">
+                <label for="filtroDestino" class="form-label fw-bold">Destino</label>
+                <select id="filtroDestino" class="form-select">
+                    <option value="general">General (Todos)</option>
+                    <option value="opcion1">Ruta</option>
+                    <option value="opcion2">Mitsu</option>
+                    <option value="opcion3">Maestro</option>
+                    <option value="opcion4">Otros</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="button" class="btn btn-primary w-100" id="btnConsultar">
+                    <i class="bi bi-search me-1"></i> Consultar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLA -->
+    <div class="tabla-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="mostrarStock">
+                <label class="form-check-label fw-semibold" for="mostrarStock">
+                    Mostrar stock actual
+                </label>
+            </div>
+            <button type="button" class="btn btn-success" id="btnDescargarImagen">
+                <i class="bi bi-image me-1"></i> Descargar imagen
+            </button>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h5 class="fw-bold mb-1" id="tituloReporte">Reporte de Salidas</h5>
+                <span class="text-muted" id="subtituloReporte">Selecciona una fecha para consultar.</span>
+            </div>
+            <div id="indicadorCarga" class="d-none">
+                <span class="spinner-border spinner-border-sm text-primary"></span>
+                <span class="text-muted ms-2">Cargando...</span>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped tabla-reporte mb-0">
+                <thead>
+                    <tr id="encabezadoTabla">
+                        <th>Producto</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpoTabla">
+                    <tr>
+                        <td class="text-center text-muted">Cargando reporte...</td>
+                    </tr>
+                </tbody>
+                <tfoot id="pieTabla"></tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const filtroMovimiento = document.getElementById("filtroMovimiento");
+    const filtroFecha = document.getElementById("filtroFecha");
+    const filtroDestino = document.getElementById("filtroDestino");
+    const contenedorDestino = document.getElementById("contenedorDestino");
+    const btnConsultar = document.getElementById("btnConsultar");
+    const encabezadoTabla = document.getElementById("encabezadoTabla");
+    const cuerpoTabla = document.getElementById("cuerpoTabla");
+    const pieTabla = document.getElementById("pieTabla");
+    const tituloReporte = document.getElementById("tituloReporte");
+    const subtituloReporte = document.getElementById("subtituloReporte");
+    const indicadorCarga = document.getElementById("indicadorCarga");
+    const mostrarStock = document.getElementById("mostrarStock");
+
+    const urlDatos = "{% url 'reporte_diario_pt_datos' %}";
+    let solicitudActual = 0;
+    let datosReporteActual = null;
+    const nombresDestinos = {
+        general: "General",
+        opcion1: "Ruta",
+        opcion2: "Mitsu",
+        opcion3: "Maestro",
+        opcion4: "Otros"
+    };
+
+    function formatearCantidad(valor) {
+        const numero = Number(valor || 0);
+        return numero.toLocaleString("es-MX", {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        });
+    }
+
+    function actualizarFiltros() {
+        const esSalida = filtroMovimiento.value === "salidas";
+        contenedorDestino.classList.toggle("d-none", !esSalida);
+    }
+
+    function crearCelda(texto, etiqueta = "td", clase = "") {
+        const celda = document.createElement(etiqueta);
+        celda.textContent = texto;
+        if (clase) celda.className = clase;
+        return celda;
+    }
+
+    function mostrarError(mensaje) {
+        encabezadoTabla.replaceChildren(
+            crearCelda("Producto", "th")
+        );
+        cuerpoTabla.replaceChildren();
+        pieTabla.replaceChildren();
+
+        const fila = document.createElement("tr");
+        fila.appendChild(
+            crearCelda(mensaje, "td", "text-center text-danger")
+        );
+        cuerpoTabla.appendChild(fila);
+    }
+
+    function renderizarTabla(data) {
+        encabezadoTabla.replaceChildren();
+        cuerpoTabla.replaceChildren();
+        pieTabla.replaceChildren();
+
+        encabezadoTabla.appendChild(crearCelda("Producto", "th"));
+
+        data.presentaciones.forEach(presentacion => {
+            encabezadoTabla.appendChild(crearCelda(presentacion, "th"));
+        });
+
+        encabezadoTabla.appendChild(
+            crearCelda("Total", "th", "col-total")
+        );
+
+        if (data.productos.length === 0) {
+            const fila = document.createElement("tr");
+            const celda = crearCelda(
+                "No se encontraron movimientos para la fecha seleccionada.",
+                "td",
+                "text-center text-muted py-4"
+            );
+            celda.colSpan = data.presentaciones.length + 2;
+            fila.appendChild(celda);
+            cuerpoTabla.appendChild(fila);
+            return;
+        }
+
+        data.productos.forEach(producto => {
+            const fila = document.createElement("tr");
+
+            fila.appendChild(crearCelda(producto.producto));
+
+            producto.cantidades.forEach((cantidad, indice) => {
+                const celda = document.createElement("td");
+
+                // Si la variación no existe, dejar la celda vacía.
+                if (!producto.variaciones_existentes[indice]) {
+                    fila.appendChild(celda);
+                    return;
+                }
+
+                const contenedor = document.createElement("div");
+                contenedor.className = "celda-cantidades";
+
+                const cantidadPrincipal = document.createElement("span");
+                cantidadPrincipal.className = "cantidad-movimiento";
+                cantidadPrincipal.textContent = Number(cantidad) === 0
+                    ? "-"
+                    : formatearCantidad(cantidad);
+
+                contenedor.appendChild(cantidadPrincipal);
+
+                if (mostrarStock.checked) {
+                    const cantidadStock = document.createElement("span");
+                    cantidadStock.className = "cantidad-stock";
+                    cantidadStock.textContent = "/ " + formatearCantidad(producto.stocks[indice]);
+                    contenedor.appendChild(cantidadStock);
+                }
+
+                celda.appendChild(contenedor);
+                fila.appendChild(celda);
+            });
+
+            fila.appendChild(
+                crearCelda(formatearCantidad(producto.total), "td", "col-total")
+            );
+
+            cuerpoTabla.appendChild(fila);
+        });
+
+        const filaTotales = document.createElement("tr");
+        filaTotales.appendChild(crearCelda("TOTAL GENERAL", "td"));
+
+        data.totales_presentaciones.forEach(total => {
+            filaTotales.appendChild(
+                crearCelda(formatearCantidad(total), "td")
+            );
+        });
+
+        filaTotales.appendChild(
+            crearCelda(formatearCantidad(data.total_general), "td", "col-total")
+        );
+
+        pieTabla.appendChild(filaTotales);
+    }
+
+    
+    async function descargarImagenReporte() {
+        const btnDescargar = document.getElementById("btnDescargarImagen");
+
+        if (!datosReporteActual || !datosReporteActual.productos.length) {
+            alert("No hay datos para descargar.");
+            return;
+        }
+
+        if (btnConsultar.disabled) {
+            alert("Espera a que termine de cargar el reporte.");
+            return;
+        }
+
+        btnDescargar.disabled = true;
+        const textoOriginal = btnDescargar.innerHTML;
+        btnDescargar.innerHTML = "Generando imagen...";
+
+        let contenedor = null;
+
+        try {
+            if (typeof html2canvas === "undefined") {
+                throw new Error("No se pudo cargar html2canvas.");
+            }
+
+            const ahora = new Date();
+            const fechaCaptura = ahora.toLocaleString("es-MX", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: false
+            });
+
+            const movimiento = datosReporteActual.movimiento;
+            const destino = datosReporteActual.destino;
+            const fechaReporte = datosReporteActual.fecha.split("-").reverse().join("/");
+
+            const tablaOriginal = document.querySelector(".tabla-reporte");
+            const tablaClonada = tablaOriginal.cloneNode(true);
+
+            contenedor = document.createElement("div");
+            contenedor.className = "reporte-imagen";
+            contenedor.style.position = "fixed";
+            contenedor.style.left = "-100000px";
+            contenedor.style.top = "0";
+            contenedor.style.zIndex = "-1";
+
+            const encabezado = document.createElement("div");
+            encabezado.className = "reporte-imagen-encabezado";
+
+            const titulo = document.createElement("h3");
+            titulo.textContent = "Reporte Diario de Producto Terminado";
+            encabezado.appendChild(titulo);
+
+            const tipo = document.createElement("p");
+            tipo.textContent = "Movimiento: " + (
+                movimiento === "entradas" ? "Entradas" : "Salidas"
+            );
+            encabezado.appendChild(tipo);
+
+            if (movimiento === "salidas") {
+                const destinoTexto = document.createElement("p");
+                destinoTexto.textContent = "Destino: " + nombresDestinos[destino];
+                encabezado.appendChild(destinoTexto);
+            }
+
+            const fecha = document.createElement("p");
+            fecha.textContent = "Fecha del reporte: " + fechaReporte;
+            encabezado.appendChild(fecha);
+
+            const captura = document.createElement("p");
+            captura.textContent = "Fecha y hora de captura: " + fechaCaptura;
+            encabezado.appendChild(captura);
+
+            if (mostrarStock.checked) {
+                const leyenda = document.createElement("p");
+                leyenda.textContent = "Cantidad del movimiento / Stock actual";
+                leyenda.style.color = "#6c757d";
+                leyenda.style.fontSize = "12px";
+                encabezado.appendChild(leyenda);
+            }
+
+            contenedor.appendChild(encabezado);
+            contenedor.appendChild(tablaClonada);
+            document.body.appendChild(contenedor);
+
+            const canvas = await html2canvas(contenedor, {
+                backgroundColor: "#ffffff",
+                scale: 2,
+                useCORS: true,
+                scrollX: 0,
+                scrollY: 0,
+                windowWidth: Math.max(
+                    document.documentElement.clientWidth,
+                    contenedor.scrollWidth
+                )
+            });
+
+            const fechaArchivo = ahora.getFullYear() + "-" +
+                String(ahora.getMonth() + 1).padStart(2, "0") + "-" +
+                String(ahora.getDate()).padStart(2, "0") + "_" +
+                String(ahora.getHours()).padStart(2, "0") + "-" +
+                String(ahora.getMinutes()).padStart(2, "0");
+
+            const nombreArchivo = [
+                "Reporte",
+                movimiento === "entradas" ? "Entradas" : "Salidas",
+                movimiento === "salidas" ? destino : "General",
+                datosReporteActual.fecha,
+                fechaArchivo
+            ].join("_") + ".png";
+
+            const enlace = document.createElement("a");
+            enlace.download = nombreArchivo;
+            enlace.href = canvas.toDataURL("image/png");
+            enlace.click();
+
+        } catch (error) {
+            console.error("Error al generar imagen:", error);
+            alert("No se pudo generar la imagen del reporte.");
+        } finally {
+            if (contenedor) contenedor.remove();
+            btnDescargar.disabled = false;
+            btnDescargar.innerHTML = textoOriginal;
+        }
+    }
+
+
+    async function cargarReporte() {
+        if (!filtroFecha.value) {
+            mostrarError("Selecciona una fecha válida.");
+            return;
+        }
+
+        const numeroSolicitud = ++solicitudActual;
+        const movimiento = filtroMovimiento.value;
+        const destino = filtroDestino.value;
+        const fecha = filtroFecha.value;
+
+        const parametros = new URLSearchParams({
+            fecha: fecha,
+            movimiento: movimiento,
+            destino: destino
+        });
+
+        indicadorCarga.classList.remove("d-none");
+        btnConsultar.disabled = true;
+
+        try {
+            const respuesta = await fetch(`${urlDatos}?${parametros.toString()}`);
+
+            if (!respuesta.ok) {
+                throw new Error("No se pudo consultar el reporte.");
+            }
+
+            const data = await respuesta.json();
+
+            if (numeroSolicitud !== solicitudActual) return;
+
+            tituloReporte.textContent = movimiento === "entradas"
+                ? "Reporte de Entradas"
+                : "Reporte de Salidas";
+
+            const fechaFormateada = fecha.split("-").reverse().join("/");
+
+            subtituloReporte.textContent = movimiento === "entradas"
+                ? `Fecha: ${fechaFormateada} | Entradas generales`
+                : `Fecha: ${fechaFormateada} | Destino: ${nombresDestinos[destino]}`;
+
+            datosReporteActual = data;
+            renderizarTabla(data);
+
+        } catch (error) {
+            if (numeroSolicitud !== solicitudActual) return;
+            mostrarError(error.message);
+        } finally {
+            if (numeroSolicitud === solicitudActual) {
+                indicadorCarga.classList.add("d-none");
+                btnConsultar.disabled = false;
+            }
+        }
+    }
+
+    filtroMovimiento.addEventListener("change", function () {
+        actualizarFiltros();
+        cargarReporte();
+    });
+
+    mostrarStock.addEventListener("change", function () {
+        if (datosReporteActual) {
+            renderizarTabla(datosReporteActual);
+        }
+    });
+
+    filtroDestino.addEventListener("change", cargarReporte);
+    filtroFecha.addEventListener("change", cargarReporte);
+    btnConsultar.addEventListener("click", cargarReporte);
+
+    document.getElementById("btnDescargarImagen")
+        .addEventListener("click", descargarImagenReporte);
+
+    actualizarFiltros();
+    cargarReporte();
+});
+</script>
+{% endblock %}
