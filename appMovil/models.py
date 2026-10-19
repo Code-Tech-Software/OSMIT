@@ -343,6 +343,9 @@ class Rotacion(models.Model):
     mini_bodega = models.ForeignKey('appMovil.MiniBodega', on_delete=models.PROTECT)
     fecha = models.DateTimeField()
     descripcion = models.TextField(blank=True, default='')
+    diferencia_dinero = models.DecimalField(max_digits=12,decimal_places=2,default=0)
+    tipo_diferencia = models.CharField(max_length=30,default='SIN_DIFERENCIA')
+    forma_liquidacion = models.CharField(max_length=30,default='EFECTIVO')
     created_at = models.DateTimeField()
 
     def __str__(self):

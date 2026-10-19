@@ -3889,57 +3889,119 @@ ORDEN_PRODUCTOS_REPORTE_DIARIO_PT = [
     "PLATANO", "TOSTADA", "MIEL", "TIRA DE CC MINI", "TIRA DE DULCE",
     "MIX VERDE", "MIX ROJO"
 ]
+ESPECIALES_REPORTE_DIARIO_PT = {
+    "ML": {
+        "nombre": "Mega Lupita",
+        "presentaciones": ["250g", "230g", "60g", "50g", "150g", "40g"]
+    },
+    "Y": {
+        "nombre": "Yeos",
+        "presentaciones": ["200g", "180g", "150g", "120g", "60g", "220g", "250g", "100g", "700g", "650g"]
+    },
+    "YML": {
+        "nombre": "Super la merced",
+        "presentaciones": ["20g", "70g", "80g", "60g", "65g", "100g", "50g", "45g", "40g", "200g", "150g", "180g", "220g", "500g"]
+    },
+    "YV": {
+        "nombre": "Yeos Victoria",
+        "presentaciones": ["200g", "180g", "150g", "220g", "60g", "100g", "250g", "700g", "650g"]
+    },
+    "JP": {
+        "nombre": "Juaquin Perez",
+        "presentaciones": ["750g", "250g", "150g"]
+    },
+    "N": {
+        "nombre": "Norma",
+        "presentaciones": ["620g", "600g"]
+    }
+}
+
 
 
 @login_required
-@requiere_roles("Producto Terminado","Recursos Humanos")
+@requiere_roles("Producto Terminado", "Recursos Humanos")
 def reporte_diario_pt_datos(request):
-    fecha_texto=request.GET.get('fecha', timezone.localdate().isoformat())
-    movimiento=request.GET.get('movimiento', 'salidas')
-    destino=request.GET.get('destino', 'general')
+    fecha_texto = request.GET.get("fecha", timezone.localdate().isoformat())
+    movimiento = request.GET.get("movimiento", "salidas")
+    destino = request.GET.get("destino", "general")
+    tipo_producto = request.GET.get("tipo_producto", "normal")
+    especial_codigo = request.GET.get("especial", "ML")
 
     try:
-        fecha=datetime.strptime(fecha_texto, '%Y-%m-%d').date()
+        fecha = datetime.strptime(fecha_texto, "%Y-%m-%d").date()
     except ValueError:
-        return JsonResponse({'error': 'Formato de fecha inválido.'}, status=400)
-    if movimiento not in ('salidas', 'entradas'):
-        return JsonResponse({'error': 'Movimiento inválido.'}, status=400)
-    destinos_validos = {'general', 'opcion1', 'opcion2', 'opcion3', 'opcion4'}
-    if movimiento == 'salidas' and destino not in destinos_validos:
-        return JsonResponse({'error': 'Destino inválido.'}, status=400)
+        return JsonResponse({"error": "Formato de fecha inválido."}, status=400)
 
-    if movimiento == 'entradas':
-        detalles=DetalleEntradaPTerminado.objects.filter(
-            entrada_p_terminado__fecha_entrada__date=fecha,
+    if movimiento not in ("salidas", "entradas"):
+        return JsonResponse({"error": "Movimiento inválido."}, status=400)
+
+    destinos_validos = {"general", "opcion1", "opcion2", "opcion3", "opcion4"}
+    if movimiento == "salidas" and destino not in destinos_validos:
+        return JsonResponse({"error": "Destino inválido."}, status=400)
+
+    if tipo_producto not in ("normal", "especial"):
+        return JsonResponse({"error": "Tipo de producto inválido."}, status=400)
+
+    if tipo_producto == "especial":
+        if especial_codigo not in ESPECIALES_REPORTE_DIARIO_PT:
+            return JsonResponse({"error": "Tienda especial inválida."}, status=400)
+
+        especial = ESPECIALES_REPORTE_DIARIO_PT[especial_codigo]
+        presentaciones = especial["presentaciones"]
+        nombre_especial = especial["nombre"]
+    else:
+        especial_codigo = None
+        nombre_especial = None
+        presentaciones = ORDEN_PRESENTACIONES_REPORTE_DIARIO_PT
+
+    if movimiento == "entradas":
+        detalles = DetalleEntradaPTerminado.objects.filter(
+            entrada_p_terminado__fecha_entrada__date=fecha
         )
     else:
-        detalles=DetalleSalidaPTerminado.objects.filter(
-            salida_p_terminado__fecha_salida__date=fecha,
+        detalles = DetalleSalidaPTerminado.objects.filter(
+            salida_p_terminado__fecha_salida__date=fecha
         )
-        if destino != 'general':
-            detalles=detalles.filter(
+
+        if destino != "general":
+            detalles = detalles.filter(
                 salida_p_terminado__destino=destino
             )
-    movimientos=(
+
+    # Separación entre productos normales y especiales.
+    if tipo_producto == "especial":
+        detalles = detalles.filter(
+            producto_variacion__producto__nombre__startswith=f"{especial_codigo} "
+        )
+    else:
+        filtro_especiales = Q()
+
+        for codigo in ESPECIALES_REPORTE_DIARIO_PT:
+            filtro_especiales |= Q(
+                producto_variacion__producto__nombre__startswith=f"{codigo} "
+            )
+
+        detalles = detalles.exclude(filtro_especiales)
+
+    movimientos = (
         detalles.values(
             "producto_variacion__producto_id",
             "producto_variacion__producto__nombre",
             "producto_variacion__presentacion__nombre"
         )
-        .annotate(total=Sum('cantidad'))
+        .annotate(total=Sum("cantidad"))
         .order_by()
     )
-    presentaciones=ORDEN_PRESENTACIONES_REPORTE_DIARIO_PT
-    orden_productos=ORDEN_PRODUCTOS_REPORTE_DIARIO_PT
-    mapa_productos={}
-    cero=Decimal('0.00')
+
+    mapa_productos = {}
+    cero = Decimal("0.00")
+
     for movimiento_item in movimientos:
         producto_id = movimiento_item["producto_variacion__producto_id"]
         nombre_producto = movimiento_item["producto_variacion__producto__nombre"]
         nombre_presentacion = movimiento_item["producto_variacion__presentacion__nombre"]
         cantidad = movimiento_item["total"] or cero
 
-        # El reporte utiliza las presentaciones definidas.
         if nombre_presentacion not in presentaciones:
             continue
 
@@ -3955,24 +4017,27 @@ def reporte_diario_pt_datos(request):
         mapa_productos[producto_id]["total"] += cantidad
 
     indice_productos = {
-        nombre.upper(): indice
-        for indice, nombre in enumerate(orden_productos)
+        nombre.strip().upper(): indice
+        for indice, nombre in enumerate(ORDEN_PRODUCTOS_REPORTE_DIARIO_PT)
     }
+
+    def clave_orden_producto(item):
+        nombre = item["producto"].strip().upper()
+
+        if tipo_producto == "especial":
+            prefijo = f"{especial_codigo} "
+            if nombre.startswith(prefijo):
+                nombre = nombre[len(prefijo):].strip()
+
+        return (
+            indice_productos.get(nombre, len(indice_productos)),
+            nombre
+        )
 
     productos_ordenados = sorted(
         mapa_productos.values(),
-        key=lambda item: (
-            indice_productos.get(
-                item["producto"].strip().upper(),
-                len(orden_productos)
-            ),
-            item["producto"].upper()
-        )
+        key=clave_orden_producto
     )
-
-    totales_presentaciones = {p: cero for p in presentaciones}
-    total_general = cero
-    filas = []
 
     stocks = {
         (variacion.producto_id, variacion.presentacion.nombre): variacion.stock
@@ -3982,6 +4047,10 @@ def reporte_diario_pt_datos(request):
             producto_id__in=mapa_productos.keys()
         )
     }
+
+    totales_presentaciones = {p: cero for p in presentaciones}
+    total_general = cero
+    filas = []
 
     for producto in productos_ordenados:
         cantidades = [
@@ -4013,6 +4082,9 @@ def reporte_diario_pt_datos(request):
         "fecha": fecha.isoformat(),
         "movimiento": movimiento,
         "destino": destino if movimiento == "salidas" else None,
+        "tipo_producto": tipo_producto,
+        "especial": especial_codigo,
+        "nombre_especial": nombre_especial,
         "presentaciones": presentaciones,
         "productos": filas,
         "totales_presentaciones": [

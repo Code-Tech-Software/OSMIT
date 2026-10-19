@@ -71,7 +71,6 @@
         font-weight: 400;
         color: #858c94;
     }
-
     .reporte-imagen {
         background: #ffffff;
         padding: 25px;
@@ -91,7 +90,6 @@
         margin-bottom: 4px;
         font-size: 14px;
     }
-
 </style>
 
 <div class="container-fluid py-4">
@@ -102,6 +100,24 @@
     <!-- FILTROS -->
     <div class="filtros-card mb-4">
         <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="filtroTipoProducto" class="form-label fw-bold">Tipo de producto</label>
+                <select id="filtroTipoProducto" class="form-select">
+                    <option value="normal">Normal</option>
+                    <option value="especial">Especial</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-none" id="contenedorEspecial">
+                <label for="filtroEspecial" class="form-label fw-bold">Tienda especial</label>
+                <select id="filtroEspecial" class="form-select">
+                    <option value="ML">Mega Lupita</option>
+                    <option value="Y">Yeos</option>
+                    <option value="YML">Super la merced</option>
+                    <option value="YV">Yeos Victoria</option>
+                    <option value="JP">Juaquin Perez</option>
+                    <option value="N">Norma</option>
+                </select>
+            </div>
             <div class="col-md-3">
                 <label for="filtroMovimiento" class="form-label fw-bold">Movimiento</label>
                 <select id="filtroMovimiento" class="form-select">
@@ -180,8 +196,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const filtroMovimiento = document.getElementById("filtroMovimiento");
     const filtroFecha = document.getElementById("filtroFecha");
     const filtroDestino = document.getElementById("filtroDestino");
+    const filtroTipoProducto = document.getElementById("filtroTipoProducto");
+    const filtroEspecial = document.getElementById("filtroEspecial");
     const contenedorDestino = document.getElementById("contenedorDestino");
+    const contenedorEspecial = document.getElementById("contenedorEspecial");
     const btnConsultar = document.getElementById("btnConsultar");
+    const btnDescargarImagen = document.getElementById("btnDescargarImagen");
     const encabezadoTabla = document.getElementById("encabezadoTabla");
     const cuerpoTabla = document.getElementById("cuerpoTabla");
     const pieTabla = document.getElementById("pieTabla");
@@ -193,6 +213,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const urlDatos = "{% url 'reporte_diario_pt_datos' %}";
     let solicitudActual = 0;
     let datosReporteActual = null;
+    let generandoImagen = false;
+
     const nombresDestinos = {
         general: "General",
         opcion1: "Ruta",
@@ -211,7 +233,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function actualizarFiltros() {
         const esSalida = filtroMovimiento.value === "salidas";
+        const esEspecial = filtroTipoProducto.value === "especial";
         contenedorDestino.classList.toggle("d-none", !esSalida);
+        contenedorEspecial.classList.toggle("d-none", !esEspecial);
     }
 
     function crearCelda(texto, etiqueta = "td", clase = "") {
@@ -222,16 +246,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function mostrarError(mensaje) {
-        encabezadoTabla.replaceChildren(
-            crearCelda("Producto", "th")
-        );
+        datosReporteActual = null;
+        encabezadoTabla.replaceChildren(crearCelda("Producto", "th"));
         cuerpoTabla.replaceChildren();
         pieTabla.replaceChildren();
 
         const fila = document.createElement("tr");
-        fila.appendChild(
-            crearCelda(mensaje, "td", "text-center text-danger")
-        );
+        fila.appendChild(crearCelda(mensaje, "td", "text-center text-danger"));
         cuerpoTabla.appendChild(fila);
     }
 
@@ -246,9 +267,7 @@ document.addEventListener("DOMContentLoaded", function () {
             encabezadoTabla.appendChild(crearCelda(presentacion, "th"));
         });
 
-        encabezadoTabla.appendChild(
-            crearCelda("Total", "th", "col-total")
-        );
+        encabezadoTabla.appendChild(crearCelda("Total", "th", "col-total"));
 
         if (data.productos.length === 0) {
             const fila = document.createElement("tr");
@@ -265,13 +284,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         data.productos.forEach(producto => {
             const fila = document.createElement("tr");
-
             fila.appendChild(crearCelda(producto.producto));
 
             producto.cantidades.forEach((cantidad, indice) => {
                 const celda = document.createElement("td");
 
-                // Si la variación no existe, dejar la celda vacía.
+                // Variación inexistente: celda completamente vacía.
                 if (!producto.variaciones_existentes[indice]) {
                     fila.appendChild(celda);
                     return;
@@ -310,9 +328,7 @@ document.addEventListener("DOMContentLoaded", function () {
         filaTotales.appendChild(crearCelda("TOTAL GENERAL", "td"));
 
         data.totales_presentaciones.forEach(total => {
-            filaTotales.appendChild(
-                crearCelda(formatearCantidad(total), "td")
-            );
+            filaTotales.appendChild(crearCelda(formatearCantidad(total), "td"));
         });
 
         filaTotales.appendChild(
@@ -322,10 +338,7 @@ document.addEventListener("DOMContentLoaded", function () {
         pieTabla.appendChild(filaTotales);
     }
 
-    
     async function descargarImagenReporte() {
-        const btnDescargar = document.getElementById("btnDescargarImagen");
-
         if (!datosReporteActual || !datosReporteActual.productos.length) {
             alert("No hay datos para descargar.");
             return;
@@ -336,9 +349,13 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        btnDescargar.disabled = true;
-        const textoOriginal = btnDescargar.innerHTML;
-        btnDescargar.innerHTML = "Generando imagen...";
+        if (generandoImagen) return;
+
+        generandoImagen = true;
+        btnDescargarImagen.disabled = true;
+
+        const textoOriginal = btnDescargarImagen.innerHTML;
+        btnDescargarImagen.innerHTML = "Generando imagen...";
 
         let contenedor = null;
 
@@ -358,9 +375,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 hour12: false
             });
 
-            const movimiento = datosReporteActual.movimiento;
-            const destino = datosReporteActual.destino;
-            const fechaReporte = datosReporteActual.fecha.split("-").reverse().join("/");
+            const data = datosReporteActual;
+            const movimiento = data.movimiento;
+            const destino = data.destino;
+            const fechaReporte = data.fecha.split("-").reverse().join("/");
 
             const tablaOriginal = document.querySelector(".tabla-reporte");
             const tablaClonada = tablaOriginal.cloneNode(true);
@@ -384,6 +402,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 movimiento === "entradas" ? "Entradas" : "Salidas"
             );
             encabezado.appendChild(tipo);
+
+            const tipoProductoTexto = document.createElement("p");
+            tipoProductoTexto.textContent = data.tipo_producto === "especial"
+                ? "Tienda especial: " + data.nombre_especial
+                : "Tipo de producto: Normal";
+            encabezado.appendChild(tipoProductoTexto);
 
             if (movimiento === "salidas") {
                 const destinoTexto = document.createElement("p");
@@ -432,8 +456,9 @@ document.addEventListener("DOMContentLoaded", function () {
             const nombreArchivo = [
                 "Reporte",
                 movimiento === "entradas" ? "Entradas" : "Salidas",
+                data.tipo_producto === "especial" ? data.especial : "Normal",
                 movimiento === "salidas" ? destino : "General",
-                datosReporteActual.fecha,
+                data.fecha,
                 fechaArchivo
             ].join("_") + ".png";
 
@@ -447,11 +472,11 @@ document.addEventListener("DOMContentLoaded", function () {
             alert("No se pudo generar la imagen del reporte.");
         } finally {
             if (contenedor) contenedor.remove();
-            btnDescargar.disabled = false;
-            btnDescargar.innerHTML = textoOriginal;
+            btnDescargarImagen.disabled = false;
+            btnDescargarImagen.innerHTML = textoOriginal;
+            generandoImagen = false;
         }
     }
-
 
     async function cargarReporte() {
         if (!filtroFecha.value) {
@@ -463,15 +488,21 @@ document.addEventListener("DOMContentLoaded", function () {
         const movimiento = filtroMovimiento.value;
         const destino = filtroDestino.value;
         const fecha = filtroFecha.value;
+        const tipoProducto = filtroTipoProducto.value;
+        const especial = filtroEspecial.value;
 
         const parametros = new URLSearchParams({
             fecha: fecha,
             movimiento: movimiento,
-            destino: destino
+            destino: destino,
+            tipo_producto: tipoProducto,
+            especial: especial
         });
 
         indicadorCarga.classList.remove("d-none");
         btnConsultar.disabled = true;
+        btnDescargarImagen.disabled = true;
+        datosReporteActual = null;
 
         try {
             const respuesta = await fetch(`${urlDatos}?${parametros.toString()}`);
@@ -490,9 +521,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const fechaFormateada = fecha.split("-").reverse().join("/");
 
+            const nombreTipo = data.tipo_producto === "especial"
+                ? `Especial: ${data.nombre_especial}`
+                : "Productos normales";
+
             subtituloReporte.textContent = movimiento === "entradas"
-                ? `Fecha: ${fechaFormateada} | Entradas generales`
-                : `Fecha: ${fechaFormateada} | Destino: ${nombresDestinos[destino]}`;
+                ? `Fecha: ${fechaFormateada} | ${nombreTipo}`
+                : `Fecha: ${fechaFormateada} | ${nombreTipo} | Destino: ${nombresDestinos[destino]}`;
 
             datosReporteActual = data;
             renderizarTabla(data);
@@ -504,6 +539,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (numeroSolicitud === solicitudActual) {
                 indicadorCarga.classList.add("d-none");
                 btnConsultar.disabled = false;
+                btnDescargarImagen.disabled = generandoImagen;
             }
         }
     }
@@ -513,18 +549,22 @@ document.addEventListener("DOMContentLoaded", function () {
         cargarReporte();
     });
 
+    filtroTipoProducto.addEventListener("change", function () {
+        actualizarFiltros();
+        cargarReporte();
+    });
+
+    filtroEspecial.addEventListener("change", cargarReporte);
+    filtroDestino.addEventListener("change", cargarReporte);
+    filtroFecha.addEventListener("change", cargarReporte);
+    btnConsultar.addEventListener("click", cargarReporte);
+
     mostrarStock.addEventListener("change", function () {
         if (datosReporteActual) {
             renderizarTabla(datosReporteActual);
         }
     });
-
-    filtroDestino.addEventListener("change", cargarReporte);
-    filtroFecha.addEventListener("change", cargarReporte);
-    btnConsultar.addEventListener("click", cargarReporte);
-
-    document.getElementById("btnDescargarImagen")
-        .addEventListener("click", descargarImagenReporte);
+    btnDescargarImagen.addEventListener("click", descargarImagenReporte);
 
     actualizarFiltros();
     cargarReporte();

@@ -1665,6 +1665,7 @@ def sync_cancelaciones_devoluciones(request):
 
 
 
+
 @api_view(['POST'])
 @permission_classes([DispositivoActivoPermission])
 @transaction.atomic
@@ -1679,27 +1680,35 @@ def sync_rotaciones(request):
     def convertir_fecha(valor):
         if not isinstance(valor, str):
             raise ValueError("Fecha inválida")
-
         fecha = parse_datetime(valor)
         if fecha is None:
             raise ValueError(f"Formato de fecha inválido: {valor}")
-
         if timezone.is_naive(fecha):
             fecha = timezone.make_aware(fecha)
-
         return fecha
 
     def convertir_decimal(valor):
         numero = Decimal(str(valor))
         if not numero.is_finite():
-            raise ValueError("Cantidad o precio inválido")
+            raise ValueError("Cantidad, precio o diferencia económica inválida")
         return numero
 
     try:
-        # =========================
         # ROTACIONES
-        # =========================
         for item in rotaciones_data:
+            diferencia = convertir_decimal(item.get('diferencia_dinero', 0))
+            tipo = item.get('tipo_diferencia', 'SIN_DIFERENCIA')
+            forma = item.get('forma_liquidacion', 'EFECTIVO')
+
+            if diferencia < 0:
+                raise ValueError("La diferencia económica no puede ser negativa")
+            if tipo not in ('CLIENTE_PAGO', 'REPARTIDOR_PAGO', 'SIN_DIFERENCIA'):
+                raise ValueError(f"Tipo de diferencia inválido: {tipo}")
+            if forma != 'EFECTIVO':
+                raise ValueError(f"Forma de liquidación inválida: {forma}")
+            if (tipo == 'SIN_DIFERENCIA') != (diferencia == 0):
+                raise ValueError("El tipo de diferencia no coincide con el importe")
+
             Rotacion.objects.get_or_create(
                 uuid=item['uuid'],
                 defaults={
@@ -1708,16 +1717,16 @@ def sync_rotaciones(request):
                     'mini_bodega_id': item['mini_bodega_id'],
                     'fecha': convertir_fecha(item['fecha']),
                     'descripcion': item.get('descripcion', ''),
+                    'diferencia_dinero': diferencia,
+                    'tipo_diferencia': tipo,
+                    'forma_liquidacion': forma,
                     'created_at': convertir_fecha(item['created_at'])
                 }
             )
 
-        # =========================
         # DETALLES
-        # =========================
         for item in detalles_data:
             rotacion = Rotacion.objects.get(uuid=item['rotacion_uuid'])
-
             RotacionDetalle.objects.get_or_create(
                 uuid=item['uuid'],
                 defaults={
@@ -1729,9 +1738,7 @@ def sync_rotaciones(request):
                 }
             )
 
-        # =========================
         # SUSTITUCIONES
-        # =========================
         for item in sustituciones_data:
             rotacion = Rotacion.objects.get(uuid=item['rotacion_uuid'])
             detalle = RotacionDetalle.objects.get(uuid=item['rotacion_detalle_uuid'])
@@ -1763,7 +1770,6 @@ def sync_rotaciones(request):
     except (KeyError, ValueError, TypeError, InvalidOperation, Rotacion.DoesNotExist, RotacionDetalle.DoesNotExist) as e:
         transaction.set_rollback(True)
         return Response({"error": str(e)}, status=400)
-
     except Exception as e:
         transaction.set_rollback(True)
         return Response({"error": str(e)}, status=400)
