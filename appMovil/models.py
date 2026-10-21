@@ -384,3 +384,33 @@ class RotacionSustitucion(models.Model):
 
     def __str__(self):
         return f"{self.nombre_producto} - {self.cantidad}"
+
+
+class CancelacionRotacion(models.Model):
+    uuid = models.UUIDField(unique=True)
+    rotacion_uuid = models.UUIDField(db_index=True)
+    usuario = models.ForeignKey(Usuario, on_delete=models.PROTECT)
+    mini_bodega = models.ForeignKey('MiniBodega', on_delete=models.PROTECT)
+    fecha = models.CharField(max_length=50)
+    descripcion = models.TextField(blank=True, default="")
+    diferencia_dinero = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    tipo_diferencia = models.CharField(max_length=30, default="SIN_DIFERENCIA")
+    forma_liquidacion = models.CharField(max_length=30, default="EFECTIVO")
+    motivo = models.TextField()
+    sincronizado = models.BooleanField(default=False)
+    created_at = models.CharField(max_length=50)
+
+    def __str__(self):
+        return f"Cancelación de rotación {self.rotacion_uuid}"
+
+class CancelacionRotacionDetalle(models.Model):
+    uuid = models.UUIDField(unique=True)
+    cancelacion = models.ForeignKey(CancelacionRotacion, on_delete=models.CASCADE, related_name="detalles")
+    producto_variacion = models.ForeignKey(ProductoVariacion, on_delete=models.PROTECT)
+    nombre_producto = models.CharField(max_length=255)
+    cantidad = models.FloatField()
+    precio_unitario = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    tipo_movimiento = models.CharField(max_length=20, choices=[("RECIBIDO", "Producto recibido"), ("ENTREGADO", "Producto entregado")])
+
+    def __str__(self):
+        return f"{self.nombre_producto} - {self.tipo_movimiento} - {self.cantidad}"

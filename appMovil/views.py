@@ -1808,6 +1808,94 @@ def get_ventas(request):
 
     return Response(data)
 
+
+@api_view(['POST'])
+@permission_classes([DispositivoActivoPermission])
+@transaction.atomic
+def sync_cancelaciones_rotaciones(request):
+    cancelaciones = request.data.get('cancelaciones', [])
+    detalles = request.data.get('detalles', [])
+
+    if not isinstance(cancelaciones, list) or not isinstance(detalles, list):
+        return Response({"error": "Formato de datos inválido"}, status=400)
+    try:
+        for c in cancelaciones:
+            if CancelacionRotacion.objects.filter(uuid=c['uuid']).exists():
+                continue
+
+            usuario = Usuario.objects.filter(id=c['usuario_id']).first()
+            mini_bodega = MiniBodega.objects.filter(id=c['mini_bodega_id']).first()
+            if not usuario or not mini_bodega:
+                raise ValueError("Usuario o MiniBodega no encontrados")
+
+            diferencia = Decimal(str(c.get('diferencia_dinero', 0)))
+            tipo = c.get('tipo_diferencia', 'SIN_DIFERENCIA')
+            forma = c.get('forma_liquidacion', 'EFECTIVO')
+            if not diferencia.is_finite() or diferencia < 0:
+                raise ValueError("Diferencia económica inválida")
+            if tipo not in ('CLIENTE_PAGO', 'REPARTIDOR_PAGO', 'SIN_DIFERENCIA'):
+                raise ValueError("Tipo de diferencia inválido")
+            if forma != 'EFECTIVO':
+                raise ValueError("Forma de liquidación inválida")
+            if (tipo == 'SIN_DIFERENCIA') != (diferencia == 0):
+                raise ValueError("El tipo de diferencia no coincide con el importe")
+            if not c.get('motivo', '').strip():
+                raise ValueError("El motivo de cancelación es obligatorio")
+
+            CancelacionRotacion.objects.create(
+                uuid=c['uuid'],
+                rotacion_uuid=c['rotacion_uuid'],
+                usuario=usuario,
+                mini_bodega=mini_bodega,
+                fecha=str(c['fecha']),
+                descripcion=c.get('descripcion', ''),
+                diferencia_dinero=diferencia,
+                tipo_diferencia=tipo,
+                forma_liquidacion=forma,
+                motivo=c['motivo'].strip(),
+                sincronizado=True,
+                created_at=str(c['created_at'])
+            )
+
+        for d in detalles:
+            if CancelacionRotacionDetalle.objects.filter(uuid=d['uuid']).exists():
+                continue
+
+            cancelacion = CancelacionRotacion.objects.filter(uuid=d['cancelacion_uuid']).first()
+            if not cancelacion:
+                raise ValueError("No se encontró la cancelación del detalle")
+
+            producto = ProductoVariacion.objects.filter(id=d['producto_variacion_id']).first()
+            if not producto:
+                raise ValueError("No se encontró el producto de la cancelación")
+
+            cantidad = Decimal(str(d['cantidad']))
+            precio = Decimal(str(d.get('precio_unitario', 0)))
+            if not cantidad.is_finite() or cantidad <= 0 or not precio.is_finite() or precio < 0:
+                raise ValueError("Cantidad o precio inválido")
+            if d['tipo_movimiento'] not in ('RECIBIDO', 'ENTREGADO'):
+                raise ValueError("Tipo de movimiento inválido")
+
+            CancelacionRotacionDetalle.objects.create(
+                uuid=d['uuid'],
+                cancelacion=cancelacion,
+                producto_variacion=producto,
+                nombre_producto=d['nombre_producto'],
+                cantidad=cantidad,
+                precio_unitario=precio,
+                tipo_movimiento=d['tipo_movimiento']
+            )
+
+        return Response({
+            "message": "Cancelaciones de rotaciones sincronizadas correctamente",
+            "cancelaciones": len(cancelaciones),
+            "detalles": len(detalles)
+        })
+    except (KeyError, ValueError, TypeError, InvalidOperation) as e:
+        transaction.set_rollback(True)
+        return Response({"error": str(e)}, status=400)
+    
+
 @api_view(['GET'])
 def get_abonos(request):
 
