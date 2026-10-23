@@ -40,6 +40,23 @@ from django.urls import reverse
 from Usuario.decorators import requiere_roles,solo_administrador
 from django.views.decorators.http import require_POST
 from django.db.models import Exists, OuterRef
+import io
+import re
+from collections import defaultdict
+from datetime import datetime, timedelta
+from decimal import Decimal
+from django.http import HttpResponse, HttpResponseBadRequest
+from django.shortcuts import render
+from django.utils import timezone
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, KeepTogether
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.pagesizes import A3, landscape
+from reportlab.lib.units import mm
+from xml.sax.saxutils import escape
 
 
 
@@ -3654,450 +3671,95 @@ def stock_productos(request):
     return Response(data)
 
 ##Reporte semanal
+
+@login_required
+@requiere_roles("Producto Terminado", "Recursos Humanos")
 def reporte_salidas_semanales_pt(request):
+    destino = request.GET.get('destino', 'todos')
+    destinos_validos = {'opcion1', 'opcion2', 'opcion3', 'opcion4'}
+    if destino not in destinos_validos: destino = 'todos'
 
-    destino = request.GET.get(
-        'destino',
-        'todos'
-    )
-    destinos_validos = {
-        'opcion1',
-        'opcion2',
-        'opcion3',
-        'opcion4',
-    }
-    if destino not in destinos_validos:
-        destino = 'todos'
-    semanas_param = request.GET.get(
-        'semanas',
-        ''
-    )
+    ruta_param = request.GET.get('ruta', 'todas')
+    ruta_id = int(ruta_param) if ruta_param.isdigit() and 1 <= int(ruta_param) <= 11 else None
     semanas = []
-    if semanas_param:
+    for fecha_str in request.GET.get('semanas', '').split(','):
+        try: semanas.append(datetime.strptime(fecha_str, '%Y-%m-%d').date())
+        except ValueError: continue
 
-        for fecha_str in semanas_param.split(','):
-
-            try:
-
-                fecha = datetime.strptime(
-                    fecha_str,
-                    '%Y-%m-%d'
-                ).date()
-
-                semanas.append(fecha)
-
-            except ValueError:
-                continue
-
-    # Si no se seleccionó ninguna semana,
-    # usamos la semana actual.
     if not semanas:
-
         hoy = now().date()
-        dias_desde_miercoles = (hoy.weekday() - 2) % 7
-        inicio_semana = (hoy -timedelta(days=dias_desde_miercoles))
-        semanas = [inicio_semana]
-    # Construimos todos los rangos seleccionados
+        semanas = [hoy - timedelta(days=(hoy.weekday() - 2) % 7)]
 
-    filtros_semana = []
+    filtro_semanas = Q()
+    for inicio in semanas:
+        filtro_semanas |= Q(salida_p_terminado__fecha_salida__date__range=(inicio, inicio + timedelta(days=6))) & ~Q(salida_p_terminado__fecha_salida__date=inicio + timedelta(days=4))
 
-    for inicio_semana in semanas:
-
-        fin_semana = (
-            inicio_semana +
-            timedelta(days=6)
-        )
-
-        domingo = (
-            inicio_semana +
-            timedelta(days=4)
-        )
-
-        filtros_semana.append(
-            Q(
-                salida_p_terminado__fecha_salida__date__range=(
-                    inicio_semana,
-                    fin_semana
-                )
-            )
-            &
-            ~Q(
-                salida_p_terminado__fecha_salida__date=domingo
-            )
-        )
-    # Combinar todas las semanas con OR
-
-    filtro_semanas = filtros_semana[0]
-    for filtro in filtros_semana[1:]:
-        filtro_semanas |= filtro
-
-    salidas = (
-        DetalleSalidaPTerminado.objects
-        .filter(
-            filtro_semanas,
-            cantidad__gt=0
-        )
-    )
-
-    # Filtro de destino
-
+    salidas = DetalleSalidaPTerminado.objects.filter(filtro_semanas, cantidad__gt=0)
     if destino in destinos_validos:
+        salidas = salidas.filter(salida_p_terminado__destino=destino)
+    if destino == 'opcion1' and ruta_id is not None:
+        salidas = salidas.filter(salida_p_terminado__ruta_id=ruta_id)
 
-        salidas = salidas.filter(
-            salida_p_terminado__destino=destino
-        )
-
-
-        # =========================================================
-    # ORDEN PERSONALIZADO DE PRODUCTOS Y PRESENTACIONES
-    # =========================================================
     orden_productos = [
-                "PISTACHE", "ENCHILADO", "JAPONES", "JAPONES FUEGO", "MACHO",
-                "HORNEADO", "CASCARITA", "SURTIDO", "HABA PELADA", "HABA CON CASCARA",
-                "GARBANZA", "GARAPIÑADO", "GOMITA", "LUNETA", "HUEVITO CHOCOLATE",
-                "GALLETA MARINA", "CIRUELA", "PASAS", "SEMILLA DE CALABAZA",
-                "SEMILLA DE GIRASOL", "NUEZ", "ALMENDRA", "GRANOLA", "CHILE DE ARBOL",
-                "CHILE PULLA", "CHILE CASCABEL", "CAMARON", "CAMARON MOLIDO",
-                "CHARAL NATURAL", "CHARAL ADOBADO", "CECINA NATURAL", "CECINA ADOBADA",
-                "CECINA DE LIMON", "CECINA CHILTEPIN", "CECINA CHIPOTLE",
-                "CECINA HABANERO", "CECINA ARTESANAL", "PAPA FRITA",
-                "CHURRO DE MASA", "CHURRO DELGADO", "CHICHARRON", "CHICHARRON CRAC",
-                "PLATANO", "TOSTADA", "MIEL", "TIRA DE CC MINI", "TIRA DE DULCE",
-                "MIX VERDE", "MIX ROJO"
-            ]
-
+        "PISTACHE", "ENCHILADO", "JAPONES", "JAPONES FUEGO", "MACHO",
+        "HORNEADO", "CASCARITA", "SURTIDO", "HABA PELADA", "HABA CON CASCARA",
+        "GARBANZA", "GARAPIÑADO", "GOMITA", "LUNETA", "HUEVITO CHOCOLATE",
+        "GALLETA MARINA", "CIRUELA", "PASAS", "SEMILLA DE CALABAZA",
+        "SEMILLA DE GIRASOL", "NUEZ", "ALMENDRA", "GRANOLA", "CHILE DE ARBOL",
+        "CHILE PULLA", "CHILE CASCABEL", "CAMARON", "CAMARON MOLIDO",
+        "CHARAL NATURAL", "CHARAL ADOBADO", "CECINA NATURAL", "CECINA ADOBADA",
+        "CECINA DE LIMON", "CECINA CHILTEPIN", "CECINA CHIPOTLE",
+        "CECINA HABANERO", "CECINA ARTESANAL", "PAPA FRITA",
+        "CHURRO DE MASA", "CHURRO DELGADO", "CHICHARRON", "CHICHARRON CRAC",
+        "PLATANO", "TOSTADA", "MIEL", "TIRA DE CC MINI", "TIRA DE DULCE",
+        "MIX VERDE", "MIX ROJO"
+    ]
     orden_presentaciones = [
         "Minis", "Chico", "Mediano", "Grande", "250g", "500g",
         "1kg", "Kiosko", "Grande 150g", "Grande 140g", "Pieza"
     ]
+    prefijos_especiales = ["ML ", "Y ", "YML ", "YV ", "JP ", "N "]
+    mapa_productos = {nombre.upper(): i for i, nombre in enumerate(orden_productos)}
+    mapa_presentaciones = {nombre.upper(): i for i, nombre in enumerate(orden_presentaciones)}
 
-    # =========================================================
-    # CONSULTAR PRODUCTOS
-    # =========================================================
-    productos = (
-        salidas
-        .values(
-            'producto_variacion_id',
-            'producto_variacion__producto__nombre',
-            'producto_variacion__presentacion__nombre'
-        )
-        .annotate(total_salidas=Sum('cantidad'))
-    )
-
-    # =========================================================
-    # CREAR ÍNDICES DE ORDEN
-    # =========================================================
-    mapa_productos = {
-        nombre.upper(): indice
-        for indice, nombre in enumerate(orden_productos)
-    }
-
-    mapa_presentaciones = {
-        nombre.upper(): indice
-        for indice, nombre in enumerate(orden_presentaciones)
-    }
-
-    # =========================================================
-    # ORDENAR RESULTADOS
-    # =========================================================
-    productos = sorted(
-        productos,
-        key=lambda item: (
-            mapa_productos.get(
-                (item['producto_variacion__producto__nombre'] or '').strip().upper(),
-                len(orden_productos)
-            ),
-            (item['producto_variacion__producto__nombre'] or '').strip().upper()
-            if (item['producto_variacion__producto__nombre'] or '').strip().upper() not in mapa_productos
-            else '',
-            mapa_presentaciones.get(
-                (item['producto_variacion__presentacion__nombre'] or '').strip().upper(),
-                len(orden_presentaciones)
-            ),
-            (item['producto_variacion__presentacion__nombre'] or '').strip().upper()
-        )
-    )
-
+    productos = salidas.values(
+        'producto_variacion_id',
+        'producto_variacion__producto__nombre',
+        'producto_variacion__presentacion__nombre'
+    ).annotate(total_salidas=Sum('cantidad'))
 
     datos = []
-
     for item in productos:
-
+        nombre = (item['producto_variacion__producto__nombre'] or '').strip()
+        presentacion = (item['producto_variacion__presentacion__nombre'] or '').strip()
+        nombre_mayus = nombre.upper()
+        grupo = next((prefijo.strip() for prefijo in prefijos_especiales if nombre_mayus.startswith(prefijo)), 'NORMALES')
         datos.append({
-            'producto_variacion_id':
-                item['producto_variacion_id'],
-
-            'producto':
-                item[
-                    'producto_variacion__producto__nombre'
-                ],
-
-            'presentacion':
-                item[
-                    'producto_variacion__presentacion__nombre'
-                ],
-
-            'total_salido':
-                float(item['total_salidas']),
+            'producto_variacion_id': item['producto_variacion_id'],
+            'producto': nombre,
+            'presentacion': presentacion,
+            'total_salido': float(item['total_salidas']),
+            'grupo': grupo
         })
 
+    datos.sort(key=lambda item: (
+        mapa_productos.get(item['producto'].upper(), len(orden_productos)),
+        item['producto'].upper() if item['producto'].upper() not in mapa_productos else '',
+        mapa_presentaciones.get(item['presentacion'].upper(), len(orden_presentaciones)),
+        item['presentacion'].upper()
+    ))
 
     return JsonResponse({
-
-        'semanas': [
-            {
-                'inicio': str(fecha),
-                'fin': str(
-                    fecha + timedelta(days=6)
-                )
-            }
-            for fecha in semanas
-        ],
-
+        'semanas': [{'inicio': str(fecha), 'fin': str(fecha + timedelta(days=6))} for fecha in semanas],
         'destino': destino,
-
+        'ruta': ruta_param if destino == 'opcion1' else 'todas',
         'productos': datos,
+        'orden_presentaciones': orden_presentaciones
     })
 
 
-
-#Reporte diario
-
 @login_required
-@requiere_roles("Administrador", "Producto Terminado", "Recursos Humanos")
-def reporte_diario_pt_html(request):
-    return render(request, "ProductoTerminado/reportes/reporte_diario_pt.html", {
-        "fecha_actual": timezone.localdate().isoformat()
-    })
-
-ORDEN_PRESENTACIONES_REPORTE_DIARIO_PT = [
-    "Minis", "Chico", "Mediano", "Grande", "250g", "500g",
-    "1kg", "Kiosko", "Grande 150g", "Grande 140g", "Pieza"
-]
-
-ORDEN_PRODUCTOS_REPORTE_DIARIO_PT = [
-    "PISTACHE", "ENCHILADO", "JAPONES", "JAPONES FUEGO", "MACHO",
-    "HORNEADO", "CASCARITA", "SURTIDO", "HABA PELADA", "HABA CON CASCARA",
-    "GARBANZA", "GARAPIÑADO", "GOMITA", "LUNETA", "HUEVITO CHOCOLATE",
-    "GALLETA MARINA", "CIRUELA", "PASAS", "SEMILLA DE CALABAZA",
-    "SEMILLA DE GIRASOL", "NUEZ", "ALMENDRA", "GRANOLA", "CHILE DE ARBOL",
-    "CHILE PULLA", "CHILE CASCABEL", "CAMARON", "CAMARON MOLIDO",
-    "CHARAL NATURAL", "CHARAL ADOBADO", "CECINA NATURAL", "CECINA ADOBADA",
-    "CECINA DE LIMON", "CECINA CHILTEPIN", "CECINA CHIPOTLE",
-    "CECINA HABANERO", "CECINA ARTESANAL", "PAPA FRITA",
-    "CHURRO DE MASA", "CHURRO DELGADO", "CHICHARRON", "CHICHARRON CRAC",
-    "PLATANO", "TOSTADA", "MIEL", "TIRA DE CC MINI", "TIRA DE DULCE",
-    "MIX VERDE", "MIX ROJO"
-]
-ESPECIALES_REPORTE_DIARIO_PT = {
-    "ML": {
-        "nombre": "Mega Lupita",
-        "presentaciones": ["250g", "230g", "60g", "50g", "150g", "40g"]
-    },
-    "Y": {
-        "nombre": "Yeos",
-        "presentaciones": ["200g", "180g", "150g", "120g", "60g", "220g", "250g", "100g", "700g", "650g"]
-    },
-    "YML": {
-        "nombre": "Super la merced",
-        "presentaciones": ["20g", "70g", "80g", "60g", "65g", "100g", "50g", "45g", "40g", "200g", "150g", "180g", "220g", "500g"]
-    },
-    "YV": {
-        "nombre": "Yeos Victoria",
-        "presentaciones": ["200g", "180g", "150g", "220g", "60g", "100g", "250g", "700g", "650g"]
-    },
-    "JP": {
-        "nombre": "Juaquin Perez",
-        "presentaciones": ["750g", "250g", "150g"]
-    },
-    "N": {
-        "nombre": "Norma",
-        "presentaciones": ["620g", "600g"]
-    }
-}
-
-
-
-@login_required
-@requiere_roles("Producto Terminado", "Recursos Humanos")
-def reporte_diario_pt_datos(request):
-    fecha_texto = request.GET.get("fecha", timezone.localdate().isoformat())
-    movimiento = request.GET.get("movimiento", "salidas")
-    destino = request.GET.get("destino", "general")
-    tipo_producto = request.GET.get("tipo_producto", "normal")
-    especial_codigo = request.GET.get("especial", "ML")
-
-    try:
-        fecha = datetime.strptime(fecha_texto, "%Y-%m-%d").date()
-    except ValueError:
-        return JsonResponse({"error": "Formato de fecha inválido."}, status=400)
-
-    if movimiento not in ("salidas", "entradas"):
-        return JsonResponse({"error": "Movimiento inválido."}, status=400)
-
-    destinos_validos = {"general", "opcion1", "opcion2", "opcion3", "opcion4"}
-    if movimiento == "salidas" and destino not in destinos_validos:
-        return JsonResponse({"error": "Destino inválido."}, status=400)
-
-    if tipo_producto not in ("normal", "especial"):
-        return JsonResponse({"error": "Tipo de producto inválido."}, status=400)
-
-    if tipo_producto == "especial":
-        if especial_codigo not in ESPECIALES_REPORTE_DIARIO_PT:
-            return JsonResponse({"error": "Tienda especial inválida."}, status=400)
-
-        especial = ESPECIALES_REPORTE_DIARIO_PT[especial_codigo]
-        presentaciones = especial["presentaciones"]
-        nombre_especial = especial["nombre"]
-    else:
-        especial_codigo = None
-        nombre_especial = None
-        presentaciones = ORDEN_PRESENTACIONES_REPORTE_DIARIO_PT
-
-    if movimiento == "entradas":
-        detalles = DetalleEntradaPTerminado.objects.filter(
-            entrada_p_terminado__fecha_entrada__date=fecha
-        )
-    else:
-        detalles = DetalleSalidaPTerminado.objects.filter(
-            salida_p_terminado__fecha_salida__date=fecha
-        )
-
-        if destino != "general":
-            detalles = detalles.filter(
-                salida_p_terminado__destino=destino
-            )
-
-    # Separación entre productos normales y especiales.
-    if tipo_producto == "especial":
-        detalles = detalles.filter(
-            producto_variacion__producto__nombre__startswith=f"{especial_codigo} "
-        )
-    else:
-        filtro_especiales = Q()
-
-        for codigo in ESPECIALES_REPORTE_DIARIO_PT:
-            filtro_especiales |= Q(
-                producto_variacion__producto__nombre__startswith=f"{codigo} "
-            )
-
-        detalles = detalles.exclude(filtro_especiales)
-
-    movimientos = (
-        detalles.values(
-            "producto_variacion__producto_id",
-            "producto_variacion__producto__nombre",
-            "producto_variacion__presentacion__nombre"
-        )
-        .annotate(total=Sum("cantidad"))
-        .order_by()
-    )
-
-    mapa_productos = {}
-    cero = Decimal("0.00")
-
-    for movimiento_item in movimientos:
-        producto_id = movimiento_item["producto_variacion__producto_id"]
-        nombre_producto = movimiento_item["producto_variacion__producto__nombre"]
-        nombre_presentacion = movimiento_item["producto_variacion__presentacion__nombre"]
-        cantidad = movimiento_item["total"] or cero
-
-        if nombre_presentacion not in presentaciones:
-            continue
-
-        if producto_id not in mapa_productos:
-            mapa_productos[producto_id] = {
-                "id": producto_id,
-                "producto": nombre_producto,
-                "cantidades": {p: cero for p in presentaciones},
-                "total": cero
-            }
-
-        mapa_productos[producto_id]["cantidades"][nombre_presentacion] += cantidad
-        mapa_productos[producto_id]["total"] += cantidad
-
-    indice_productos = {
-        nombre.strip().upper(): indice
-        for indice, nombre in enumerate(ORDEN_PRODUCTOS_REPORTE_DIARIO_PT)
-    }
-
-    def clave_orden_producto(item):
-        nombre = item["producto"].strip().upper()
-
-        if tipo_producto == "especial":
-            prefijo = f"{especial_codigo} "
-            if nombre.startswith(prefijo):
-                nombre = nombre[len(prefijo):].strip()
-
-        return (
-            indice_productos.get(nombre, len(indice_productos)),
-            nombre
-        )
-
-    productos_ordenados = sorted(
-        mapa_productos.values(),
-        key=clave_orden_producto
-    )
-
-    stocks = {
-        (variacion.producto_id, variacion.presentacion.nombre): variacion.stock
-        for variacion in ProductoVariacion.objects.select_related(
-            "presentacion"
-        ).filter(
-            producto_id__in=mapa_productos.keys()
-        )
-    }
-
-    totales_presentaciones = {p: cero for p in presentaciones}
-    total_general = cero
-    filas = []
-
-    for producto in productos_ordenados:
-        cantidades = [
-            float(producto["cantidades"][p])
-            for p in presentaciones
-        ]
-
-        for presentacion in presentaciones:
-            totales_presentaciones[presentacion] += producto["cantidades"][presentacion]
-
-        total_general += producto["total"]
-
-        filas.append({
-            "id": producto["id"],
-            "producto": producto["producto"],
-            "cantidades": cantidades,
-            "stocks": [
-                float(stocks.get((producto["id"], p), cero))
-                for p in presentaciones
-            ],
-            "variaciones_existentes": [
-                (producto["id"], p) in stocks
-                for p in presentaciones
-            ],
-            "total": float(producto["total"])
-        })
-
-    return JsonResponse({
-        "fecha": fecha.isoformat(),
-        "movimiento": movimiento,
-        "destino": destino if movimiento == "salidas" else None,
-        "tipo_producto": tipo_producto,
-        "especial": especial_codigo,
-        "nombre_especial": nombre_especial,
-        "presentaciones": presentaciones,
-        "productos": filas,
-        "totales_presentaciones": [
-            float(totales_presentaciones[p])
-            for p in presentaciones
-        ],
-        "total_general": float(total_general)
-    })
-
-    
-
-@login_required
-@requiere_roles("Producto Terminado")
+@requiere_roles("Producto Terminado","Recursos Humanos")
 def detalle_salida_semanal_pt(
     request,
     producto_variacion_id
@@ -4119,6 +3781,8 @@ def detalle_salida_semanal_pt(
         destino = 'opcion1'
 
 
+    ruta_param = request.GET.get('ruta', 'todas')
+    ruta_id = int(ruta_param) if ruta_param.isdigit() and 1 <= int(ruta_param) <= 11 else None
     semanas_param = request.GET.get(
         'semanas',
         ''
@@ -4218,6 +3882,9 @@ def detalle_salida_semanal_pt(
             'salida_p_terminado__ruta__usuario'
         )
     )
+
+    if ruta_id is not None:
+        detalles = detalles.filter(salida_p_terminado__ruta_id=ruta_id)
 
 
     repartidores = {}
@@ -4627,6 +4294,466 @@ def reporte_salidas_semanales_pt_html(request):
         request,
         'ProductoTerminado/salidas/reporte_salidas_semanales.html'
     )
+
+
+@login_required
+@requiere_roles("Producto Terminado","Recursos Humanos")
+def reporte_salidas_semanales_pt_html(request):
+    return render(
+        request,
+        'ProductoTerminado/salidas/reporte_salidas_semanales.html'
+    )
+
+#Reporte diario
+
+@login_required
+@requiere_roles("Administrador", "Producto Terminado", "Recursos Humanos")
+def reporte_diario_pt_html(request):
+    return render(request, "ProductoTerminado/reportes/reporte_diario_pt.html", {
+        "fecha_actual": timezone.localdate().isoformat()
+    })
+
+ORDEN_PRESENTACIONES_REPORTE_DIARIO_PT = [
+    "Minis", "Chico", "Mediano", "Grande", "250g", "500g",
+    "1kg", "Kiosko", "Grande 150g", "Grande 140g", "Pieza"
+]
+
+ORDEN_PRODUCTOS_REPORTE_DIARIO_PT = [
+    "PISTACHE", "ENCHILADO", "JAPONES", "JAPONES FUEGO", "MACHO",
+    "HORNEADO", "CASCARITA", "SURTIDO", "HABA PELADA", "HABA CON CASCARA",
+    "GARBANZA", "GARAPIÑADO", "GOMITA", "LUNETA", "HUEVITO CHOCOLATE",
+    "GALLETA MARINA", "CIRUELA", "PASAS", "SEMILLA DE CALABAZA",
+    "SEMILLA DE GIRASOL", "NUEZ", "ALMENDRA", "GRANOLA", "CHILE DE ARBOL",
+    "CHILE PULLA", "CHILE CASCABEL", "CAMARON", "CAMARON MOLIDO",
+    "CHARAL NATURAL", "CHARAL ADOBADO", "CECINA NATURAL", "CECINA ADOBADA",
+    "CECINA DE LIMON", "CECINA CHILTEPIN", "CECINA CHIPOTLE",
+    "CECINA HABANERO", "CECINA ARTESANAL", "PAPA FRITA",
+    "CHURRO DE MASA", "CHURRO DELGADO", "CHICHARRON", "CHICHARRON CRAC",
+    "PLATANO", "TOSTADA", "MIEL", "TIRA DE CC MINI", "TIRA DE DULCE",
+    "MIX VERDE", "MIX ROJO"
+]
+ESPECIALES_REPORTE_DIARIO_PT = {
+    "ML": {
+        "nombre": "Mega Lupita",
+        "presentaciones": ["250g", "230g", "60g", "50g", "150g", "40g"]
+    },
+    "Y": {
+        "nombre": "Yeos",
+        "presentaciones": ["200g", "180g", "150g", "120g", "60g", "220g", "250g", "100g", "700g", "650g"]
+    },
+    "YML": {
+        "nombre": "Super la merced",
+        "presentaciones": ["20g", "70g", "80g", "60g", "65g", "100g", "50g", "45g", "40g", "200g", "150g", "180g", "220g", "500g"]
+    },
+    "YV": {
+        "nombre": "Yeos Victoria",
+        "presentaciones": ["200g", "180g", "150g", "220g", "60g", "100g", "250g", "700g", "650g"]
+    },
+    "JP": {
+        "nombre": "Juaquin Perez",
+        "presentaciones": ["750g", "250g", "150g"]
+    },
+    "N": {
+        "nombre": "Norma",
+        "presentaciones": ["620g", "600g"]
+    }
+}
+
+
+
+@login_required
+@requiere_roles("Producto Terminado", "Recursos Humanos")
+def reporte_diario_pt_datos(request):
+    fecha_texto = request.GET.get("fecha", timezone.localdate().isoformat())
+    movimiento = request.GET.get("movimiento", "salidas")
+    destino = request.GET.get("destino", "general")
+    tipo_producto = request.GET.get("tipo_producto", "normal")
+    especial_codigo = request.GET.get("especial", "ML")
+
+    try:
+        fecha = datetime.strptime(fecha_texto, "%Y-%m-%d").date()
+    except ValueError:
+        return JsonResponse({"error": "Formato de fecha inválido."}, status=400)
+
+    if movimiento not in ("salidas", "entradas"):
+        return JsonResponse({"error": "Movimiento inválido."}, status=400)
+
+    destinos_validos = {"general", "opcion1", "opcion2", "opcion3", "opcion4"}
+    if movimiento == "salidas" and destino not in destinos_validos:
+        return JsonResponse({"error": "Destino inválido."}, status=400)
+
+    if tipo_producto not in ("normal", "especial"):
+        return JsonResponse({"error": "Tipo de producto inválido."}, status=400)
+
+    if tipo_producto == "especial":
+        if especial_codigo not in ESPECIALES_REPORTE_DIARIO_PT:
+            return JsonResponse({"error": "Tienda especial inválida."}, status=400)
+
+        especial = ESPECIALES_REPORTE_DIARIO_PT[especial_codigo]
+        presentaciones = especial["presentaciones"]
+        nombre_especial = especial["nombre"]
+    else:
+        especial_codigo = None
+        nombre_especial = None
+        presentaciones = ORDEN_PRESENTACIONES_REPORTE_DIARIO_PT
+
+    if movimiento == "entradas":
+        detalles = DetalleEntradaPTerminado.objects.filter(
+            entrada_p_terminado__fecha_entrada__date=fecha
+        )
+    else:
+        detalles = DetalleSalidaPTerminado.objects.filter(
+            salida_p_terminado__fecha_salida__date=fecha
+        )
+
+        if destino != "general":
+            detalles = detalles.filter(
+                salida_p_terminado__destino=destino
+            )
+
+    # Separación entre productos normales y especiales.
+    if tipo_producto == "especial":
+        detalles = detalles.filter(
+            producto_variacion__producto__nombre__startswith=f"{especial_codigo} "
+        )
+    else:
+        filtro_especiales = Q()
+
+        for codigo in ESPECIALES_REPORTE_DIARIO_PT:
+            filtro_especiales |= Q(
+                producto_variacion__producto__nombre__startswith=f"{codigo} "
+            )
+
+        detalles = detalles.exclude(filtro_especiales)
+
+    movimientos = (
+        detalles.values(
+            "producto_variacion__producto_id",
+            "producto_variacion__producto__nombre",
+            "producto_variacion__presentacion__nombre"
+        )
+        .annotate(total=Sum("cantidad"))
+        .order_by()
+    )
+
+    mapa_productos = {}
+    cero = Decimal("0.00")
+
+    for movimiento_item in movimientos:
+        producto_id = movimiento_item["producto_variacion__producto_id"]
+        nombre_producto = movimiento_item["producto_variacion__producto__nombre"]
+        nombre_presentacion = movimiento_item["producto_variacion__presentacion__nombre"]
+        cantidad = movimiento_item["total"] or cero
+
+        if nombre_presentacion not in presentaciones:
+            continue
+
+        if producto_id not in mapa_productos:
+            mapa_productos[producto_id] = {
+                "id": producto_id,
+                "producto": nombre_producto,
+                "cantidades": {p: cero for p in presentaciones},
+                "total": cero
+            }
+
+        mapa_productos[producto_id]["cantidades"][nombre_presentacion] += cantidad
+        mapa_productos[producto_id]["total"] += cantidad
+
+    indice_productos = {
+        nombre.strip().upper(): indice
+        for indice, nombre in enumerate(ORDEN_PRODUCTOS_REPORTE_DIARIO_PT)
+    }
+
+    def clave_orden_producto(item):
+        nombre = item["producto"].strip().upper()
+
+        if tipo_producto == "especial":
+            prefijo = f"{especial_codigo} "
+            if nombre.startswith(prefijo):
+                nombre = nombre[len(prefijo):].strip()
+
+        return (
+            indice_productos.get(nombre, len(indice_productos)),
+            nombre
+        )
+
+    productos_ordenados = sorted(
+        mapa_productos.values(),
+        key=clave_orden_producto
+    )
+
+    stocks = {
+        (variacion.producto_id, variacion.presentacion.nombre): variacion.stock
+        for variacion in ProductoVariacion.objects.select_related(
+            "presentacion"
+        ).filter(
+            producto_id__in=mapa_productos.keys()
+        )
+    }
+
+    totales_presentaciones = {p: cero for p in presentaciones}
+    total_general = cero
+    filas = []
+
+    for producto in productos_ordenados:
+        cantidades = [
+            float(producto["cantidades"][p])
+            for p in presentaciones
+        ]
+
+        for presentacion in presentaciones:
+            totales_presentaciones[presentacion] += producto["cantidades"][presentacion]
+
+        total_general += producto["total"]
+
+        filas.append({
+            "id": producto["id"],
+            "producto": producto["producto"],
+            "cantidades": cantidades,
+            "stocks": [
+                float(stocks.get((producto["id"], p), cero))
+                for p in presentaciones
+            ],
+            "variaciones_existentes": [
+                (producto["id"], p) in stocks
+                for p in presentaciones
+            ],
+            "total": float(producto["total"])
+        })
+
+    return JsonResponse({
+        "fecha": fecha.isoformat(),
+        "movimiento": movimiento,
+        "destino": destino if movimiento == "salidas" else None,
+        "tipo_producto": tipo_producto,
+        "especial": especial_codigo,
+        "nombre_especial": nombre_especial,
+        "presentaciones": presentaciones,
+        "productos": filas,
+        "totales_presentaciones": [
+            float(totales_presentaciones[p])
+            for p in presentaciones
+        ],
+        "total_general": float(total_general)
+    })
+
+
+import re
+
+def identificar_ruta_salida(salida):
+    if salida.destino == "opcion1":
+        return 8 if salida.ruta_id == 8 else None
+
+    if salida.destino != "opcion4":
+        return None
+
+    nota = salida.nota or ""
+    coincidencias = re.findall(r"\bruta\s*0?(1[01]|[1-9])\b", nota, re.IGNORECASE)
+    rutas = set(map(int, coincidencias))
+
+    if len(rutas) == 1:
+        return rutas.pop()
+
+    return None
+
+def identificar_ruta_reporte(salida):
+    if salida.destino == "opcion1":
+        return 8 if salida.ruta_id == 8 else None
+    if salida.destino != "opcion4":
+        return None
+
+    nota = salida.nota or ""
+    rutas = {int(n) for n in re.findall(r"\bruta\s*0?(1[01]|[1-9])\b", nota, re.I)}
+    if re.search(r"\brutas?\b", nota, re.I) and re.search(r"\b(?:son|cada)\b", nota, re.I):
+        return None
+    if re.search(r"\bruta\s*(?:que\s+son\s+la\s+)?\d+\s*,\s*\d+", nota, re.I):
+        return None
+    if len(rutas) != 1:
+        return None
+    numero = next(iter(rutas))
+    return numero if numero != 8 else None
+
+
+def obtener_datos_reporte_rutas(inicio, fin):
+    salidas = SalidaPTerminado.objects.filter(
+        fecha_salida__date__range=(inicio, fin),
+        destino__in=["opcion1", "opcion4"]
+    ).prefetch_related(
+        "detallesalida pterminado_set"
+    )
+
+
+def obtener_datos_reporte_rutas(inicio, fin):
+    salidas = SalidaPTerminado.objects.filter(
+        fecha_salida__date__range=(inicio, fin),
+        destino__in=["opcion1", "opcion4"]
+    ).values("id", "destino", "ruta_id", "nota")
+
+    rutas_salidas = {n: [] for n in range(1, 12)}
+    sin_identificar = []
+
+    for salida in salidas:
+        class SalidaTemporal:
+            pass
+        obj = SalidaTemporal()
+        obj.destino = salida["destino"]
+        obj.ruta_id = salida["ruta_id"]
+        obj.nota = salida["nota"]
+        numero = identificar_ruta_reporte(obj)
+        if numero:
+            rutas_salidas[numero].append(salida["id"])
+        elif salida["destino"] == "opcion4":
+            sin_identificar.append(salida["id"])
+
+    ids = [id_salida for lista in rutas_salidas.values() for id_salida in lista]
+    detalles = DetalleSalidaPTerminado.objects.filter(
+        salida_p_terminado_id__in=ids
+    ).values(
+        "salida_p_terminado_id",
+        "producto_variacion__producto__nombre",
+        "producto_variacion__presentacion__nombre"
+    ).annotate(cantidad_total=Sum("cantidad"))
+
+    indice = {nombre.upper(): i for i, nombre in enumerate(ORDEN_PRODUCTOS_REPORTE_DIARIO_PT)}
+    datos = {n: defaultdict(lambda: defaultdict(lambda: Decimal("0"))) for n in range(1, 12)}
+    ruta_por_salida = {sid: n for n, lista in rutas_salidas.items() for sid in lista}
+
+    for detalle in detalles:
+        ruta = ruta_por_salida[detalle["salida_p_terminado_id"]]
+        nombre = detalle["producto_variacion__producto__nombre"]
+        presentacion = detalle["producto_variacion__presentacion__nombre"]
+        datos[ruta][nombre][presentacion] += detalle["cantidad_total"] or Decimal("0")
+
+    resultado = {}
+    for ruta in range(1, 12):
+        grupos = []
+        configuraciones = [("Normal", None, ORDEN_PRESENTACIONES_REPORTE_DIARIO_PT)]
+        configuraciones += [(v["nombre"], k, v["presentaciones"]) for k, v in ESPECIALES_REPORTE_DIARIO_PT.items()]
+
+        for titulo, prefijo, presentaciones in configuraciones:
+            productos = []
+            for nombre, cantidades in datos[ruta].items():
+                codigo = next((c for c in ESPECIALES_REPORTE_DIARIO_PT if nombre.upper().startswith(c + " ")), None)
+                if codigo != prefijo:
+                    continue
+                valores = [cantidades[p] for p in presentaciones]
+                if not any(valores):
+                    continue
+                nombre_orden = nombre[len(prefijo)+1:] if prefijo else nombre
+                productos.append({"nombre": nombre, "valores": valores, "total": sum(valores), "orden": indice.get(nombre_orden.upper(), len(indice))})
+
+            productos.sort(key=lambda p: (p["orden"], p["nombre"]))
+            if productos:
+                grupos.append({
+                    "titulo": titulo,
+                    "presentaciones": presentaciones,
+                    "productos": productos,
+                    "totales": [sum(p["valores"][i] for p in productos) for i in range(len(presentaciones))],
+                    "total": sum(p["total"] for p in productos)
+                })
+        resultado[ruta] = grupos
+
+    return resultado, sin_identificar
+
+
+@login_required
+@requiere_roles("Administrador", "Producto Terminado", "Recursos Humanos")
+def reporte_semanal_rutas_html(request):
+    hoy = timezone.localdate()
+    return render(request, "ProductoTerminado/reportes/reporte_semanal_rutas.html", {
+        "fecha_inicio": (hoy - timedelta(days=6)).isoformat(),
+        "fecha_fin": hoy.isoformat()
+    })
+
+
+@login_required
+@requiere_roles("Administrador", "Producto Terminado", "Recursos Humanos")
+def reporte_semanal_rutas_pdf(request):
+    try:
+        inicio = datetime.strptime(request.GET["inicio"], "%Y-%m-%d").date()
+        fin = datetime.strptime(request.GET["fin"], "%Y-%m-%d").date()
+    except (KeyError, ValueError):
+        return HttpResponseBadRequest("Fechas inválidas.")
+    if inicio > fin:
+        return HttpResponseBadRequest("La fecha inicial no puede ser posterior a la final.")
+
+    datos, sin_identificar = obtener_datos_reporte_rutas(inicio, fin)
+    buffer = io.BytesIO()
+    #documento = SimpleDocTemplate(buffer, pagesize=landscape(A3), rightMargin=12*mm, leftMargin=12*mm, topMargin=14*mm, bottomMargin=14*mm)
+    documento = SimpleDocTemplate(buffer, pagesize=A3, rightMargin=10*mm, leftMargin=10*mm, topMargin=14*mm, bottomMargin=14*mm)
+    estilos = getSampleStyleSheet()
+    titulo = ParagraphStyle("TituloRuta", parent=estilos["Heading2"], fontSize=13, spaceAfter=10)
+    celda = ParagraphStyle("CeldaRuta", fontSize=7, leading=9)
+    celda_encabezado = ParagraphStyle("CeldaEncabezadoRuta", parent=celda, textColor=colors.white, fontName="Helvetica-Bold")
+    elementos = [
+        Paragraph("OSMIT - REPORTE SEMANAL DE SALIDAS POR RUTA", estilos["Title"]),
+        Paragraph(f"Periodo: {inicio:%d/%m/%Y} al {fin:%d/%m/%Y}", estilos["Normal"]),
+        Spacer(1, 12)
+    ]
+
+    def numero(valor):
+        return f"{valor:,.2f}".rstrip("0").rstrip(".")
+
+    for ruta in range(1, 12):
+        if ruta > 1:
+            elementos.append(PageBreak())
+        elementos.append(Paragraph(f"RUTA {ruta}", titulo))
+        grupos = datos[ruta]
+        if not grupos:
+            elementos.append(Paragraph("Sin salidas registradas en este periodo.", estilos["Normal"]))
+            continue
+
+        for grupo in grupos:
+            elementos.append(Paragraph(f"Productos: {escape(grupo['titulo'])}", estilos["Heading3"]))
+            encabezado = ["Producto"] + grupo["presentaciones"] + ["Total"]
+            filas = [[Paragraph(escape(str(h)), celda_encabezado) for h in encabezado]]
+
+            for producto in grupo["productos"]:
+                filas.append(
+                    [Paragraph(escape(producto["nombre"]), celda)] +
+                    [numero(v) if v else "-" for v in producto["valores"]] +
+                    [numero(producto["total"])]
+                )
+
+            filas.append(["TOTAL GENERAL"] + [numero(v) for v in grupo["totales"]] + [numero(grupo["total"])])
+            ancho = A3[0] - 20*mm
+            ancho_producto = 42*mm
+            #ancho = landscape(A3)[0] - 24*mm
+            #ancho_producto = 52*mm
+            ancho_otras = (ancho - ancho_producto) / (len(encabezado)-1)
+            tabla = Table(filas, colWidths=[ancho_producto] + [ancho_otras]*(len(encabezado)-1), repeatRows=1, hAlign="LEFT")
+            tabla.setStyle(TableStyle([
+                ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#343a40")),
+                ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+                ("BACKGROUND", (0,-1), (-1,-1), colors.HexColor("#e9ecef")),
+                ("BACKGROUND", (-1,1), (-1,-2), colors.HexColor("#e9eff5")),
+                ("GRID", (0,0), (-1,-1), 0.3, colors.HexColor("#cbd1d7")),
+                ("FONTSIZE", (0,0), (-1,-1), 7),
+                ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+                ("ALIGN", (1,1), (-1,-1), "CENTER"),
+                ("FONTNAME", (0,-1), (-1,-1), "Helvetica-Bold"),
+                ("BOTTOMPADDING", (0,0), (-1,-1), 6),
+                ("TOPPADDING", (0,0), (-1,-1), 6)
+            ]))
+            elementos.append(tabla)
+            elementos.append(Spacer(1, 14))
+
+    if sin_identificar:
+        elementos.append(PageBreak())
+        elementos.append(Paragraph("SALIDAS DE OTROS SIN RUTA IDENTIFICADA", titulo))
+        elementos.append(Paragraph(f"Se encontraron {len(sin_identificar)} salidas para revisión. No se sumaron a las rutas.", estilos["Normal"]))
+        for salida in SalidaPTerminado.objects.filter(id__in=sin_identificar).order_by("fecha_salida"):
+            elementos.append(Paragraph(f"Salida #{salida.id} - {escape(salida.nota or '(Sin nota)')}", estilos["Normal"]))
+
+    documento.build(elementos)
+    buffer.seek(0)
+    respuesta = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+    respuesta["Content-Disposition"] = f'attachment; filename="salidas_rutas_{inicio}_{fin}.pdf"'
+    return respuesta
+
+
+
+
 
 
 

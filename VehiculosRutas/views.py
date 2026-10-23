@@ -136,72 +136,37 @@ from django.urls import reverse
 
 @login_required
 def agregar_cliente(request):
-    """
-    Permite agregar un cliente con varios días de visita.
-    Valida los órdenes según la ruta seleccionada.
-    """
     cliente = Cliente()
-
     if request.method == 'POST':
-        form = ClienteForm(
-            request.POST,
-            request.FILES,
-            instance=cliente
-        )
-
-        dias_formset = ClienteDiasVisitaFormSet(
-            request.POST,
-            instance=cliente
-        )
-
-        # Primero validar los datos del cliente
+        form = ClienteForm(request.POST, request.FILES, instance=cliente)
+        dias_formset = ClienteDiasVisitaFormSet(request.POST, instance=cliente)
         cliente_valido = form.is_valid()
-
         if cliente_valido:
-            # La ruta debe estar disponible antes de validar el formset
             cliente.ruta = form.cleaned_data.get('ruta')
             cliente.estado = form.cleaned_data.get('estado')
-
-        # Validar días y órdenes de visita
         dias_validos = dias_formset.is_valid()
 
         if cliente_valido and dias_validos:
             with transaction.atomic():
                 cliente = form.save()
-
                 dias_formset.instance = cliente
-                dias_formset.save()
+                guardar_visitas_reordenadas(cliente, dias_formset)
 
             messages.success(request, "Cliente agregado correctamente.")
-
             url = reverse('listar_clientes')
             filtros = request.GET.urlencode()
-
             if filtros:
                 url += f'?{filtros}'
-
             return redirect(url)
 
-        messages.error(
-            request,
-            "No se pudo guardar el cliente. Revisa los datos y órdenes de visita."
-        )
-
+        messages.error(request, "No se pudo guardar el cliente. Revisa los datos y órdenes de visita.")
     else:
         form = ClienteForm(instance=cliente)
+        dias_formset = ClienteDiasVisitaFormSet(instance=cliente)
 
-        dias_formset = ClienteDiasVisitaFormSet(
-            instance=cliente
-        )
-
-    return render(
-        request,
-        'VehiculosRutas/clientes/agregar_cliente.html',
-        {
-            'form': form,
-            'dias_formset': dias_formset
-        }
-    )
+    return render(request, 'VehiculosRutas/clientes/agregar_cliente.html', {
+        'form': form, 'dias_formset': dias_formset
+    })
 
 
 
@@ -209,82 +174,56 @@ def agregar_cliente(request):
 
 @login_required
 def editar_cliente(request, pk):
-    """
-    Permite editar un cliente y sus días de visita.
-    Conserva los filtros después de guardar correctamente.
-    """
     cliente = get_object_or_404(Cliente, pk=pk)
-
     if request.method == 'POST':
-        form = ClienteForm(
-            request.POST,
-            request.FILES,
-            instance=cliente
+        anteriores = list(
+            ClienteDiasVisita.objects.filter(cliente=cliente).values(
+                'pk', 'dia_semana', 'orden'
+            )
         )
+        for anterior in anteriores:
+            anterior['dia'] = anterior['dia_semana']
+            anterior['ruta_id'] = cliente.ruta_id
 
-        dias_formset = ClienteDiasVisitaFormSet(
-            request.POST,
-            instance=cliente
-        )
-
+        form = ClienteForm(request.POST, request.FILES, instance=cliente)
+        dias_formset = ClienteDiasVisitaFormSet(request.POST, instance=cliente)
         cliente_valido = form.is_valid()
 
         if cliente_valido:
             cliente.ruta = form.cleaned_data.get('ruta')
             cliente.estado = form.cleaned_data.get('estado')
-
         dias_validos = dias_formset.is_valid()
 
         if cliente_valido and dias_validos:
             with transaction.atomic():
                 form.save()
-                dias_formset.save()
+                guardar_visitas_reordenadas(cliente, dias_formset, anteriores)
 
-            messages.success(
-                request,
-                "Cliente actualizado correctamente."
-            )
-
-            # Recuperar filtros enviados por el formulario
+            messages.success(request, "Cliente actualizado correctamente.")
             ruta = request.POST.get('filtro_ruta', '')
             dia = request.POST.get('filtro_dia', '')
             mostrar_todos = request.POST.get('filtro_mostrar_todos', '')
-
             params = {}
-
             if ruta:
                 params['ruta'] = ruta
-
             if dia:
                 params['dia'] = dia
-
             if mostrar_todos == '1':
                 params['mostrar_todos'] = '1'
 
             url = reverse('listar_clientes')
-
             if params:
                 url += '?' + urlencode(params)
-
             return redirect(url)
 
-        messages.error(
-            request,
-            "No se pudieron guardar los cambios. Revisa los órdenes de visita."
-        )
-
+        messages.error(request, "No se pudieron guardar los cambios. Revisa los órdenes de visita.")
     else:
         form = ClienteForm(instance=cliente)
         dias_formset = ClienteDiasVisitaFormSet(instance=cliente)
 
-    return render(
-        request,
-        'VehiculosRutas/clientes/editar_cliente.html',
-        {
-            'form': form,
-            'dias_formset': dias_formset
-        }
-    )
+    return render(request, 'VehiculosRutas/clientes/editar_cliente.html', {
+        'form': form, 'dias_formset': dias_formset
+    })
 
 
 
@@ -292,15 +231,24 @@ def editar_cliente(request, pk):
 
 @login_required
 def eliminar_cliente(request, pk):
-    """
-    Realiza una eliminación lógica del cliente cambiando su estado a False.
-    """
     cliente = get_object_or_404(Cliente, pk=pk)
-    cliente.estado = False
-    cliente.save()
+
+    with transaction.atomic():
+        ruta_id = cliente.ruta_id
+        dias = list(
+            ClienteDiasVisita.objects.filter(cliente=cliente)
+            .values_list('dia_semana', flat=True)
+        )
+
+        cliente.estado = False
+        cliente.save()
+
+        if ruta_id:
+            for dia in set(dias):
+                reorganizar_grupo(ruta_id, dia)
+
     messages.success(request, "Cliente desactivado correctamente.")
     return redirect('listar_clientes')
-
 
 @login_required
 def editar_dias_visita(request, cliente_id):
@@ -356,6 +304,80 @@ def listar_clientes(request):
         'mostrar_todos': mostrar_todos,
         'semana_actual': inicio_semana_operativa(timezone.localdate()).isoformat()
     })
+
+def obtener_visitas_ordenadas(ruta_id, dia, excluir_ids=None):
+    visitas = ClienteDiasVisita.objects.filter(
+        cliente__ruta_id=ruta_id,
+        cliente__estado=True,
+        dia_semana=dia
+    ).order_by('orden', 'pk')
+    if excluir_ids:
+        visitas = visitas.exclude(pk__in=excluir_ids)
+    return list(visitas)
+
+def guardar_ordenes(visitas):
+    cambios = []
+    for posicion, visita in enumerate(visitas, 1):
+        if visita.orden != posicion:
+            visita.orden = posicion
+            cambios.append(visita)
+    if cambios:
+        ClienteDiasVisita.objects.bulk_update(cambios, ['orden'])
+
+def insertar_visita(visita, ruta_id, dia, posicion, excluir_ids=None):
+    excluidos = set(excluir_ids or [])
+    if visita.pk:
+        excluidos.add(visita.pk)
+
+    visitas = obtener_visitas_ordenadas(ruta_id, dia, excluidos)
+    posicion = max(1, min(int(posicion), len(visitas) + 1))
+    visitas.insert(posicion - 1, visita)
+    guardar_ordenes(visitas)
+
+def reorganizar_grupo(ruta_id, dia):
+    visitas = obtener_visitas_ordenadas(ruta_id, dia)
+    guardar_ordenes(visitas)
+
+def guardar_visitas_reordenadas(cliente, dias_formset, anteriores=None):
+    anteriores = anteriores or []
+    ruta_anterior = anteriores[0]['ruta_id'] if anteriores else None
+    ruta_nueva = cliente.ruta_id
+    estado_nuevo = cliente.estado
+
+    operaciones = []
+    for form in dias_formset.forms:
+        datos = form.cleaned_data
+        if not datos or datos.get('DELETE'):
+            continue
+        dia = datos.get('dia_semana')
+        orden = datos.get('orden')
+        if dia and orden is not None:
+            operaciones.append({
+                'dia': dia, 'orden': orden,
+                'pk': form.instance.pk
+            })
+
+    dias_formset.save()
+
+    afectados = {(a['ruta_id'], a['dia']) for a in anteriores if a['ruta_id']}
+    afectados.update((ruta_nueva, o['dia']) for o in operaciones if ruta_nueva)
+
+    nuevos_ids = {o['pk'] for o in operaciones if o['pk']}
+    anteriores_por_id = {a['pk']: a for a in anteriores}
+
+    for ruta_id, dia in afectados:
+        visitas = obtener_visitas_ordenadas(ruta_id, dia)
+        visitas = [v for v in visitas if v.cliente_id != cliente.pk]
+        guardar_ordenes(visitas)
+
+    if estado_nuevo and ruta_nueva:
+        for operacion in operaciones:
+            visita = ClienteDiasVisita.objects.filter(
+                cliente=cliente, dia_semana=operacion['dia']
+            ).first()
+            if visita:
+                insertar_visita(visita, ruta_nueva, operacion['dia'], operacion['orden'])
+
 
 import json
 from django.contrib.auth.decorators import login_required

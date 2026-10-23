@@ -269,144 +269,24 @@ class BaseClienteDiasVisitaFormSet(BaseInlineFormSet):
 
     def clean(self):
         super().clean()
-
         if any(self.errors):
             return
 
-        ruta = self.instance.ruta
-
-        if not ruta:
-            return
-
-        # ==========================================
-        # RECOPILAR VISITAS DEL FORMULARIO
-        # ==========================================
-
-        visitas_actuales = []
-        ids_editados = set()
-
+        dias = set()
         for form in self.forms:
-
-            if form.instance.pk:
-                ids_editados.add(form.instance.pk)
-
-            if not form.cleaned_data:
-                continue
-
-            if form.cleaned_data.get('DELETE'):
-                continue
-
             datos = form.cleaned_data
+            if not datos or datos.get('DELETE'):
+                continue
 
             dia = datos.get('dia_semana')
-            orden = datos.get('orden')
-            frecuencia = datos.get('frecuencia_semanas')
-            referencia = datos.get('semana_referencia')
-
-            if dia is None or orden is None:
+            if not dia:
                 continue
 
-            visitas_actuales.append({
-                'form': form,
-                'dia': dia,
-                'orden': orden,
-                'frecuencia': frecuencia,
-                'referencia': referencia,
-                'nombre': self.instance.nombre
-            })
+            if dia in dias:
+                form.add_error('dia_semana', 'Este cliente ya tiene registrado ese día de visita.')
+                raise forms.ValidationError('No puedes registrar dos veces el mismo día para un cliente.')
 
-        # ==========================================
-        # BUSCAR VISITAS EXISTENTES EN LA RUTA
-        # ==========================================
-
-        existentes = (
-            ClienteDiasVisita.objects
-            .filter(
-                cliente__ruta=ruta,
-                cliente__estado=True
-            )
-            .select_related('cliente')
-        )
-
-        # Excluir solamente los registros que forman
-        # parte de esta edición, no todo el cliente.
-        if ids_editados:
-            existentes = existentes.exclude(
-                pk__in=ids_editados
-            )
-
-        visitas_existentes = [
-            {
-                'dia': visita.dia_semana,
-                'orden': visita.orden,
-                'frecuencia': visita.frecuencia_semanas,
-                'referencia': visita.semana_referencia,
-                'nombre': visita.cliente.nombre
-            }
-            for visita in existentes
-        ]
-
-        errores = []
-
-        # ==========================================
-        # COMPARAR CONTRA LA BASE DE DATOS
-        # ==========================================
-
-        for actual in visitas_actuales:
-
-            for existente in visitas_existentes:
-
-                if self.hay_conflicto(actual, existente):
-
-                    mensaje = (
-                        f"El orden {actual['orden']} "
-                        f"ya está ocupado el día "
-                        f"{actual['dia']} por el cliente "
-                        f"{existente['nombre']}."
-                    )
-
-                    actual['form'].add_error(
-                        'orden',
-                        mensaje
-                    )
-
-                    errores.append(mensaje)
-                    break
-
-        # ==========================================
-        # COMPARAR DENTRO DEL MISMO FORMULARIO
-        # ==========================================
-
-        for i, actual in enumerate(visitas_actuales):
-
-            for otro in visitas_actuales[i + 1:]:
-
-                if self.hay_conflicto(actual, otro):
-
-                    mensaje = (
-                        f"El orden {actual['orden']} "
-                        f"está repetido para el día "
-                        f"{actual['dia']} "
-                        f"dentro de este cliente."
-                    )
-
-                    otro['form'].add_error(
-                        'orden',
-                        mensaje
-                    )
-
-                    errores.append(mensaje)
-
-        # ==========================================
-        # IMPEDIR GUARDADO SI EXISTEN CONFLICTOS
-        # ==========================================
-
-        if errores:
-            raise forms.ValidationError(
-                'No se puede guardar el cliente porque '
-                'existen órdenes de visita duplicados. '
-                'Revisa los campos marcados.'
-            )
+            dias.add(dia)
 
 
 ClienteDiasVisitaFormSet = inlineformset_factory(

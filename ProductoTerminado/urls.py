@@ -46,6 +46,9 @@ urlpatterns = [
 
     path('producto-terminado/reporte-diario/',views.reporte_diario_pt_html,name='reporte_diario_pt_html'),
     path('producto-terminado/reporte-diario/datos/',views.reporte_diario_pt_datos,name='reporte_diario_pt_datos'),
+    #reportes de salidas por ruta, y sacar pdf de salidas por ruta
+    path("reportes/semanal-rutas/", views.reporte_semanal_rutas_html, name="reporte_semanal_rutas_html"),
+    path("reportes/semanal-rutas/pdf/", views.reporte_semanal_rutas_pdf, name="reporte_semanal_rutas_pdf"),
 
     # DASBOAR
 
