@@ -2755,46 +2755,42 @@ def activar_dispositivo_api(request):
     )
 
 
+
 @login_required
 @requiere_roles("Producto Terminado")
-def realizar_corte_minibodega(request,pk):
-    minibodega=get_object_or_404(MiniBodega,pk=pk)
+def realizar_corte_minibodega(request, pk):
+    minibodega = get_object_or_404(MiniBodega, pk=pk)
 
-    detalles=MiniBodegaDetalle.objects.filter(
-        mini_bodega= minibodega
+    detalles = ordenar_corte_minibodega(
+        MiniBodegaDetalle.objects.filter(
+            mini_bodega=minibodega
         ).select_related(
             'producto_variacion__producto',
             'producto_variacion__presentacion'
-        ).order_by(
-            'producto_variacion__producto__nombre',
-            'producto_variacion__presentacion__nombre'
         )
+    )
 
-    if request.method=='POST':
-        observaciones=request.POST.get('observaciones','')
+    if request.method == 'POST':
+        observaciones = request.POST.get('observaciones', '')
 
-        corte =CorteInventarioMiniBodega.objects.create(
+        corte = CorteInventarioMiniBodega.objects.create(
             mini_bodega=minibodega,
             usuario=request.user,
             observaciones=observaciones,
             estado='correcto'
         )
 
-        hay_diferencias=False
+        hay_diferencias = False
 
         for detalle in detalles:
-            stock_teorico=detalle.cantidad_actual
+            stock_teorico = detalle.cantidad_actual
+            stock_real = request.POST.get(f'stock_real_{detalle.id}', '0')
+            stock_real = Decimal(stock_real)
+            diferencia = stock_real - stock_teorico
+            ajuste_necesario = diferencia != Decimal('0')
 
-            stock_real=request.POST.get(
-                f'stock_real_{detalle.id}',
-                '0'
-            )
-
-            stock_real=Decimal(stock_real)
-            diferencia=stock_real-stock_teorico
-            ajuste_necesario=diferencia!=Decimal('0')
             if ajuste_necesario:
-                hay_diferencias=True
+                hay_diferencias = True
 
             DetalleCorteInventarioMiniBodega.objects.create(
                 corte_inventario=corte,
@@ -2806,21 +2802,18 @@ def realizar_corte_minibodega(request,pk):
             )
 
         if hay_diferencias:
-            corte.estado='pendiente'
+            corte.estado = 'pendiente'
             corte.save()
 
-        messages.success(
-            request,
-            "Corte de inventario realizado correctamente"
-        )
-
+        messages.success(request, "Corte de inventario realizado correctamente")
         return redirect('minibodega_lista')
-    context={
+
+    context = {
         'minibodega': minibodega,
         'detalles': detalles
     }
+    return render(request, 'appMovil/cortes/realizar_corte.html', context)
 
-    return render( request, 'appMovil/cortes/realizar_corte.html', context )
 
 
 @login_required
@@ -2847,81 +2840,110 @@ def lista_cortes_minibodega(request):
     )
 
 
+
 @login_required
 @requiere_roles("Producto Terminado", "Recursos Humanos")
-def detalle_corte_minibodegas(request,corte_id):
-    corte=get_object_or_404(
-        CorteInventarioMiniBodega,
-        id=corte_id
+def detalle_corte_minibodegas(request, corte_id):
+    corte = get_object_or_404(CorteInventarioMiniBodega, id=corte_id)
+
+    detalles = ordenar_corte_minibodega(
+        DetalleCorteInventarioMiniBodega.objects.filter(
+            corte_inventario=corte
+        ).select_related(
+            'mini_bodega_detalle__producto_variacion__producto',
+            'mini_bodega_detalle__producto_variacion__presentacion'
+        ),
+        es_detalle_corte=True
     )
-
-    detalles=DetalleCorteInventarioMiniBodega.objects.filter(
-        corte_inventario=corte
-    ).select_related(
-        'mini_bodega_detalle__producto_variacion__producto',
-        'mini_bodega_detalle__producto_variacion__presentacion'
-    ).order_by(
-        'mini_bodega_detalle__producto_variacion__producto__nombre'
-    )
-
-    context={
-        'corte':corte,
-        'detalles':detalles
-    }
-
-    return render(
-        request,
-        'appMovil/cortes/detalle_corte.html',
-        context
-    )
-
-
-@login_required
-@requiere_roles("Producto Terminado")
-def ajustar_inventario_minibodega(request,corte_id):
-    corte=get_object_or_404(
-        CorteInventarioMiniBodega,
-        id=corte_id
-    )
-    detalles=DetalleCorteInventarioMiniBodega.objects.filter(
-        corte_inventario=corte
-    ).select_related(
-        'mini_bodega_detalle__producto_variacion__producto',
-        'mini_bodega_detalle__producto_variacion__presentacion'
-    ).order_by(
-        'mini_bodega_detalle__producto_variacion__producto__nombre',
-        'mini_bodega_detalle__producto_variacion__presentacion__nombre'
-    )
-
-    if request.method=='POST':
-        for detalle in detalles:
-            if detalle.diferencia !=Decimal('0'):
-                mini_bodega_detalle=detalle.mini_bodega_detalle
-                mini_bodega_detalle.cantidad_actual=detalle.stock_real
-                mini_bodega_detalle.save()
-
-        corte.estado='ajustado'
-        corte.save()
-
-        messages.success(
-            request,
-            "Ajuste de inventario realizado correctamente"
-        )
-
-        return redirect ('lista_cortes_minibodega')
 
     context = {
         'corte': corte,
         'detalles': detalles
     }
+    return render(request, 'appMovil/cortes/detalle_corte.html', context)
 
-    return render(
-        request,
-        'appMovil/cortes/ajuste_inventario.html',
-        context
+
+
+
+@login_required
+@requiere_roles("Producto Terminado")
+def ajustar_inventario_minibodega(request, corte_id):
+    corte = get_object_or_404(CorteInventarioMiniBodega, id=corte_id)
+
+    detalles = ordenar_corte_minibodega(
+        DetalleCorteInventarioMiniBodega.objects.filter(
+            corte_inventario=corte
+        ).select_related(
+            'mini_bodega_detalle__producto_variacion__producto',
+            'mini_bodega_detalle__producto_variacion__presentacion'
+        ),
+        es_detalle_corte=True
     )
+
+    if request.method == 'POST':
+        for detalle in detalles:
+            if detalle.diferencia != Decimal('0'):
+                mini_bodega_detalle = detalle.mini_bodega_detalle
+                mini_bodega_detalle.cantidad_actual = detalle.stock_real
+                mini_bodega_detalle.save()
+
+        corte.estado = 'ajustado'
+        corte.save()
+
+        messages.success(request, "Ajuste de inventario realizado correctamente")
+        return redirect('lista_cortes_minibodega')
+
+    context = {
+        'corte': corte,
+        'detalles': detalles
+    }
+    return render(request, 'appMovil/cortes/ajuste_inventario.html', context)
+
     
 
+
+ORDEN_PRESENTACIONES_CORTE_MINIBODEGA = [
+    "Minis", "Chico", "Mediano", "Grande", "250g", "500g",
+    "1kg", "Kiosko", "Grande 150g", "Grande 140g", "Pieza"
+]
+
+ORDEN_PRODUCTOS_CORTE_MINIBODEGA = [
+    "PISTACHE", "ENCHILADO", "JAPONES", "JAPONES FUEGO", "MACHO",
+    "HORNEADO", "CASCARITA", "SURTIDO", "HABA PELADA", "HABA CON CASCARA",
+    "GARBANZA", "GARAPIÑADO", "GOMITA", "LUNETA", "HUEVITO CHOCOLATE",
+    "GALLETA MARINA", "CIRUELA", "PASAS", "SEMILLA DE CALABAZA",
+    "SEMILLA DE GIRASOL", "NUEZ", "ALMENDRA", "GRANOLA", "CHILE DE ARBOL",
+    "CHILE PULLA", "CHILE CASCABEL", "CAMARON", "CAMARON MOLIDO",
+    "CHARAL NATURAL", "CHARAL ADOBADO", "CECINA NATURAL", "CECINA ADOBADA",
+    "CECINA DE LIMON", "CECINA CHILTEPIN", "CECINA CHIPOTLE",
+    "CECINA HABANERO", "CECINA ARTESANAL", "PAPA FRITA",
+    "CHURRO DE MASA", "CHURRO DELGADO", "CHICHARRON", "CHICHARRON CRAC",
+    "PLATANO", "TOSTADA", "MIEL", "TIRA DE CC MINI", "TIRA DE DULCE",
+    "MIX VERDE", "MIX ROJO"
+]
+
+def ordenar_corte_minibodega(registros, es_detalle_corte=False):
+    orden_productos = {nombre.upper(): i for i, nombre in enumerate(ORDEN_PRODUCTOS_CORTE_MINIBODEGA)}
+    orden_presentaciones = {nombre.upper(): i for i, nombre in enumerate(ORDEN_PRESENTACIONES_CORTE_MINIBODEGA)}
+    prefijos_especiales = ("ML ", "Y ", "YML ", "YV ", "JP ", "N ")
+
+    def clave(registro):
+        detalle = registro.mini_bodega_detalle if es_detalle_corte else registro
+        variacion = detalle.producto_variacion
+        producto = variacion.producto.nombre.strip().upper()
+        presentacion = variacion.presentacion.nombre.strip().upper()
+        es_especial = producto.startswith(prefijos_especiales)
+
+        return (
+            1 if es_especial else 0,
+            orden_productos.get(producto, len(orden_productos)),
+            producto if producto not in orden_productos else '',
+            orden_presentaciones.get(presentacion, len(orden_presentaciones)),
+            presentacion,
+            registro.id
+        )
+
+    return sorted(registros, key=clave)
 
 
 

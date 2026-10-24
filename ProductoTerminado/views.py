@@ -3396,35 +3396,51 @@ def lista_productos_terminados(request):
 
 
 
+
 @login_required
 @requiere_roles("Producto Terminado")
 def realizar_corte_pt(request):
-
-    variaciones = ProductoVariacion.objects.filter(
-        producto__estado=True
-    ).select_related(
-        'producto',
-        'presentacion'
-    ).order_by(
-        'producto__nombre',
-        'presentacion__nombre'
+    variaciones = list(
+        ProductoVariacion.objects.filter(
+            producto__estado=True
+        ).select_related('producto', 'presentacion')
     )
 
-    if request.method == "POST":
+    # Orden personalizado de productos y presentaciones
+    orden_productos = {
+        nombre.upper(): i
+        for i, nombre in enumerate(ORDEN_PRODUCTOS_REPORTE_DIARIO_PT)
+    }
+    orden_presentaciones = {
+        nombre.upper(): i
+        for i, nombre in enumerate(ORDEN_PRESENTACIONES_REPORTE_DIARIO_PT)
+    }
+    prefijos_especiales = ("ML ", "Y ", "YML ", "YV ", "JP ", "N ")
 
+    def clave_orden_corte(variacion):
+        producto = variacion.producto.nombre.strip().upper()
+        presentacion = variacion.presentacion.nombre.strip().upper()
+        es_especial = producto.startswith(prefijos_especiales)
+
+        return (
+            1 if es_especial else 0,
+            orden_productos.get(producto, len(orden_productos)),
+            producto if producto not in orden_productos else '',
+            orden_presentaciones.get(presentacion, len(orden_presentaciones)),
+            presentacion
+        )
+
+    variaciones.sort(key=clave_orden_corte)
+
+    if request.method == "POST":
         form = CorteInventarioPTerminadoForm(request.POST)
 
         if form.is_valid():
-
-            # Primero validamos que todos los productos
-            # hayan enviado su stock real.
+            # Validar el stock real de todos los productos
             stocks_reales = {}
 
             for variacion in variaciones:
-
-                stock_real_str = request.POST.get(
-                    f'stock_real_{variacion.id}'
-                )
+                stock_real_str = request.POST.get(f'stock_real_{variacion.id}')
 
                 if stock_real_str is None or stock_real_str == '':
                     messages.error(
@@ -3433,63 +3449,42 @@ def realizar_corte_pt(request):
                         f"{variacion.producto.nombre} - "
                         f"{variacion.presentacion.nombre}."
                     )
-
-                    return render(
-                        request,
-                        'ProductoTerminado/cortes/realizar_corte.html',
-                        {
-                            'form': form,
-                            'variaciones': variaciones,
-                        }
-                    )
+                    return render(request, 'ProductoTerminado/cortes/realizar_corte.html', {
+                        'form': form,
+                        'variaciones': variaciones,
+                    })
 
                 try:
                     stock_real = Decimal(stock_real_str)
-
                 except (InvalidOperation, ValueError):
                     messages.error(
                         request,
                         f"El stock real de "
                         f"{variacion.producto.nombre} - "
-                        f"{variacion.presentacion.nombre} "
-                        f"no es válido."
+                        f"{variacion.presentacion.nombre} no es válido."
                     )
-
-                    return render(
-                        request,
-                        'ProductoTerminado/cortes/realizar_corte.html',
-                        {
-                            'form': form,
-                            'variaciones': variaciones,
-                        }
-                    )
+                    return render(request, 'ProductoTerminado/cortes/realizar_corte.html', {
+                        'form': form,
+                        'variaciones': variaciones,
+                    })
 
                 if stock_real < Decimal('0'):
                     messages.error(
                         request,
                         f"El stock real de "
                         f"{variacion.producto.nombre} - "
-                        f"{variacion.presentacion.nombre} "
-                        f"no puede ser negativo."
+                        f"{variacion.presentacion.nombre} no puede ser negativo."
                     )
-
-                    return render(
-                        request,
-                        'ProductoTerminado/cortes/realizar_corte.html',
-                        {
-                            'form': form,
-                            'variaciones': variaciones,
-                        }
-                    )
+                    return render(request, 'ProductoTerminado/cortes/realizar_corte.html', {
+                        'form': form,
+                        'variaciones': variaciones,
+                    })
 
                 stocks_reales[variacion.id] = stock_real
 
-            # Si todos los valores son válidos,
-            # ahora sí creamos el corte.
+            # Crear el corte únicamente cuando todos los valores sean válidos
             with transaction.atomic():
-
                 corte = form.save(commit=False)
-
                 corte.usuario = request.user
                 corte.fecha = timezone.now()
                 corte.estado = 'correcto'
@@ -3498,15 +3493,10 @@ def realizar_corte_pt(request):
                 requiere_ajuste = False
 
                 for variacion in variaciones:
-
                     stock_teorico = variacion.stock
                     stock_real = stocks_reales[variacion.id]
-
                     diferencia = stock_real - stock_teorico
-
-                    ajuste_necesario = (
-                        diferencia != Decimal('0')
-                    )
+                    ajuste_necesario = diferencia != Decimal('0')
 
                     if ajuste_necesario:
                         requiere_ajuste = True
@@ -3524,34 +3514,20 @@ def realizar_corte_pt(request):
                     corte.estado = 'pendiente'
                     corte.save()
 
-            messages.success(
-                request,
-                "Corte de inventario registrado correctamente."
-            )
-
+            messages.success(request, "Corte de inventario registrado correctamente.")
             return redirect('lista_cortes_pt')
 
         else:
-
-            messages.error(
-                request,
-                "Corrige los errores del formulario."
-            )
-
+            messages.error(request, "Corrige los errores del formulario.")
     else:
-
         form = CorteInventarioPTerminadoForm()
 
     context = {
         'form': form,
         'variaciones': variaciones,
     }
+    return render(request, 'ProductoTerminado/cortes/realizar_corte.html', context)
 
-    return render(
-        request,
-        'ProductoTerminado/cortes/realizar_corte.html',
-        context
-    )
 
 
 
@@ -3571,81 +3547,83 @@ def lista_cortes_pt(request):
     )
 
 
+
 @login_required
 @requiere_roles("Producto Terminado")
 def ajustar_inventario_pt(request, corte_id):
-    """
-    Vista para ajustar el inventario a partir de un corte de
-    Producto Terminado.
-    """
+    corte = get_object_or_404(CorteInventarioPTerminado, id=corte_id)
 
-    corte = get_object_or_404(
-        CorteInventarioPTerminado,
-        id=corte_id
+    detalles = ordenar_detalles_corte_pt(
+        corte.detallecorteinventariopterminado_set.all().select_related(
+            'producto_variacion__producto',
+            'producto_variacion__presentacion'
+        )
     )
 
-    detalles = corte.detallecorteinventariopterminado_set.all()
-
     if request.method == "POST":
-
         for detalle in detalles:
-
             if detalle.diferencia != Decimal('0'):
-
                 variacion = detalle.producto_variacion
-
-                # Actualizar el stock al stock real registrado en el corte
                 variacion.stock = detalle.stock_real
                 variacion.save()
 
         corte.estado = 'ajustado'
         corte.save()
 
-        messages.success(
-            request,
-            "Ajuste realizado correctamente."
-        )
-
+        messages.success(request, "Ajuste realizado correctamente.")
         return redirect('lista_cortes_pt')
 
     context = {
         'corte': corte,
         'detalles': detalles,
     }
+    return render(request, 'ProductoTerminado/cortes/ajuste_inventario.html', context)
 
-    return render(
-        request,
-        'ProductoTerminado/cortes/ajuste_inventario.html',
-        context
-    )
+
 
 
 
 @login_required
 @requiere_roles("Producto Terminado")
 def detalle_corte_pt(request, corte_id):
-    """
-    Vista para mostrar los detalles de un corte de
-    Producto Terminado.
-    """
+    corte = get_object_or_404(CorteInventarioPTerminado, id=corte_id)
 
-    corte = get_object_or_404(
-        CorteInventarioPTerminado,
-        id=corte_id
+    detalles = ordenar_detalles_corte_pt(
+        corte.detallecorteinventariopterminado_set.all().select_related(
+            'producto_variacion__producto',
+            'producto_variacion__presentacion'
+        )
     )
-
-    detalles = corte.detallecorteinventariopterminado_set.all()
 
     context = {
         'corte': corte,
         'detalles': detalles,
     }
+    return render(request, 'ProductoTerminado/cortes/detalle_corte.html', context)
 
-    return render(
-        request,
-        'ProductoTerminado/cortes/detalle_corte.html',
-        context
-    )
+
+
+
+def ordenar_detalles_corte_pt(detalles):
+    orden_productos = {nombre.upper(): i for i, nombre in enumerate(ORDEN_PRODUCTOS_REPORTE_DIARIO_PT)}
+    orden_presentaciones = {nombre.upper(): i for i, nombre in enumerate(ORDEN_PRESENTACIONES_REPORTE_DIARIO_PT)}
+    prefijos_especiales = ("ML ", "Y ", "YML ", "YV ", "JP ", "N ")
+
+    def clave(detalle):
+        variacion = detalle.producto_variacion
+        producto = variacion.producto.nombre.strip().upper()
+        presentacion = variacion.presentacion.nombre.strip().upper()
+        es_especial = producto.startswith(prefijos_especiales)
+
+        return (
+            1 if es_especial else 0,
+            orden_productos.get(producto, len(orden_productos)),
+            producto if producto not in orden_productos else '',
+            orden_presentaciones.get(presentacion, len(orden_presentaciones)),
+            presentacion
+        )
+
+    return sorted(detalles, key=clave)
 
 
 

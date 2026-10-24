@@ -5,6 +5,19 @@
 {% block content %}
 
 <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+<style>
+    /* Ocultar flechas de los campos numéricos */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    input[type="number"] {
+        -moz-appearance: textfield;
+        appearance: textfield;
+    }
+</style>
 
 <div class="container-fluid py-4">
 
@@ -165,7 +178,7 @@
 
             paging: false,
             responsive: false,
-
+            ordering: false,
             language: {
                 search: "Buscar:",
                 info: "Mostrando _TOTAL_ registros",
@@ -181,7 +194,18 @@
 </script>
 
 
+<script>
+    // Evitar cambios accidentales con la rueda del mouse
+    document.addEventListener('wheel', function (e) {
+        if (document.activeElement?.type === 'number') {
+            document.activeElement.blur();
+        }
+    }, { passive: true });
+</script>
+
 <!-- Confirmación -->
+
+
 <script>
 
     document
