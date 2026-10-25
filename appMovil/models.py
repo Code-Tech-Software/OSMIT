@@ -162,7 +162,7 @@ class PedidoReabastecimientoHistorial(models.Model):
     
 
 class Devolucion(models.Model):
-    uuid = models.UUIDField(default=uuid.uuid4, editable=False)#, unique=True ponerlo despues
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False)
     tipo = models.CharField(max_length=50)
     cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True)
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
@@ -171,6 +171,9 @@ class Devolucion(models.Model):
     descripcion = models.TextField()
     sincronizado = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    diferencia_dinero = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    tipo_diferencia = models.CharField(max_length=30, default="SIN_DIFERENCIA")
+    forma_liquidacion = models.CharField(max_length=30, default="EFECTIVO")
 
 
 class DevolucionDetalle(models.Model):
@@ -304,6 +307,9 @@ class CancelacionDevolucion(models.Model):
     total = models.DecimalField(max_digits=10, decimal_places=2)
     motivo = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
+    diferencia_dinero = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    tipo_diferencia = models.CharField(max_length=30, default="SIN_DIFERENCIA")
+    forma_liquidacion = models.CharField(max_length=30, default="EFECTIVO")
 
     def __str__(self):
         return f"Cancelación devolución {self.uuid}"

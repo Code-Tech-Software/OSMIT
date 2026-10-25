@@ -1352,7 +1352,10 @@ def sync_devoluciones(request):
                 mini_bodega_id=d['mini_bodega_id'],
                 fecha=fecha,
                 descripcion=d.get('descripcion', ''),
-                sincronizado=True
+                sincronizado=True,
+                diferencia_dinero=Decimal(str(d.get('diferencia_dinero', 0))),
+                tipo_diferencia=d.get('tipo_diferencia', 'SIN_DIFERENCIA'),
+                forma_liquidacion=d.get('forma_liquidacion', 'EFECTIVO')
             )
 
         # =========================
@@ -1598,7 +1601,10 @@ def sync_cancelaciones_devoluciones(request):
                 mini_bodega=mini_bodega,
                 fecha=fecha,
                 total=c['total'],
-                motivo=c.get('motivo', '')
+                motivo=c.get('motivo', ''),
+                diferencia_dinero=Decimal(str(c.get('diferencia_dinero', 0))),
+                tipo_diferencia=c.get('tipo_diferencia', 'SIN_DIFERENCIA'),
+                forma_liquidacion=c.get('forma_liquidacion', 'EFECTIVO')
             )
 
         for detalle in detalles:
