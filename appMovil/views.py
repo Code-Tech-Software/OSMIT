@@ -1305,40 +1305,29 @@ def sync_abonos(request):
 @permission_classes([DispositivoActivoPermission])
 def sync_devoluciones(request):
     data = request.data
-
     devoluciones = data.get('devoluciones', [])
     detalles = data.get('detalles', [])
     mermas = data.get('mermas', [])
     sustituciones = data.get('sustituciones', [])
 
     with transaction.atomic():
-
         # =========================
         # 🔹 1. DEVOLUCIONES
         # =========================
         for d in devoluciones:
-
             if Devolucion.objects.filter(uuid=d['uuid']).exists():
                 continue
-
             if not Usuario.objects.filter(id=d['usuario_id']).exists():
                 continue
-
             if not MiniBodega.objects.filter(id=d['mini_bodega_id']).exists():
                 continue
 
             fecha_str = d.get('fecha')
-
             if fecha_str:
                 try:
                     fecha = datetime.fromisoformat(fecha_str)
-
                     if timezone.is_naive(fecha):
-                        fecha = timezone.make_aware(
-                            fecha,
-                            timezone.get_current_timezone()
-                        )
-
+                        fecha = timezone.make_aware(fecha, timezone.get_current_timezone())
                 except:
                     fecha = timezone.now()
             else:
@@ -1362,12 +1351,10 @@ def sync_devoluciones(request):
         # 🔹 2. DETALLES
         # =========================
         for det in detalles:
-
             if DevolucionDetalle.objects.filter(uuid=det['uuid']).exists():
                 continue
 
             devolucion = Devolucion.objects.get(uuid=det['devolucion_uuid'])
-
             DevolucionDetalle.objects.create(
                 uuid=det['uuid'],
                 devolucion=devolucion,
@@ -1381,7 +1368,6 @@ def sync_devoluciones(request):
         # 🔹 3. MERMAS
         # =========================
         for m in mermas:
-
             if MiniBodegaDetalleMerma.objects.filter(uuid=m['uuid']).exists():
                 continue
 
@@ -1402,62 +1388,23 @@ def sync_devoluciones(request):
         # 🔹 4. SUSTITUCIONES
         # =========================
         for s in sustituciones:
-
-            if DevolucionSustitucion.objects.filter(
-                uuid=s['uuid']
-            ).exists():
+            if DevolucionSustitucion.objects.filter(uuid=s['uuid']).exists():
                 continue
 
-            devolucion = Devolucion.objects.get(
-                uuid=s['devolucion_uuid']
-            )
+            devolucion = Devolucion.objects.get(uuid=s['devolucion_uuid'])
+            detalle = DevolucionDetalle.objects.get(uuid=s['devolucion_detalle_uuid'])
 
-            detalle = DevolucionDetalle.objects.get(
-                uuid=s['devolucion_detalle_uuid']
-            )
+            if detalle.devolucion_id != devolucion.id:
+                raise ValueError("La sustitución no corresponde al detalle de esta devolución")
 
             cantidad = Decimal(str(s.get('cantidad', 0)))
             precio = Decimal(str(s.get('precio_unitario', 0)))
 
-            if cantidad <= 0:
-                raise Exception(
-                    f"Cantidad inválida en sustitución {s['uuid']}"
-                )
+            if not cantidad.is_finite() or cantidad <= 0:
+                raise ValueError(f"Cantidad inválida en sustitución {s['uuid']}")
+            if not precio.is_finite() or precio < 0:
+                raise ValueError(f"Precio inválido en sustitución {s['uuid']}")
 
-            # =========================
-            # 🔥 BUSCAR STOCK
-            # =========================
-            mini_bodega_detalle = MiniBodegaDetalle.objects.filter(
-                mini_bodega_id=devolucion.mini_bodega_id,
-                producto_variacion_id=s['producto_variacion_id']
-            ).first()
-
-            if not mini_bodega_detalle:
-                raise Exception(
-                    f"No existe el producto sustituto "
-                    f"{s['producto_variacion_id']} "
-                    f"en la MiniBodega "
-                    f"{devolucion.mini_bodega_id}"
-                )
-
-            # =========================
-            # 🔥 VALIDAR STOCK
-            # =========================
-            if mini_bodega_detalle.cantidad_actual < cantidad:
-                raise Exception(
-                    f"Stock insuficiente para el producto sustituto "
-                    f"{s['producto_variacion_id']}"
-                )
-
-            # =========================
-            # 🔥 DESCONTAR SUSTITUTO
-            # =========================
-            mini_bodega_detalle.cantidad_actual -= cantidad
-            mini_bodega_detalle.save()
-
-            # =========================
-            # 🔥 GUARDAR SUSTITUCIÓN
-            # =========================
             DevolucionSustitucion.objects.create(
                 uuid=s['uuid'],
                 devolucion=devolucion,

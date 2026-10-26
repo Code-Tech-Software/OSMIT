@@ -224,7 +224,7 @@
 </div>
 
 <!-- MODAL EDITAR NOTA -->
-{% if user|has_role:"Producto Terminado" %}
+{% if user|has_role:"Administrador,Producto Terminado" %}
 <div class="modal fade" id="modalEditarNota" tabindex="-1" aria-labelledby="modalEditarNotaLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
