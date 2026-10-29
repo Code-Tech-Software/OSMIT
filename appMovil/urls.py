@@ -28,6 +28,8 @@ router.register(r'pedido-reabastecimiento-detalles', PedidoReabastecimientoDetal
 urlpatterns = [
     path('', include(router.urls)),
 
+    path('admin/verificar-pin/', views.verificar_pin_admin, name='verificar_pin_admin'),
+
     path('mini-bodega/cerrar/', cerrar_mini_bodega),
     path('reabastecimiento/crear/', crear_reabastecimiento),
     #path('reabastecimiento/sincronizar/', sincronizar_reabastecimiento),

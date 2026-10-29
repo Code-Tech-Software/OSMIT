@@ -1,7 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap');
 
+/* ==========================================================
+   ESTILOS GENERALES
+========================================================== */
 * {
-
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -9,11 +11,13 @@
 }
 
 ol, ul {
-     padding-left: 0rem  !important; /* esto es para que se pegue el menu del sliderbar a la izquirda al usar boostrap*/
+    padding-left: 0rem !important;
 }
 
+/* ==========================================================
+   VARIABLES DE COLOR - MODO CLARO
+========================================================== */
 :root {
-
     --color-bg: #EBECF2;
     --color-surface: #FFFFFF;
     --color-border: #9A9EB2;
@@ -23,38 +27,41 @@ ol, ul {
     --color-tooltip-text: #fff;
     --shadow-border: rgba(0, 0, 0, 0.1);
     --user-bg-color: #FAFAFC;
-
-
-
 }
 
-
-body.dark-mode{
-
-    --color-bg: #3A3D4D;
-    --color-surface: #12141A;
-    --color-border: #2B2D3B;
-    --color-text-primary: #FFFFFF;
-    --color-text-secondary: #9CA2B8;
-    --color-tooltip-bg: #fff;
-    --color-tooltip-text: #000;
+/* ==========================================================
+   VARIABLES DE COLOR - MODO OSCURO
+========================================================== */
+:root[data-bs-theme="dark"] {
+    --color-bg: #20232D;
+    --color-surface: #17191F;
+    --color-border: #383C49;
+    --color-text-primary: #F5F5F5;
+    --color-text-secondary: #B5BAC9;
+    --color-tooltip-bg: #FFFFFF;
+    --color-tooltip-text: #000000;
     --shadow-border: rgba(255, 255, 255, 0.1);
-    --user-bg-color: #FAFAFC;
+    --user-bg-color: #262A35;
+    --bs-body-bg: #20232D;
+    --bs-body-color: #F5F5F5;
 }
-/* Body */
-body {
 
+/* ==========================================================
+   BODY
+========================================================== */
+body {
     display: flex;
-    flex-direction: column;/*   esto es un agregado esta en revicion por si falla */
+    flex-direction: column;
     width: 100%;
     height: 100vh;
     background-color: var(--color-bg);
-    transition: color 0.5s ease,
-    background-color 0.3s ease,left 0.5s ease;
+    transition: color 0.5s ease, background-color 0.3s ease, left 0.5s ease;
 }
-/* Sidebar */
-.sidebar{
 
+/* ==========================================================
+   SIDEBAR PRINCIPAL
+========================================================== */
+.sidebar {
     position: fixed;
     display: flex;
     flex-direction: column;
@@ -67,15 +74,19 @@ body {
     box-shadow: 1px 0px 10px var(--shadow-border);
     transition: width 0.5s ease;
 }
-.sidebar.minimize{
+
+.sidebar.minimize {
     width: 4.94rem;
 }
-/* Header */
-.header{
+
+/* ==========================================================
+   HEADER DEL SIDEBAR
+========================================================== */
+.header {
     width: 100%;
 }
-/*Menu Button*/
-.menu-btn{
+
+.menu-btn {
     position: absolute;
     top: 3.5%;
     right: -0.87rem;
@@ -87,21 +98,27 @@ body {
     border-radius: 50%;
     background-color: #fff;
     color: #757575;
-    box-shadow:  2px 2px 5px var(--shadow-border);
+    box-shadow: 2px 2px 5px var(--shadow-border);
     cursor: pointer;
     transition: right 0.3s ease;
 }
-.menu-btn i{
+
+.menu-btn i {
     font-size: 1.5rem;
 }
-.sidebar.minimize .menu-btn{
+
+.sidebar.minimize .menu-btn {
     right: -2.2rem;
 }
-.sidebar.minimize .menu-btn i{
+
+.sidebar.minimize .menu-btn i {
     transform: rotate(180deg);
 }
-/* Brand */
-.brand{
+
+/* ==========================================================
+   LOGO Y MARCA
+========================================================== */
+.brand {
     width: 100%;
     display: flex;
     align-items: center;
@@ -110,17 +127,21 @@ body {
     margin-bottom: 1.8rem;
     overflow: hidden;
 }
-.brand img{
+
+.brand img {
     width: 2rem;
 }
-.brand span{
+
+.brand span {
     font-size: 1.1rem;
     font-weight: 600;
     color: var(--color-text-primary);
 }
 
-/* Menu Container */
-.menu-container{
+/* ==========================================================
+   CONTENEDOR DEL MENÚ
+========================================================== */
+.menu-container {
     display: flex;
     width: 100%;
     height: 100%;
@@ -128,8 +149,10 @@ body {
     align-items: center;
 }
 
-/* Search */
-.search{
+/* ==========================================================
+   BUSCADOR DEL SIDEBAR
+========================================================== */
+.search {
     display: flex;
     width: 100%;
     padding: 0.55rem 0;
@@ -139,24 +162,30 @@ body {
     cursor: pointer;
     transition: box-shadow 0.5s ease;
 }
-.search:hover{
+
+.search:hover {
     box-shadow: 0 0 0 1px var(--color-text-primary);
 }
-.sidebar.minimize .search{
+
+.sidebar.minimize .search {
     box-shadow: none;
 }
-.sidebar.minimize .search:hover{
+
+.sidebar.minimize .search:hover {
     background-color: var(--color-bg);
 }
-.search i{
+
+.search i {
     font-size: 1.35rem;
     color: var(--color-text-secondary);
     padding: 0 0.8rem;
 }
-.search:hover i{
+
+.search:hover i {
     color: var(--color-text-primary);
 }
-.search input{
+
+.search input {
     width: 70%;
     border: none;
     outline: none;
@@ -164,55 +193,70 @@ body {
     color: var(--color-text-primary);
 }
 
-/* Menu */
-.menu{
+/* ==========================================================
+   MENÚ PRINCIPAL
+========================================================== */
+.menu {
     width: 100%;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
 }
-.menu .menu-item{
+
+.menu .menu-item {
     position: relative;
     list-style: none;
     overflow: hidden;
 }
-.menu .menu-link{
+
+.menu .menu-link {
     display: flex;
     padding: 0.55rem 0;
     color: var(--color-text-secondary);
     text-decoration: none;
     border-radius: 0.3rem;
 }
+
 .menu-item:hover .menu-link,
 .sub-menu .sub-menu-link:hover,
-.menu-item.active .menu-link{
+.menu-item.active .menu-link {
     color: var(--color-text-primary);
     background-color: var(--color-bg);
 }
-.menu-link i{
+
+.menu-link i {
     font-size: 1.35rem;
     padding: 0 0.8rem;
 }
-.menu-link i:last-child{
+
+.menu-link i:last-child {
     margin-left: auto;
     transition: transform 0.3s ease;
 }
-.sidebar.minimize .menu-link i:last-child{
+
+.sidebar.minimize .menu-link i:last-child {
     display: none;
 }
-.menu-item.sub-menu-toggle .menu-link i:last-child{
+
+.menu-item.sub-menu-toggle .menu-link i:last-child {
     transform: rotate(180deg);
 }
-.menu-link span{
+
+.menu-link span {
     font-size: 0.8rem;
     font-weight: 500;
 }
+
+/* ==========================================================
+   MENÚ MINIMIZADO
+========================================================== */
 .sidebar.minimize .menu-item:hover,
-.sidebar.minimize .menu-item.sub-menu-toggle{
+.sidebar.minimize .menu-item.sub-menu-toggle {
     overflow: visible;
 }
+
 .sidebar.minimize .menu-item:hover span,
-.sidebar.minimize .menu-item.sub-menu-toggle span{
+.sidebar.minimize .menu-item.sub-menu-toggle span {
     position: absolute;
     left: 4.2rem;
     padding: 0.5rem;
@@ -222,21 +266,25 @@ body {
     transition: all 0.3s ease;
 }
 
-/* Sub menu*/
-.sub-menu{
+/* ==========================================================
+   SUBMENÚS
+========================================================== */
+.sub-menu {
     height: 0;
     transition: all 0.3s ease;
     overflow: hidden;
     left: 0;
 }
-.sidebar.minimize .sub-menu{
+
+.sidebar.minimize .sub-menu {
     position: absolute;
     left: 4.2rem;
     top: 3rem;
     background-color: var(--color-surface);
     border-radius: 0.2rem;
 }
-.sub-menu .sub-menu-link{
+
+.sub-menu .sub-menu-link {
     display: flex;
     margin-left: 2.5rem;
     padding: 0.55rem 0.5rem;
@@ -246,7 +294,8 @@ body {
     text-decoration: none;
     border-radius: 0.3rem;
 }
-.sub-menu::before{
+
+.sub-menu::before {
     content: '';
     position: absolute;
     height: 100%;
@@ -254,49 +303,61 @@ body {
     margin-left: 1.4rem;
     background-color: var(--color-border);
 }
-.sidebar.minimize .sub-menu::before{
+
+.sidebar.minimize .sub-menu::before {
     width: 0;
 }
-.sidebar.minimize .sub-menu a{
+
+.sidebar.minimize .sub-menu a {
     margin: 0 0.5rem;
 }
-/* Footer */
-.footer{
+
+/* ==========================================================
+   FOOTER DEL SIDEBAR
+========================================================== */
+.footer {
     width: 100%;
     padding: 1rem 0;
     box-shadow: 0 -0.02rem 0 0 var(--color-border);
 }
-.user{
+
+.user {
     display: flex;
     overflow: hidden;
     margin-top: 1rem;
 }
-.user-img{
+
+.user-img {
     display: flex;
     margin: 0 0.7rem 0 0.35rem;
 }
-.user-img img{
+
+.user-img img {
     width: 2.2rem;
     height: 2.2rem;
     object-fit: cover;
     border-radius: 50%;
 }
-.user-data{
+
+.user-data {
     display: flex;
     flex-direction: column;
     overflow: hidden;
     white-space: nowrap;
 }
-.user-data .name{
+
+.user-data .name {
     font-size: 0.8rem;
     font-weight: 600;
     color: var(--color-text-primary);
 }
-.user-data .email{
+
+.user-data .email {
     font-size: 0.7rem;
     color: var(--color-text-secondary);
 }
-.user-icon{
+
+.user-icon {
     margin-left: auto;
     display: flex;
     align-items: center;
@@ -305,136 +366,252 @@ body {
     color: var(--color-text-secondary);
 }
 
-/* Sidebar button*/
-.sidebar-btn{
+/* ==========================================================
+   BOTÓN RESPONSIVO DEL SIDEBAR
+========================================================== */
+.sidebar-btn {
     display: none;
 }
-/* Main */
-main{
+
+/* ==========================================================
+   CONTENIDO PRINCIPAL
+========================================================== */
+main {
     padding: 2rem 3rem 3rem 17rem;
     transition: padding 0.5s ease;
 }
-main h1{
+
+main h1,
+main h2,
+main h3,
+main h4 {
     color: var(--color-text-primary);
 }
 
-main h2{
-    color: var(--color-text-primary);
-}
-main h3{
-    color: var(--color-text-primary);
-}
-main h4{
-    color: var(--color-text-primary);
-}
-
-.sidebar.minimize + main{
+.sidebar.minimize + main {
     padding-left: 7.96rem;
 }
 
-/* Dark mode
-.brand-dark{
+/* ==========================================================
+   LOGOS SEGÚN EL TEMA
+========================================================== */
+.brand-dark {
     display: none;
 }
-body.dark-mode .brand-dark{
+
+[data-bs-theme="dark"] .brand-dark {
     display: flex;
 }
-body.dark-mode .brand-light{
+
+[data-bs-theme="dark"] .brand-light {
     display: none;
 }
-.dark-mode-btn{
-    position: absolute;
-    width: 2.4rem;
-    height: 2.4rem;
+
+/* ==========================================================
+   DISEÑO RESPONSIVO
+========================================================== */
+/* En pantallas bajas solo se ajusta el desplazamiento del menú. */
+@media (max-height: 683px) {
+    .footer { box-shadow: none; }
+    .footer ul { display: none; }
+    .menu-container { overflow-y: auto; }
+    .sidebar.minimize .menu-container { overflow: visible; }
+    .search { box-shadow: none; border: 2px solid var(--color-border); }
+    .search:hover { box-shadow: none; }
+}
+
+/* En celulares se oculta el sidebar y el contenido usa todo el ancho. */
+@media (max-width: 700px) {
+    #menu-btn { display: none; }
+    .sidebar, .sidebar.minimize {
+        left: 0;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 1040 !important;
+    }
+    body.sidebar-hidden .sidebar,
+    body.sidebar-hidden .sidebar.minimize { transform: translateX(0); }
+    .sidebar-btn {
+        display: flex;
+        position: relative;
+        top: auto;
+        right: auto;
+        width: 2.5rem;
+        height: 2.5rem;
+        padding: 0;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+    }
+    .sidebar-btn i:last-child { display: none; }
+    body.sidebar-hidden .sidebar-btn i:last-child { display: flex; }
+    body.sidebar-hidden .sidebar-btn i:first-child { display: none; }
+    main, .sidebar + main, .sidebar.minimize + main {
+        margin-left: 0;
+        padding: 2rem 12px 2rem 12px;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+    }
+}
+
+/* ==========================================================
+   BOTÓN DE CAMBIO DE TEMA
+========================================================== */
+.dark-mode-btn {
+    position: fixed;
     bottom: 2rem;
     right: 2rem;
+    width: 2.8rem;
+    height: 2.8rem;
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: #fff;
+    border: 1px solid var(--color-border);
     border-radius: 50%;
-    box-shadow: 0 0 10px 2px var(--shadow-border);
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    box-shadow: 0 2px 10px var(--shadow-border);
     cursor: pointer;
-    overflow: hidden;
+    z-index: 1050;
 }
-.dark-mode-btn i{
-    font-size: 1.5rem;
+
+.dark-mode-btn i {
+    position: static;
+    font-size: 1.3rem;
+    transform: none !important;
+}
+
+.dark-mode-btn:hover {
+    background-color: var(--color-bg);
+}
+
+/* ==========================================================
+   ADAPTACIONES DEL SIDEBAR AL MODO OSCURO
+========================================================== */
+[data-bs-theme="dark"] .menu-btn {
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+}
+
+[data-bs-theme="dark"] .dropdown-menu-user {
+    background-color: var(--color-surface) !important;
+    color: var(--color-text-primary);
+}
+
+[data-bs-theme="dark"] .dropdown-menu-user .dropdown-item {
+    color: var(--color-text-primary) !important;
+}
+
+/* ==========================================================
+   MODO OSCURO GLOBAL - OSMIT
+========================================================== */
+html[data-bs-theme="dark"],
+html[data-bs-theme="dark"] body,
+html[data-bs-theme="dark"] main {
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+}
+
+html[data-bs-theme="dark"] .sidebar {
+    background-color: var(--color-surface);
+}
+
+html[data-bs-theme="dark"] .navbar {
+    color: var(--color-text-primary);
+}
+
+html[data-bs-theme="dark"] .card,
+html[data-bs-theme="dark"] .modal-content {
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    border-color: var(--color-border);
+}
+
+html[data-bs-theme="dark"] .table {
+    --bs-table-bg: #17191F;
+    --bs-table-color: #F5F5F5;
+    --bs-table-border-color: #383C49;
+}
+
+html[data-bs-theme="dark"] .form-control,
+html[data-bs-theme="dark"] .form-select {
+    background-color: #262A35;
+    color: #F5F5F5;
+    border-color: #383C49;
+}
+
+html[data-bs-theme="dark"] .form-control::placeholder {
+    color: #9CA2B8;
+}
+
+/* ==========================================================
+   NAVBAR SUPERIOR Y MENÚ DE USUARIO
+   ESTILOS EXTRAÍDOS DE SIDEBAR.HTML
+========================================================== */
+.icon-hover:hover,
+.user-hover:hover {
+    color: gray;
+}
+
+.dropdown-item:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.dropdown-menu-user {
+    display: none;
     position: absolute;
-    transition: transform 0.3s ease-in;
+    right: 0;
+    top: 100%;
+    min-width: 160px;
+    z-index: 1050;
 }
-.dark-mode-btn i:last-child{
-    transform: translateY(150%);
+
+.user-menu:hover .dropdown-menu-user {
+    display: block;
 }
-body.dark-mode .dark-mode-btn i:last-child{
-    transform: translateY(0%);
+
+/* ==========================================================
+   ANIMACIÓN DEL BOTÓN RECARGAR
+   ESTILOS EXTRAÍDOS DE SIDEBAR.HTML
+========================================================== */
+#reloadIcon.spinning {
+    animation: spin 1s linear infinite;
 }
-body.dark-mode .dark-mode-btn i:first-child{
-    transform: translateY(-150%);
-}
-Responsive */
-@media (max-height: 683px){
-    .footer{
-        box-shadow: none;
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
     }
-    .footer ul{
-        display: none;
-    }
-    .menu-container{
-        overflow-y: auto;
-    }
-    .search{
-        box-shadow: none;
-        border: 2px solid var(--color-border);
-    }
-    .search:hover{
-        box-shadow: none;
-    }
-    main{
-        padding: 2rem;
-    }
-}
-@media (max-width:700px) or (max-height:683px){
-    #menu-btn{
-        display: none;
-    }
-    .sidebar{
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-    }
-    .sidebar-btn{
-        display: flex;
-        right: 1rem;
-        padding: 1.2rem;
-    }
-    .sidebar-btn i:last-child{
-        display: none;
-    }
-    body.sidebar-hidden .sidebar{
-        transform: translateX(0);
-    }
-    body.sidebar-hidden .sidebar-btn i:last-child{
-        display: flex;
-    }
-    body.sidebar-hidden .sidebar-btn i:first-child{
-        display: none;
-    }
-    main{
-        padding: 2rem;
+
+    100% {
+        transform: rotate(360deg);
     }
 }
 
+/* ==========================================================
+   ICONOS DE NOTIFICACIONES
+   ESTILOS EXTRAÍDOS DE SIDEBAR.HTML
+========================================================== */
+.icon-hover:hover {
+    color: #078bcf;
+}
 
+.bi-bell-slash-fill.text-muted {
+    opacity: 0.6;
+}
 
+@media (max-width: 700px) {
+    .sidebar { width: 15rem; }
 
-
-
-
-
-
-
-
-
-
-
-
-
+    body > .sidebar + main,
+    body > .sidebar.minimize + main {
+        padding-left: 12px;
+        padding-right: 12px;
+        margin-left: 0;
+        width: 100%;
+        min-width: 0;
+    }
+}

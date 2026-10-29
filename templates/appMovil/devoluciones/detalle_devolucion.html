@@ -83,6 +83,32 @@
                         {% if devolucion.sincronizado %}Sincronizado{% else %}Pendiente Sinc.{% endif %}
                     </span>
                 </div>
+                {% with sustituciones=devolucion.devolucionsustitucion_set.all %}
+                {% if sustituciones %}
+                <div class="resumen-item">
+                    <span class="text-label"><i class="bi bi-cash-coin me-2"></i>Liquidación</span>
+                    {% if devolucion.tipo_diferencia == "CLIENTE_PAGO" %}
+                        <span class="badge bg-success">Cliente pagó</span>
+                    {% elif devolucion.tipo_diferencia == "REPARTIDOR_PAGO" %}
+                        <span class="badge bg-primary">Repartidor pagó</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Sin diferencia</span>
+                    {% endif %}
+                </div>
+
+                <div class="resumen-item">
+                    <span class="text-label"><i class="bi bi-currency-dollar me-2"></i>Monto de diferencia</span>
+                    <span class="fw-bold">${{ devolucion.diferencia_dinero|default:0|floatformat:2 }}</span>
+                </div>
+
+                {% if devolucion.tipo_diferencia != "SIN_DIFERENCIA" %}
+                <div class="resumen-item">
+                    <span class="text-label"><i class="bi bi-wallet2 me-2"></i>Forma de pago</span>
+                    <span class="fw-medium">{{ devolucion.forma_liquidacion|default:"No especificada" }}</span>
+                </div>
+                {% endif %}
+                {% endif %}
+                {% endwith %}
             </div>
 
             <!-- Caja de Motivo / Descripción -->

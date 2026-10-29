@@ -40,6 +40,14 @@ from .autenticacion_dispositivo import DispositivoActivoPermission
 from Usuario.decorators import requiere_roles,solo_administrador
 from django.db.models import Exists, OuterRef
 from django.views.decorators.http import require_POST
+from django.conf import settings
+from django.contrib.auth.hashers import check_password
+from django.core.cache import cache
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.throttling import SimpleRateThrottle
+from rest_framework.response import Response
+from rest_framework import status
 
 
 # Create your views here.
@@ -138,6 +146,60 @@ class PedidoReabastecimientoViewSet(BaseSyncViewSet):
 class PedidoReabastecimientoDetalleViewSet(BaseSyncViewSet):
     queryset = PedidoReabastecimientoDetalle.objects.all()
     serializer_class = PedidoReabastecimientoDetalleSerializer
+
+
+class PinAdminThrottle(SimpleRateThrottle):
+    scope = "pin_admin"
+
+    def get_cache_key(self, request, view):
+        codigo = getattr(getattr(request, "dispositivo", None), "codigo", None)
+        if not codigo:
+            codigo = self.get_ident(request)
+        return self.cache_format % {"scope": self.scope, "ident": codigo}
+
+    def get_rate(self):
+        return "5/min"
+
+@api_view(["POST"])
+@permission_classes([DispositivoActivoPermission])
+@throttle_classes([PinAdminThrottle])
+def verificar_pin_admin(request):
+    pin = request.data.get("pin", "")
+    if not isinstance(pin, str) or len(pin) != 6 or not pin.isdigit():
+        return Response({
+            "success": False,
+            "message": "El PIN debe contener 6 dígitos."
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    pin_hash = settings.OSMIT_ADMIN_PIN_HASH
+    if not pin_hash:
+        return Response({
+            "success": False,
+            "message": "El PIN administrativo no está configurado."
+        }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    codigo = request.dispositivo.codigo
+    clave_intentos = f"pin_admin_intentos:{codigo}"
+    intentos = cache.get(clave_intentos, 0)
+
+    if intentos >= 5:
+        return Response({
+            "success": False,
+            "message": "Demasiados intentos. Intenta nuevamente en 15 minutos."
+        }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+    if not check_password(pin, pin_hash):
+        cache.set(clave_intentos, intentos + 1, timeout=900)
+        return Response({
+            "success": False,
+            "message": "PIN administrativo incorrecto."
+        }, status=status.HTTP_401_UNAUTHORIZED)
+
+    cache.delete(clave_intentos)
+    return Response({
+        "success": True,
+        "message": "PIN administrativo correcto."
+    })
 
 
 """
