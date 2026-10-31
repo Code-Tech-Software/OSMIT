@@ -1,4 +1,5 @@
 # forms.py
+from django.utils import timezone
 from pyclbr import Class
 
 from django import forms
@@ -44,6 +45,29 @@ class FiltroVentasForm(forms.Form):
             rol__estado=True,
             is_active=True
         ),
+        required=False,
+        empty_label="Todos los repartidores",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
+
+class FiltroResumenOperacionesForm(forms.Form):
+    fecha = forms.DateField(
+        required=True,
+        initial=timezone.localdate,
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control'
+        }, format='%Y-%m-%d'),
+        input_formats=['%Y-%m-%d']
+    )
+
+    repartidor = forms.ModelChoiceField(
+        queryset=Usuario.objects.filter(
+            rol__nombre='Repartidor',
+            rol__estado=True,
+            is_active=True
+        ).order_by('first_name', 'last_name'),
         required=False,
         empty_label="Todos los repartidores",
         widget=forms.Select(attrs={'class': 'form-select'})

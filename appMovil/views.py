@@ -1,53 +1,95 @@
-from datetime import datetime, timedelta
-from uuid import UUID
-from django.shortcuts import render
-from rest_framework import viewsets, status
-from django.utils.dateparse import parse_datetime, parse_date
-from django.utils.timezone import make_aware, is_naive
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.response import Response
-from decimal import Decimal, InvalidOperation
-from django.contrib.auth.decorators import login_required
-import secrets
+# =========================================================
+# LIBRERÍAS ESTÁNDAR DE PYTHON
+# =========================================================
 import json
-from django.contrib.auth.hashers import make_password
-from django.contrib.auth.hashers import check_password
-from ProductoGranel.views import get_pusher_client
-from ProductoTerminado.models import SalidaPTerminado, DetalleSalidaPTerminado, EntradaPTerminado, \
-    DetalleEntradaPTerminado
-from appMovil.serializers import *
-from datetime import date
+import secrets
 
-from django.shortcuts import render, get_object_or_404, redirect
+from datetime import date, datetime, time, timedelta
+from decimal import Decimal, InvalidOperation
+from uuid import UUID
+
+
+# =========================================================
+# DJANGO - CONFIGURACIÓN Y UTILIDADES
+# =========================================================
+from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.hashers import check_password, make_password
+from django.core.cache import cache
 from django.db import transaction
+from django.db.models import (
+    F, Sum, Exists, OuterRef, DecimalField, ExpressionWrapper
+)
+from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime, parse_date
+from django.utils.decorators import method_decorator
+from django.utils.timezone import make_aware, is_naive
+from django.views.decorators.http import require_POST
+from django.views.generic import TemplateView
+
+
+# =========================================================
+# DJANGO REST FRAMEWORK
+# =========================================================
+from rest_framework import viewsets, status
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.throttling import SimpleRateThrottle
+
+
+# =========================================================
+# MODELOS DE OTRAS APLICACIONES
+# =========================================================
+from ProductoTerminado.models import (
+    SalidaPTerminado,
+    DetalleSalidaPTerminado,
+    EntradaPTerminado,
+    DetalleEntradaPTerminado
+)
+
+
+# =========================================================
+# FUNCIONES Y DECORADORES DE OTRAS APLICACIONES
+# =========================================================
+from ProductoGranel.views import get_pusher_client
+from Usuario.decorators import requiere_roles, solo_administrador
+
+
+# =========================================================
+# APP MOVIL - MODELOS
+# =========================================================
 from .models import (
     PedidoReabastecimiento,
     MiniBodega,
     MiniBodegaDetalle,
-    
+    Dispositivo,
+    CorteInventarioMiniBodega,
+    DetalleCorteInventarioMiniBodega,
+    Venta,
+    Abono,
+    Devolucion,
+    DevolucionSustitucion,
+    Rotacion,
+    RotacionDetalle
 )
-from .models import Dispositivo,CorteInventarioMiniBodega,DetalleCorteInventarioMiniBodega
-from django.utils.decorators import method_decorator
-from django.db import transaction
-from django.db.models import F
-from django.utils import timezone
-from django.shortcuts import get_object_or_404, redirect
-from django.contrib import messages
-from .forms import DispositivoForm
+
+
+# =========================================================
+# APP MOVIL - FORMULARIOS
+# =========================================================
+from .forms import DispositivoForm, FiltroResumenOperacionesForm
+
+
+# =========================================================
+# APP MOVIL - SERIALIZADORES Y AUTENTICACIÓN
+# =========================================================
+from appMovil.serializers import *
 from .autenticacion_dispositivo import DispositivoActivoPermission
-from Usuario.decorators import requiere_roles,solo_administrador
-from django.db.models import Exists, OuterRef
-from django.views.decorators.http import require_POST
-from django.conf import settings
-from django.contrib.auth.hashers import check_password
-from django.core.cache import cache
-from rest_framework.decorators import api_view, permission_classes, throttle_classes
-from rest_framework.permissions import AllowAny
-from rest_framework.throttling import SimpleRateThrottle
-from rest_framework.response import Response
-from rest_framework import status
+
+
 
 
 # Create your views here.
@@ -1790,38 +1832,7 @@ def sync_rotaciones(request):
         return Response({"error": str(e)}, status=400)
 
 
-##Solo para revisar
-@api_view(['GET'])
-def get_ventas(request):
 
-    ventas = Venta.objects.all().order_by('-fecha')
-
-    data = []
-
-    for v in ventas:
-        detalles = VentaDetalle.objects.filter(venta=v)
-
-        data.append({
-            "uuid": str(v.uuid),
-            "cliente": v.cliente.nombre if v.cliente else None,
-            "usuario_id": v.usuario.id if v.usuario else None,
-            "fecha": v.fecha,
-            "total": float(v.total),
-            "tipo_venta": v.tipo_venta,
-            "estado_pago": v.estado_pago,
-            "saldo_pendiente": float(v.saldo_pendiente),
-
-            "detalles": [
-                {
-                    "producto": d.nombre_producto,
-                    "cantidad": float(d.cantidad),
-                    "precio_unitario": float(d.precio_unitario)
-                }
-                for d in detalles
-            ]
-        })
-
-    return Response(data)
 
 
 @api_view(['POST'])
@@ -1910,65 +1921,6 @@ def sync_cancelaciones_rotaciones(request):
         transaction.set_rollback(True)
         return Response({"error": str(e)}, status=400)
     
-
-@api_view(['GET'])
-def get_abonos(request):
-
-    abonos = Abono.objects.all().order_by('-fecha')
-
-    data = []
-
-    for a in abonos:
-        data.append({
-            "uuid": str(a.uuid),
-            "venta_uuid": str(a.venta.uuid),
-            "usuario_id": a.usuario.id,
-            "monto": float(a.monto),
-            "fecha": a.fecha
-        })
-
-    return Response(data)
-
-@api_view(['GET'])
-def get_devoluciones(request):
-
-    devoluciones = Devolucion.objects.all().order_by('-fecha')
-
-    data = []
-
-    for d in devoluciones:
-
-        detalles = DevolucionDetalle.objects.filter(devolucion=d)
-        mermas = MiniBodegaDetalleMerma.objects.filter(devolucion=d)
-
-        data.append({
-            "uuid": str(d.uuid),
-            "tipo": d.tipo,
-            "cliente": d.cliente.nombre if d.cliente else None,
-            "usuario_id": d.usuario.id,
-            "mini_bodega_id": d.mini_bodega.id,
-            "fecha": d.fecha,
-            "descripcion": d.descripcion,
-
-            "detalles": [
-                {
-                    "producto_variacion_id": det.producto_variacion.id,
-                    "cantidad": float(det.cantidad),
-                    "precio_unitario": float(det.precio_unitario)
-                }
-                for det in detalles
-            ],
-
-            "mermas": [
-                {
-                    "producto_variacion_id": m.producto_variacion.id,
-                    "cantidad": float(m.cantidad)
-                }
-                for m in mermas
-            ]
-        })
-
-    return Response(data)
 
 
 from django.views.generic import ListView
@@ -2259,6 +2211,209 @@ class DetalleDevolucionView(DetailView):
                 output_field=FloatField()
             )
         )
+
+
+@method_decorator(login_required, name='dispatch')
+@method_decorator(requiere_roles("Producto Terminado", "Recursos Humanos"), name='dispatch')
+class ResumenOperacionesView(TemplateView):
+    template_name = 'appMovil/resumen_operaciones.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # =========================================================
+        # FILTROS
+        # =========================================================
+        datos_filtro = self.request.GET.copy()
+        if 'fecha' not in datos_filtro:
+            datos_filtro['fecha'] = timezone.localdate().isoformat()
+
+        form = FiltroResumenOperacionesForm(datos_filtro)
+        fecha = timezone.localdate()
+        repartidor = None
+
+        if form.is_valid():
+            fecha = form.cleaned_data['fecha']
+            repartidor = form.cleaned_data['repartidor']
+
+        # =========================================================
+        # CONSULTAS DEL DÍA
+        # =========================================================
+        ventas = Venta.objects.select_related('cliente', 'usuario').filter(fecha__date=fecha)
+        abonos = Abono.objects.select_related('venta', 'venta__cliente', 'usuario').filter(fecha__date=fecha)
+        devoluciones = Devolucion.objects.select_related('cliente', 'usuario', 'mini_bodega').filter(fecha__date=fecha)
+        rotaciones = Rotacion.objects.select_related('cliente', 'usuario', 'mini_bodega').filter(fecha__date=fecha)
+
+        if repartidor:
+            ventas = ventas.filter(usuario=repartidor)
+            abonos = abonos.filter(usuario=repartidor)
+            devoluciones = devoluciones.filter(usuario=repartidor)
+            rotaciones = rotaciones.filter(usuario=repartidor)
+
+        # =========================================================
+        # VENTAS Y ABONOS
+        # =========================================================
+        cero = Decimal('0.00')
+
+        total_contado = ventas.filter(tipo_venta='CONTADO').aggregate(
+            total=Sum('total')
+        )['total'] or cero
+
+        total_credito = ventas.filter(tipo_venta='CREDITO').aggregate(
+            total=Sum('total')
+        )['total'] or cero
+
+        total_ventas = total_contado + total_credito
+
+        total_abonos = abonos.aggregate(
+            total=Sum('monto')
+        )['total'] or cero
+
+        # =========================================================
+        # DEVOLUCIONES
+        # =========================================================
+        total_devoluciones_recibido = devoluciones.filter(
+            forma_liquidacion='EFECTIVO',
+            tipo_diferencia='CLIENTE_PAGO'
+        ).aggregate(total=Sum('diferencia_dinero'))['total'] or cero
+
+        total_devoluciones_entregado = devoluciones.filter(
+            forma_liquidacion='EFECTIVO',
+            tipo_diferencia='REPARTIDOR_PAGO'
+        ).aggregate(total=Sum('diferencia_dinero'))['total'] or cero
+
+        balance_devoluciones = total_devoluciones_recibido - total_devoluciones_entregado
+
+        # Valor de los productos devueltos, independiente del efectivo
+        valor_detalle = ExpressionWrapper(
+            F('devoluciondetalle__cantidad') * F('devoluciondetalle__precio_unitario'),
+            output_field=DecimalField(max_digits=18, decimal_places=2)
+        )
+
+        devoluciones = devoluciones.annotate(
+            total=Sum(valor_detalle),
+            tiene_cambio_producto=Exists(
+                DevolucionSustitucion.objects.filter(devolucion=OuterRef('pk'))
+            )
+        )
+
+        # =========================================================
+        # ROTACIONES
+        # =========================================================
+        total_rotaciones_recibido = rotaciones.filter(
+            forma_liquidacion='EFECTIVO',
+            tipo_diferencia='CLIENTE_PAGO'
+        ).aggregate(total=Sum('diferencia_dinero'))['total'] or cero
+
+        total_rotaciones_entregado = rotaciones.filter(
+            forma_liquidacion='EFECTIVO',
+            tipo_diferencia='REPARTIDOR_PAGO'
+        ).aggregate(total=Sum('diferencia_dinero'))['total'] or cero
+
+        balance_rotaciones = total_rotaciones_recibido - total_rotaciones_entregado
+
+        valor_rotacion = ExpressionWrapper(
+            F('rotaciondetalle__cantidad') * F('rotaciondetalle__precio_unitario'),
+            output_field=DecimalField(max_digits=18, decimal_places=2)
+        )
+
+        rotaciones = rotaciones.annotate(
+            total=Sum(valor_rotacion)
+        )
+
+        # =========================================================
+        # DINERO A ENTREGAR - MISMA LÓGICA DE ANDROID
+        # =========================================================
+        total_recibido = total_contado + total_abonos
+
+        total_efectivo = (
+            total_contado
+            + total_abonos
+            + balance_devoluciones
+            + balance_rotaciones
+        )
+
+        # =========================================================
+        # CONTEXTO PARA EL TEMPLATE
+        # =========================================================
+        context.update(
+            form=form,
+            fecha_seleccionada=fecha,
+            repartidor_seleccionado=repartidor,
+
+            ventas=ventas.order_by('-fecha', '-id'),
+            abonos=abonos.order_by('-fecha', '-id'),
+            devoluciones=devoluciones.order_by('-fecha', '-id'),
+            rotaciones=rotaciones.order_by('-fecha', '-id'),
+
+            total_ventas=total_ventas,
+            total_contado=total_contado,
+            total_credito=total_credito,
+            total_abonos=total_abonos,
+            total_recibido=total_recibido,
+
+            total_devoluciones_recibido=total_devoluciones_recibido,
+            total_devoluciones_entregado=total_devoluciones_entregado,
+            balance_devoluciones=balance_devoluciones,
+
+            total_rotaciones_recibido=total_rotaciones_recibido,
+            total_rotaciones_entregado=total_rotaciones_entregado,
+            balance_rotaciones=balance_rotaciones,
+
+            total_efectivo=total_efectivo,
+
+            cantidad_ventas=ventas.count(),
+            cantidad_abonos=abonos.count(),
+            cantidad_devoluciones=devoluciones.count(),
+            cantidad_rotaciones=rotaciones.count()
+        )
+
+        return context
+
+
+@method_decorator(login_required, name='dispatch')
+@method_decorator(requiere_roles("Producto Terminado", "Recursos Humanos"), name='dispatch')
+class DetalleRotacionView(DetailView):
+    model = Rotacion
+    template_name = 'appMovil/rotaciones/detalle_rotacion.html'
+    context_object_name = 'rotacion'
+
+    def get_queryset(self):
+        return Rotacion.objects.select_related('cliente', 'usuario', 'mini_bodega').prefetch_related(
+            'rotaciondetalle_set', 'rotacionsustitucion_set'
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        rotacion = self.object
+        detalles = list(rotacion.rotaciondetalle_set.all())
+        sustituciones = list(rotacion.rotacionsustitucion_set.all())
+        cero = Decimal('0.00')
+
+        total_devuelto = sum((d.cantidad * d.precio_unitario for d in detalles), cero)
+        total_entregado = sum((s.cantidad * s.precio_unitario for s in sustituciones), cero)
+
+        context.update(
+            detalles_rotacion=detalles,
+            sustituciones_rotacion=sustituciones,
+            total_devuelto=total_devuelto,
+            total_entregado=total_entregado,
+            url_regreso=self.obtener_url_regreso(rotacion)
+        )
+        return context
+
+    def obtener_url_regreso(self, rotacion):
+        from django.urls import reverse
+        from urllib.parse import urlencode
+
+        fecha = self.request.GET.get('fecha') or timezone.localtime(rotacion.fecha).date().isoformat()
+        repartidor = self.request.GET.get('repartidor', '')
+        parametros = {'fecha': fecha}
+
+        if repartidor.isdigit():
+            parametros['repartidor'] = repartidor
+
+        return f"{reverse('resumen_operaciones')}?{urlencode(parametros)}"
 
 #CARGAR COSAS#
 

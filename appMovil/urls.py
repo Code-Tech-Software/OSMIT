@@ -70,22 +70,22 @@ urlpatterns = [
     path('sync/rotaciones/', sync_rotaciones),
     path('sync/cancelaciones-rotaciones/', sync_cancelaciones_rotaciones),
 
-    path('movil/ventas/', get_ventas),
-    path('movil/abonos/', get_abonos),
-    path('movil/devoluciones/', get_devoluciones),
+
+    path('resumen-operaciones/', ResumenOperacionesView.as_view(), name='resumen_operaciones'),
 
     path('ventas2/', ListaVentasView.as_view(), name='lista_ventas'),
     path('ventas2/<int:pk>/', DetalleVentaView.as_view(), name='detalle_venta'),
 
-    # ---------------------------------------------------------------------------------------- CARGAR CSV
-    path('cargar-clientes/', views.cargar_clientes_csv, name='cargar_clientes_csv'),
-    path('cargar-productos/', views.cargar_productos_csv, name='cargar_productos'),
+    path('devoluciones/', ListaDevolucionesView.as_view(), name='lista_devoluciones'),
+    path('devoluciones/<int:pk>/', DetalleDevolucionView.as_view(), name='detalle_devolucion'),
+
+    path('rotaciones/<int:pk>/', DetalleRotacionView.as_view(), name='detalle_rotacion'),
+    
     path('minibodega/<int:pk>/abrir/', views.abrir_minibodega_manual, name='abrir_minibodega_manual'),
     path('minibodega/detalle/<int:detalle_pk>/regresar/', views.regresar_producto_bodega,
          name='regresar_producto_bodega'),
 
-    path('devoluciones/', ListaDevolucionesView.as_view(), name='lista_devoluciones'),
-    path('devoluciones/<int:pk>/', DetalleDevolucionView.as_view(), name='detalle_devolucion'),
+    
 
     path('dispositivos/registrar/', views.registrar_dispositivo, name='registrar_dispositivo'),
     path('dispositivos/', views.lista_dispositivos, name='lista_dispositivos'),
@@ -100,6 +100,10 @@ urlpatterns = [
     path( 'minibodega/cortes/detalle/<int:corte_id>/', views.detalle_corte_minibodegas, name='detalle_corte_minibodega' ),
     path( 'minibodega/cortes/ajustar/<int:corte_id>/',views.ajustar_inventario_minibodega,name='ajustar_inventario_minibodega'),
 
-    #
+# ---------------------------------------------------------------------------------------- CARGAR CSV
+    path('cargar-clientes/', views.cargar_clientes_csv, name='cargar_clientes_csv'),
+    path('cargar-productos/', views.cargar_productos_csv, name='cargar_productos'),
+
+    #dashboard
     path('dashboard/repartidor/api/',views.dashboard_repartidor_api,name='dashboard_repartidor_api'),
 ]

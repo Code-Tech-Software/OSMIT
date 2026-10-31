@@ -1,0 +1,15 @@
+.resumen-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .resumen-item:last-child {
+            border-bottom: none;
+        }
+        .text-label {
+            color: #6c757d;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }

@@ -1,45 +1,26 @@
-{% extends 'Base/Sidebar.html' %} 
+{% extends "Base/Sidebar.html" %}
 {% load static %}
-
 {% block content %}
     <!-- Estilos personalizados -->
     <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
-
-    <style>
-        .resumen-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        .resumen-item:last-child {
-            border-bottom: none;
-        }
-        .text-label {
-            color: #6c757d;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-    </style>
-
+    <link rel="stylesheet"
+          href="{% static 'css/appMovil/detalle_operaciones.css' %}">
     <!-- Encabezado estilo Breadcrumb -->
     <div>
-        <span class="fw-bold text-dark">Administración de Ventas</span>
+        <span class="fw-bold text-dark">Resumen de Operaciones</span>
         <span class="mx-2 text-dark">|</span>
         <span class="text-secondary">Detalle de Venta</span>
     </div>
-
     <!-- Título y Botón de Acción -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 mt-4">
         <h3 class="mb-2 mb-md-0 fw-bold text-dark">
             <i class="bi bi-receipt text-secondary me-2"></i>Venta #{{ venta.id }}
         </h3>
-        <a href="{% url 'lista_ventas' %}" class="btn btn-secondary text-white shadow-sm">
-            <i class="bi bi-arrow-left-circle me-1"></i> Volver a la Lista
+        <a href="{% url 'resumen_operaciones' %}"
+           class="btn btn-secondary text-white shadow-sm">
+            <i class="bi bi-arrow-left-circle me-1"></i> Volver al Resumen
         </a>
     </div>
-
     <div class="row">
         <!-- Columna Izquierda: Resumen General -->
         <div class="col-lg-4 mb-4">
@@ -47,7 +28,6 @@
                 <h5 class="fw-bold mb-3 pb-2 border-bottom">
                     <i class="bi bi-info-square-fill text-secondary me-2"></i>Resumen General
                 </h5>
-                
                 <div class="mb-4">
                     <div class="resumen-item">
                         <span class="text-label"><i class="bi bi-calendar-event me-2"></i>Fecha</span>
@@ -74,44 +54,29 @@
                         </span>
                     </div>
                 </div>
-                
                 <!-- Caja de Totales -->
                 <div class="p-3 bg-light rounded border border-info border-opacity-25">
-
                     {% if porcentaje_descuento_cliente > 0 or monto_descuento > 0 %}
-
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="text-secondary fw-bold">
-                                Subtotal:
-                            </span>
-                            <span class="text-dark fw-bold">
-                                ${{ subtotal_venta|floatformat:2 }}
-                            </span>
+                            <span class="text-secondary fw-bold">Subtotal:</span>
+                            <span class="text-dark fw-bold">${{ subtotal_venta|floatformat:2 }}</span>
                         </div>
-
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="text-success fw-bold">
                                 Descuento aplicado
                                 ({{ porcentaje_descuento_venta|floatformat:2 }}%):
                             </span>
-                            <span class="text-success fw-bold">
-                                - ${{ monto_descuento|floatformat:2 }}
-                            </span>
+                            <span class="text-success fw-bold">- ${{ monto_descuento|floatformat:2 }}</span>
                         </div>
-
                         {% if porcentaje_descuento_cliente > 0 %}
-
                             {% if descuento_coincide %}
-
                                 <small class="text-muted d-block mb-2">
                                     <i class="bi bi-check-circle me-1"></i>
                                     El descuento aplicado coincide con el porcentaje
                                     actual del cliente
                                     ({{ porcentaje_descuento_cliente|floatformat:2 }}%).
                                 </small>
-
                             {% else %}
-
                                 <div class="alert alert-warning py-2 px-3 mb-2">
                                     <small>
                                         <i class="bi bi-exclamation-triangle-fill me-1"></i>
@@ -119,21 +84,14 @@
                                         diferente al que tiene actualmente el cliente.
                                         <br>
                                         Descuento de la venta:
-                                        <strong>
-                                            {{ porcentaje_descuento_venta|floatformat:2 }}%
-                                        </strong>
+                                        <strong>{{ porcentaje_descuento_venta|floatformat:2 }}%</strong>
                                         |
                                         Descuento actual:
-                                        <strong>
-                                            {{ porcentaje_descuento_cliente|floatformat:2 }}%
-                                        </strong>
+                                        <strong>{{ porcentaje_descuento_cliente|floatformat:2 }}%</strong>
                                     </small>
                                 </div>
-
                             {% endif %}
-
                         {% else %}
-
                             <div class="alert alert-warning py-2 px-3 mb-2">
                                 <small>
                                     <i class="bi bi-exclamation-triangle-fill me-1"></i>
@@ -141,36 +99,20 @@
                                     actualmente no tiene descuento.
                                 </small>
                             </div>
-
                         {% endif %}
-
                         <hr class="my-2 border-secondary">
-
                     {% endif %}
-
                     <!-- Total -->
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-secondary fw-bold fs-5">
-                            Total:
-                        </span>
-                        <span class="text-dark fw-bold fs-4">
-                            ${{ venta.total|floatformat:2 }}
-                        </span>
+                        <span class="text-secondary fw-bold fs-5">Total:</span>
+                        <span class="text-dark fw-bold fs-4">${{ venta.total|floatformat:2 }}</span>
                     </div>
-
-                    {% if venta.tipo_venta == 'CREDITO' %}
-
+                    {% if venta.tipo_venta == "CREDITO" %}
                         <hr class="my-2 border-secondary">
-
                         <div class="d-flex justify-content-between align-items-center text-danger">
-                            <span class="fw-bold">
-                                Saldo Pendiente:
-                            </span>
-                            <span class="fw-bold fs-5">
-                                ${{ venta.saldo_pendiente|floatformat:2 }}
-                            </span>
+                            <span class="fw-bold">Saldo Pendiente:</span>
+                            <span class="fw-bold fs-5">${{ venta.saldo_pendiente|floatformat:2 }}</span>
                         </div>
-
                         {% if venta.fecha_vencimiento %}
                             <div class="text-end mt-1">
                                 <small class="text-muted">
@@ -180,16 +122,12 @@
                                 </small>
                             </div>
                         {% endif %}
-
                     {% endif %}
-
                 </div>
             </div>
         </div>
-
         <!-- Columna Derecha: Tablas -->
         <div class="col-lg-8">
-            
             <!-- Tabla de Productos -->
             <div class="custom-card mb-4">
                 <h5 class="fw-bold mb-3 pb-2 border-bottom">
@@ -207,25 +145,24 @@
                         </thead>
                         <tbody>
                             {% for detalle in venta.ventadetalle_set.all %}
-                            <tr>
-                                <td>
-                                    <span class="fw-medium">{{ detalle.nombre_producto }}</span> 
-                                    <small class="text-muted d-block">Var: {{ detalle.producto_variacion }}</small>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge bg-secondary rounded-pill px-3">{{ detalle.cantidad }}</span>
-                                </td>
-                                <td class="text-end text-muted">${{ detalle.precio_unitario|floatformat:2 }}</td>
-                                <td class="text-end text-dark">
-                                    <strong>${{ detalle.subtotal|floatformat:2 }}</strong>
-                                </td>
-                            </tr>
+                                <tr>
+                                    <td>
+                                        <span class="fw-medium">{{ detalle.nombre_producto }}</span>
+                                        <small class="text-muted d-block">Var: {{ detalle.producto_variacion }}</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-secondary rounded-pill px-3">{{ detalle.cantidad }}</span>
+                                    </td>
+                                    <td class="text-end text-muted">${{ detalle.precio_unitario|floatformat:2 }}</td>
+                                    <td class="text-end text-dark">
+                                        <strong>${{ detalle.subtotal|floatformat:2 }}</strong>
+                                    </td>
+                                </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
-
             <!-- Tabla de Abonos -->
             <div class="custom-card">
                 <h5 class="fw-bold mb-3 pb-2 border-bottom">
@@ -242,31 +179,28 @@
                         </thead>
                         <tbody>
                             {% for abono in venta.abonos.all %}
-                            <tr>
-                                <td>
-                                    <i class="bi bi-calendar2-check text-success me-2"></i>
-                                    {{ abono.fecha|date:"d/m/Y H:i" }}
-                                </td>
-                                <td>{{ abono.usuario.get_full_name|default:abono.usuario.username }}</td>
-                                <td class="text-end text-success">
-                                    <span class="bg-success bg-opacity-10 px-2 py-1 rounded fw-bold">
-                                        + ${{ abono.monto|floatformat:2 }}
-                                    </span>
-                                </td>
-                            </tr>
+                                <tr>
+                                    <td>
+                                        <i class="bi bi-calendar2-check text-success me-2"></i>
+                                        {{ abono.fecha|date:"d/m/Y H:i" }}
+                                    </td>
+                                    <td>{{ abono.usuario.get_full_name|default:abono.usuario.username }}</td>
+                                    <td class="text-end text-success">
+                                        <span class="bg-success bg-opacity-10 px-2 py-1 rounded fw-bold">+ ${{ abono.monto|floatformat:2 }}</span>
+                                    </td>
+                                </tr>
                             {% empty %}
-                            <tr>
-                                <td colspan="3" class="text-center text-muted py-4">
-                                    <i class="bi bi-inbox fs-3 d-block mb-2 opacity-50"></i>
-                                    No se han realizado abonos para esta venta.
-                                </td>
-                            </tr>
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-4">
+                                        <i class="bi bi-inbox fs-3 d-block mb-2 opacity-50"></i>
+                                        No se han realizado abonos para esta venta.
+                                    </td>
+                                </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
-
         </div>
     </div>
 {% endblock %}
