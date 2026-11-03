@@ -1,0 +1,78 @@
+
+#dashboard-administrador {
+    --dashboard-titulo: #3f5b77;
+}
+#dashboard-administrador .dashboard-encabezado {
+    background-color: var(--bs-tertiary-bg, #f8f9fa);
+    color: var(--bs-body-color, #212529);
+}
+#dashboard-administrador .dashboard-titulo,
+#dashboard-administrador .dashboard-icono-titulo {
+    color: var(--dashboard-titulo);
+}
+#dashboard-administrador .card-indicator {
+    background-color: var(--bs-body-bg, #fff);
+    color: var(--bs-body-color, #212529);
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+#dashboard-administrador .card-indicator:hover {
+    transform: translateY(-3px);
+}
+#dashboard-administrador .indicador-linea {
+    height: 4px;
+}
+#dashboard-administrador .indicador-primary .indicador-linea {
+    background-color: var(--primary-color, #0d6efd);
+}
+#dashboard-administrador .indicador-warning .indicador-linea {
+    background-color: #ffc107;
+    opacity: .4;
+}
+#dashboard-administrador .indicador-danger .indicador-linea {
+    background-color: #dc3545;
+    opacity: .4;
+}
+#dashboard-administrador .indicador-success .indicador-linea {
+    background-color: #198754;
+    opacity: .4;
+}
+#dashboard-administrador .icono-primary {
+    color: var(--primary-color, #0d6efd);
+}
+#dashboard-administrador .dashboard-grafica {
+    background-color: var(--bs-body-bg, #fff);
+    color: var(--bs-body-color, #212529);
+    border-color: var(--bs-border-color, #dee2e6);
+}
+#dashboard-administrador .dashboard-grafica .card-body {
+    min-width: 0;
+}
+body.dark-mode #dashboard-administrador,
+[data-bs-theme="dark"] #dashboard-administrador {
+    --dashboard-titulo: #a9c9e9;
+}
+body.dark-mode #dashboard-administrador .dashboard-encabezado,
+[data-bs-theme="dark"] #dashboard-administrador .dashboard-encabezado {
+    background-color: #252a32;
+    color: #e9ecef;
+}
+body.dark-mode #dashboard-administrador .card-indicator,
+body.dark-mode #dashboard-administrador .dashboard-grafica,
+[data-bs-theme="dark"] #dashboard-administrador .card-indicator,
+[data-bs-theme="dark"] #dashboard-administrador .dashboard-grafica {
+    background-color: #252a32;
+    color: #e9ecef;
+    border-color: #495057;
+}
+body.dark-mode #dashboard-administrador .text-muted,
+[data-bs-theme="dark"] #dashboard-administrador .text-muted {
+    color: #adb5bd !important;
+}
+@media (max-width: 576px) {
+    #dashboard-administrador .card-indicator .card-body {
+        padding: 1rem;
+    }
+    #dashboard-administrador .dashboard-grafica .card-body {
+        padding: .75rem;
+    }
+}

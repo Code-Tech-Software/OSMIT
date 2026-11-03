@@ -54,14 +54,14 @@ urlpatterns = [
 
     path('pedido/lista/pedidos_produccion', views.lista_pedidos_produccion, name='lista_pedidos_produccion'),
 
-path('pedidos/hoy/json/', views.pedidos_hoy_json, name='pedidos_hoy_json'),
+    path('pedidos/hoy/json/', views.pedidos_hoy_json, name='pedidos_hoy_json'),
 
 
     #Rechazr pedidos de produccion
-path('pedidos/rechazar/<int:pedido_id>/', rechazar_pedido_produccion, name='rechazar_pedido_produccion'),
+    path('pedidos/rechazar/<int:pedido_id>/', rechazar_pedido_produccion, name='rechazar_pedido_produccion'),
 
-path('historial/entradas/', views.historial_entradas, name='historial_entradas'),
-path('historial/entrada/<int:entrada_id>/', views.detalle_historial_entrada, name='detalle_historial_entrada'),
+    path('historial/entradas/', views.historial_entradas, name='historial_entradas'),
+    path('historial/entrada/<int:entrada_id>/', views.detalle_historial_entrada, name='detalle_historial_entrada'),
 
 
 ]

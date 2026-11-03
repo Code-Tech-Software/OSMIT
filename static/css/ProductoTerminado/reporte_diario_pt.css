@@ -1,0 +1,148 @@
+
+#reporteDiarioPT {
+    --pt-fondo: #fff;
+    --pt-texto: #333;
+    --pt-borde: #dee2e6;
+    --pt-hover: #f5f8fc;
+    --pt-total: #e9ecef;
+    --pt-col-total: #e9eff5;
+    --pt-col-total-pie: #d5e0eb;
+    --pt-col-total-texto: #263746;
+    --pt-cantidad: #212529;
+    --pt-stock: #858c94;
+    color: var(--pt-texto);
+}
+#reporteDiarioPT .titulo-pagina { font-weight: 700; color: var(--pt-texto); }
+#reporteDiarioPT .filtros-card,
+#reporteDiarioPT .tabla-card {
+    background: var(--pt-fondo);
+    color: var(--pt-texto);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+#reporteDiarioPT .tabla-reporte {
+    font-size: 13px;
+    white-space: nowrap;
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--pt-texto);
+    --bs-table-border-color: var(--pt-borde);
+    --bs-table-striped-bg: transparent;
+    --bs-table-striped-color: var(--pt-texto);
+    --bs-table-hover-bg: transparent;
+    --bs-table-hover-color: var(--pt-texto);
+}
+#reporteDiarioPT .tabla-reporte th,
+#reporteDiarioPT .tabla-reporte td {
+    padding: 9px 12px;
+    vertical-align: middle;
+}
+#reporteDiarioPT .tabla-reporte thead th {
+    background: #343a40;
+    color: #fff;
+    text-align: center;
+}
+#reporteDiarioPT .tabla-reporte tbody td { text-align: center; }
+#reporteDiarioPT .tabla-reporte tbody td:first-child {
+    text-align: left;
+    font-weight: 600;
+}
+#reporteDiarioPT .tabla-reporte tfoot td {
+    background: var(--pt-total);
+    font-weight: 700;
+    text-align: center;
+}
+#reporteDiarioPT .tabla-reporte tfoot td:first-child { text-align: left; }
+#reporteDiarioPT .tabla-reporte .col-total {
+    background: var(--pt-col-total) !important;
+    color: var(--pt-col-total-texto) !important;
+    font-weight: 700;
+}
+#reporteDiarioPT .tabla-reporte tfoot .col-total {
+    background: var(--pt-col-total-pie) !important;
+}
+#reporteDiarioPT .tabla-reporte tbody tr:hover td {
+    background: var(--pt-hover);
+}
+#reporteDiarioPT .tabla-reporte tbody tr:hover td.col-total {
+    background: var(--pt-col-total) !important;
+}
+#reporteDiarioPT .celda-cantidades {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+#reporteDiarioPT .cantidad-movimiento {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--pt-cantidad);
+}
+#reporteDiarioPT .cantidad-stock {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--pt-stock);
+}
+#reporteDiarioPT .form-control,
+#reporteDiarioPT .form-select {
+    background-color: var(--pt-fondo);
+    color: var(--pt-texto);
+    border-color: var(--pt-borde);
+}
+#reporteDiarioPT .form-control:focus,
+#reporteDiarioPT .form-select:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 .25rem rgba(13,110,253,.15);
+}
+#reporteDiarioPT .reporte-imagen {
+    background: #fff;
+    padding: 25px;
+    width: max-content;
+    min-width: 0;
+}
+#reporteDiarioPT .reporte-imagen-encabezado {
+    margin-bottom: 20px;
+    color: #212529;
+}
+#reporteDiarioPT .reporte-imagen-encabezado h3 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+#reporteDiarioPT .reporte-imagen-encabezado p {
+    margin-bottom: 4px;
+    font-size: 14px;
+}
+body.dark-mode #reporteDiarioPT,
+[data-bs-theme="dark"] #reporteDiarioPT {
+    --pt-fondo: #252a32;
+    --pt-texto: #e9ecef;
+    --pt-borde: #49515b;
+    --pt-hover: #343d49;
+    --pt-total: #343c46;
+    --pt-col-total: #35475b;
+    --pt-col-total-pie: #405773;
+    --pt-col-total-texto: #e1efff;
+    --pt-cantidad: #f1f3f5;
+    --pt-stock: #aab4c0;
+}
+body.dark-mode #reporteDiarioPT .text-muted,
+[data-bs-theme="dark"] #reporteDiarioPT .text-muted {
+    color: #adb5bd !important;
+}
+body.dark-mode #reporteDiarioPT .tabla-reporte thead th,
+[data-bs-theme="dark"] #reporteDiarioPT .tabla-reporte thead th {
+    background: #171c23;
+    color: #f8f9fa;
+}
+body.dark-mode #reporteDiarioPT .form-control,
+body.dark-mode #reporteDiarioPT .form-select,
+[data-bs-theme="dark"] #reporteDiarioPT .form-control,
+[data-bs-theme="dark"] #reporteDiarioPT .form-select {
+    color-scheme: dark;
+}
+@media (max-width: 576px) {
+    #reporteDiarioPT .filtros-card,
+    #reporteDiarioPT .tabla-card { padding: 15px; }
+    #reporteDiarioPT .titulo-pagina { font-size: 1.45rem; }
+}

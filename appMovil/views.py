@@ -3121,43 +3121,21 @@ def ordenar_corte_minibodega(registros, es_detalle_corte=False):
 ###Dasboard
 
 
+
 @login_required
 def dashboard_repartidor_api(request):
-
     repartidor = request.user
+    cero = Decimal('0.00')
 
-    # =========================
     # RUTA
-    # =========================
-    ruta = Ruta.objects.filter(
-        usuario=repartidor,
-        estado=True
-    ).select_related(
-        'vehiculo'
-    ).first()
-
+    ruta = Ruta.objects.filter(usuario=repartidor, estado=True).select_related('vehiculo').first()
     if not ruta:
-        return JsonResponse({
-            'success': False,
-            'mensaje': 'No tienes una ruta asignada.'
-        })
+        return JsonResponse({'success': False, 'mensaje': 'No tienes una ruta asignada.'})
 
-    # =========================
-    # MINIBODEGA
-    # =========================
-    minibodega = MiniBodega.objects.filter(
-        ruta=ruta
-    ).select_related(
-        'vehiculo'
-    ).first()
-
-    # =========================
-    # INVENTARIO
-    # =========================
+    # MINIBODEGA E INVENTARIO
+    minibodega = MiniBodega.objects.filter(ruta=ruta).select_related('vehiculo').first()
     inventario = []
-
     if minibodega:
-
         detalles = MiniBodegaDetalle.objects.filter(
             mini_bodega=minibodega
         ).select_related(
@@ -3166,10 +3144,8 @@ def dashboard_repartidor_api(request):
         ).order_by(
             'producto_variacion__producto__nombre',
             'producto_variacion__presentacion__nombre'
-)
-
+        )
         for detalle in detalles:
-
             inventario.append({
                 'producto': detalle.producto_variacion.producto.nombre,
                 'presentacion': detalle.producto_variacion.presentacion.nombre,
@@ -3177,134 +3153,121 @@ def dashboard_repartidor_api(request):
                 'cantidad_actual': detalle.cantidad_actual,
             })
 
-    # =========================
-    # FECHA ACTUAL
-    # =========================
+    # OPERACIONES DEL DÍA
     hoy = timezone.localdate()
+    ventas_hoy = Venta.objects.filter(usuario=repartidor, fecha__date=hoy)
+    abonos_hoy = Abono.objects.filter(usuario=repartidor, fecha__date=hoy)
+    devoluciones_hoy = Devolucion.objects.filter(usuario=repartidor, fecha__date=hoy)
+    rotaciones_hoy = Rotacion.objects.filter(usuario=repartidor, fecha__date=hoy)
 
-    # =========================
-    # VENTAS DEL DÍA
-    # =========================
-    ventas_hoy = Venta.objects.filter(
-        usuario=repartidor,
-        fecha__date=hoy
-    )
-
+    # VENTAS
     cantidad_ventas = ventas_hoy.count()
+    ventas_contado = ventas_hoy.filter(tipo_venta='CONTADO').aggregate(total=Sum('total'))['total'] or cero
+    ventas_credito = ventas_hoy.filter(tipo_venta='CREDITO').aggregate(total=Sum('total'))['total'] or cero
+    dinero_ventas = ventas_hoy.aggregate(total=Sum('total'))['total'] or cero
 
-    dinero_ventas = ventas_hoy.aggregate(
-        total=Sum('total')
-    )['total'] or Decimal('0.00')
-
-    # =========================
-    # VENTAS DE CONTADO
-    # =========================
-    ventas_contado = ventas_hoy.filter(
-        tipo_venta='CONTADO'
-    ).aggregate(
-        total=Sum('total')
-    )['total'] or Decimal('0.00')
-
-    # =========================
-    # VENTAS A CRÉDITO
-    # =========================
-    ventas_credito = ventas_hoy.filter(
-        tipo_venta='CREDITO'
-    ).aggregate(
-        total=Sum('total')
-    )['total'] or Decimal('0.00')
-
-    # =========================
-    # ABONOS DEL DÍA
-    # =========================
-    abonos_hoy = Abono.objects.filter(
-        usuario=repartidor,
-        fecha__date=hoy
-    )
-
+    # ABONOS
     cantidad_abonos = abonos_hoy.count()
+    dinero_abonos = abonos_hoy.aggregate(total=Sum('monto'))['total'] or cero
 
-    dinero_abonos = abonos_hoy.aggregate(
-        total=Sum('monto')
-    )['total'] or Decimal('0.00')
-
-    # =========================
-    # DEVOLUCIONES DEL DÍA
-    # =========================
-    devoluciones_hoy = Devolucion.objects.filter(
-        usuario=repartidor,
-        fecha__date=hoy
-    )
-
+    # DEVOLUCIONES
     cantidad_devoluciones = devoluciones_hoy.count()
-
+    valor_devolucion = ExpressionWrapper(
+        F('cantidad') * F('precio_unitario'),
+        output_field=DecimalField(max_digits=18, decimal_places=2)
+    )
     dinero_devoluciones = DevolucionDetalle.objects.filter(
         devolucion__in=devoluciones_hoy
-    ).aggregate(
-        total=Sum(
-            F('cantidad') * F('precio_unitario')
-        )
-    )['total'] or Decimal('0.00')
+    ).aggregate(total=Sum(valor_devolucion))['total'] or cero
 
-    # =========================
-    # EFECTIVO ESPERADO
-    # =========================
-    efectivo_esperado = (
-        ventas_contado +
-        dinero_abonos
+    total_devoluciones_recibido = devoluciones_hoy.filter(
+        forma_liquidacion='EFECTIVO',
+        tipo_diferencia='CLIENTE_PAGO'
+    ).aggregate(total=Sum('diferencia_dinero'))['total'] or cero
+
+    total_devoluciones_entregado = devoluciones_hoy.filter(
+        forma_liquidacion='EFECTIVO',
+        tipo_diferencia='REPARTIDOR_PAGO'
+    ).aggregate(total=Sum('diferencia_dinero'))['total'] or cero
+
+    balance_devoluciones = total_devoluciones_recibido - total_devoluciones_entregado
+
+    # ROTACIONES
+    cantidad_rotaciones = rotaciones_hoy.count()
+    valor_rotacion = ExpressionWrapper(
+        F('cantidad') * F('precio_unitario'),
+        output_field=DecimalField(max_digits=18, decimal_places=2)
     )
+    dinero_rotaciones = RotacionDetalle.objects.filter(
+        rotacion__in=rotaciones_hoy
+    ).aggregate(total=Sum(valor_rotacion))['total'] or cero
 
-    # =========================
+    total_rotaciones_recibido = rotaciones_hoy.filter(
+        forma_liquidacion='EFECTIVO',
+        tipo_diferencia='CLIENTE_PAGO'
+    ).aggregate(total=Sum('diferencia_dinero'))['total'] or cero
+
+    total_rotaciones_entregado = rotaciones_hoy.filter(
+        forma_liquidacion='EFECTIVO',
+        tipo_diferencia='REPARTIDOR_PAGO'
+    ).aggregate(total=Sum('diferencia_dinero'))['total'] or cero
+
+    balance_rotaciones = total_rotaciones_recibido - total_rotaciones_entregado
+
+    # DINERO A ENTREGAR
+    total_recibido = ventas_contado + dinero_abonos
+    efectivo_esperado = total_recibido + balance_devoluciones + balance_rotaciones
+
     # RESPUESTA
-    # =========================
     return JsonResponse({
-
         'success': True,
-
         'repartidor': {
-            'nombre': f'{repartidor.first_name} {repartidor.last_name}',
+            'nombre': f'{repartidor.first_name} {repartidor.last_name}'.strip(),
         },
-
         'ruta': {
             'id': ruta.id,
             'nombre': ruta.nombre,
         },
-
         'vehiculo': {
-            'marca': ruta.vehiculo.marca,
-            'placa': ruta.vehiculo.placa,
+            'marca': ruta.vehiculo.marca if ruta.vehiculo else '-',
+            'placa': ruta.vehiculo.placa if ruta.vehiculo else '-',
         },
-
         'minibodega': {
             'id': minibodega.id if minibodega else None,
             'estado': minibodega.estado if minibodega else None,
         },
-
         'inventario': inventario,
-
         'jornada': {
             'fecha': hoy.strftime('%Y-%m-%d'),
-
             'ventas': {
                 'cantidad': cantidad_ventas,
                 'dinero': float(dinero_ventas),
                 'contado': float(ventas_contado),
                 'credito': float(ventas_credito),
             },
-
             'abonos': {
                 'cantidad': cantidad_abonos,
                 'dinero': float(dinero_abonos),
             },
-
             'devoluciones': {
                 'cantidad': cantidad_devoluciones,
                 'dinero': float(dinero_devoluciones),
+                'balance': float(balance_devoluciones),
+                'recibido': float(total_devoluciones_recibido),
+                'entregado': float(total_devoluciones_entregado),
             },
-
+            'rotaciones': {
+                'cantidad': cantidad_rotaciones,
+                'dinero': float(dinero_rotaciones),
+                'balance': float(balance_rotaciones),
+                'recibido': float(total_rotaciones_recibido),
+                'entregado': float(total_rotaciones_entregado),
+            },
+            'total_recibido': float(total_recibido),
             'efectivo_esperado': float(efectivo_esperado),
         }
     })
+
 
 
 

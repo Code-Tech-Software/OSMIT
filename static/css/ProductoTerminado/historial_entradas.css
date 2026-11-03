@@ -1,0 +1,101 @@
+
+/* =========================================
+   HISTORIAL DE ENTRADAS - ESTILO GENERAL
+========================================= */
+#historialEntradasPT {
+    --he-fondo: #ffffff;
+    --he-texto: #333333;
+    --he-borde: #dee2e6;
+    --he-encabezado: #f8f9fa;
+    --he-hover: #f1f5f9;
+    color: var(--he-texto);
+}
+#historialEntradasPT .titulo-pagina {
+    font-weight: 700;
+    color: var(--he-texto);
+}
+#historialEntradasPT .filtros-card,
+#historialEntradasPT .tabla-card {
+    background: var(--he-fondo);
+    color: var(--he-texto);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+#historialEntradasPT .table {
+    --bs-table-bg: var(--he-fondo);
+    --bs-table-color: var(--he-texto);
+    --bs-table-border-color: var(--he-borde);
+    --bs-table-hover-bg: var(--he-hover);
+    --bs-table-hover-color: var(--he-texto);
+}
+#historialEntradasPT .table thead th {
+    background: var(--he-encabezado);
+    color: var(--he-texto);
+    font-weight: 700;
+    white-space: nowrap;
+}
+#historialEntradasPT .dt-container { color: var(--he-texto); }
+#historialEntradasPT .dt-container .dt-input {
+    background: var(--he-fondo);
+    color: var(--he-texto);
+    border-color: var(--he-borde);
+}
+#historialEntradasPT .dt-container .dt-paging .dt-paging-button {
+    color: var(--he-texto) !important;
+}
+
+/* =========================================
+   MODO OSCURO
+========================================= */
+body.dark-mode #historialEntradasPT,
+[data-bs-theme="dark"] #historialEntradasPT {
+    --he-fondo: #252a32;
+    --he-texto: #e9ecef;
+    --he-borde: #49515b;
+    --he-encabezado: #303844;
+    --he-hover: #343d49;
+}
+body.dark-mode #historialEntradasPT .filtros-card,
+body.dark-mode #historialEntradasPT .tabla-card,
+[data-bs-theme="dark"] #historialEntradasPT .filtros-card,
+[data-bs-theme="dark"] #historialEntradasPT .tabla-card {
+    border: 1px solid var(--he-borde);
+    box-shadow: 0 2px 8px rgba(0,0,0,.18);
+}
+body.dark-mode #historialEntradasPT .form-control,
+[data-bs-theme="dark"] #historialEntradasPT .form-control {
+    background: #303844;
+    color: #e9ecef;
+    border-color: #49515b;
+    color-scheme: dark;
+}
+body.dark-mode #historialEntradasPT .dt-container .dt-input,
+[data-bs-theme="dark"] #historialEntradasPT .dt-container .dt-input {
+    background: #303844;
+    color: #e9ecef;
+    border-color: #49515b;
+}
+body.dark-mode #historialEntradasPT .dt-container .dt-paging .dt-paging-button,
+[data-bs-theme="dark"] #historialEntradasPT .dt-container .dt-paging .dt-paging-button {
+    color: #e9ecef !important;
+}
+body.dark-mode #historialEntradasPT .dt-container .dt-paging .dt-paging-button.current,
+[data-bs-theme="dark"] #historialEntradasPT .dt-container .dt-paging .dt-paging-button.current {
+    background: #37414d !important;
+    border-color: #49515b !important;
+    color: #fff !important;
+}
+body.dark-mode #historialEntradasPT .dt-container .dt-info,
+[data-bs-theme="dark"] #historialEntradasPT .dt-container .dt-info {
+    color: #adb5bd;
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+@media (max-width: 768px) {
+    #historialEntradasPT .filtros-card,
+    #historialEntradasPT .tabla-card { padding: 15px; }
+    #historialEntradasPT .titulo-pagina { font-size: 1.4rem; }
+}

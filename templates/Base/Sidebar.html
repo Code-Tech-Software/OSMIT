@@ -30,7 +30,7 @@
         <!-- ==========================================================
          NAVBAR SUPERIOR
     ========================================================== -->
-        <header class="navbar bg-body-tertiary border-bottom position-fixed top-0 w-100 shadow-sm px-3 py-3 d-flex justify-content-end align-items-center gap-3 z-1">
+        <header class="navbar navbar-osmit bg-body-tertiary border-bottom position-fixed top-0 w-100 shadow-sm px-3 py-3 d-flex justify-content-end align-items-center gap-3 z-1">
             <!-- Pantalla completa -->
             <i id="fullscreenToggle" class="bi bi-arrows-fullscreen fs-5 icon-hover"></i>
             <!-- Recargar página -->
@@ -39,7 +39,7 @@
             <i id="notificationToggle"
                class="bi fs-5 position-relative icon-hover bi-bell-fill"></i>
             <!-- Usuario -->
-            <div class="position-relative user-menu me-5">
+            <div class="position-relative user-menu">
                 <div class="d-flex align-items-center user-hover" id="userToggle">
                     {% if user.foto %}
                         <img src="{{ user.foto.url }}"
@@ -71,17 +71,17 @@
                     </a>
                 </div>
             </div>
-            <div class="menu-btn sidebar-btn mt-2" id="sidebar-btn">
+            <div class="menu-btn sidebar-btn" id="sidebar-btn">
                 <i class="bx bx-menu"></i>
                 <i class="bx bx-x"></i>
             </div>
-            <!-- Dark mode
+            <!-- Dark mode-->
             <button type="button"
                     class="dark-mode-btn"
                     id="dark-mode-btn"
                     aria-label="Activar modo oscuro">
                 <i class="bi bi-moon-stars-fill"></i>
-            </button>-->
+            </button>
         </header>
         <!-- ==========================================================
          SIDEBAR
@@ -269,7 +269,7 @@
                                 <li><a href="{% url 'minibodega_lista' %}"
    class="sub-menu-link">Bodegas de Rutas</a></li>
                                 <li><a href="{% url 'resumen_operaciones' %}"
-                                                class="sub-menu-link">Resumen de operaciones</a></li>
+   class="sub-menu-link">Resumen de operaciones</a></li>
                                 <li><a href="{% url 'lista_cortes_minibodega' %}" class="sub-menu-link">Cortes</a></li>
                             </ul>
                         </li>

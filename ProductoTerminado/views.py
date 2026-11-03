@@ -3371,28 +3371,47 @@ def detalle_salida(request, salida_id):
         }
     )
 
+## Vistas de Producto Terminado para produccion
+from django.db.models import Case, When, Value, IntegerField
 
 @login_required
-@requiere_roles("Producto Terminado","Producción")
+@requiere_roles("Producto Terminado", "Producción")
 def lista_productos_terminados(request):
-    variaciones=ProductoVariacion.objects.filter(
+    variaciones = list(ProductoVariacion.objects.filter(
         producto__estado=True
-
     ).select_related(
-        'producto',
-        'producto__categoria_producto',
-        'presentacion'
-    ).order_by(
-        'producto__nombre',
-        'presentacion__nombre'
-    )
+        'producto', 'producto__categoria_producto', 'presentacion'
+    ))
 
+    orden_productos = {nombre.upper(): i for i, nombre in enumerate(ORDEN_PRODUCTOS_REPORTE_DIARIO_PT)}
+    orden_presentaciones = {nombre.upper(): i for i, nombre in enumerate(ORDEN_PRESENTACIONES_REPORTE_DIARIO_PT)}
+    prefijos = tuple(ESPECIALES_REPORTE_DIARIO_PT.keys())
 
-    return render(
-        request,
-        'Produccion/lista_produccion_productoT.html',
-        {'variaciones':variaciones}
-    )
+    def clave_orden(variacion):
+        nombre = variacion.producto.nombre.strip().upper()
+        presentacion = variacion.presentacion.nombre.strip().upper()
+        prefijo = nombre.split(maxsplit=1)[0]
+        especial = prefijo in prefijos
+
+        if especial:
+            config = ESPECIALES_REPORTE_DIARIO_PT[prefijo]
+            presentaciones_especiales = [p.upper() for p in config["presentaciones"]]
+            orden_presentacion = presentaciones_especiales.index(presentacion) if presentacion in presentaciones_especiales else 999
+            return (2, list(prefijos).index(prefijo), nombre, orden_presentacion, presentacion)
+
+        return (
+            0 if nombre in orden_productos else 1,
+            orden_productos.get(nombre, 999),
+            nombre,
+            orden_presentaciones.get(presentacion, 999),
+            presentacion
+        )
+
+    variaciones.sort(key=clave_orden)
+
+    return render(request, 'Produccion/lista_produccion_productoT.html', {
+        'variaciones': variaciones
+    })
 
 
 
@@ -4816,25 +4835,31 @@ def top_productos_mas_utilizados_terminado(request):
     })
 
 def indicadores_de_produccion(request):
-    hoy = now().date()  # Fecha actual
-    productos_activos = ProductoTerminado.objects.filter(estado=True)
-    productos_bajo_min = productos_activos.filter(
+    hoy = now().date()
+    variaciones_activas = ProductoVariacion.objects.filter(producto__estado=True)
+
+    productos_bajo_min = variaciones_activas.filter(
         stock__lt=F('stock_min'),
         stock__gt=0
     ).count()
-    productos_sin_stock = productos_activos.filter(stock=0).count()
 
-    pedidos_pendientes = PedidoProduccion.objects.filter(estado='pendiente', fecha_pedido__date=hoy).count()
+    productos_sin_stock = variaciones_activas.filter(stock=0).count()
 
-    pedidos_en_produccion = PedidoProduccion.objects.filter(estado='en_produccion', fecha_pedido__date=hoy).count()
+    pedidos_pendientes = PedidoProduccion.objects.filter(
+        estado='pendiente', fecha_pedido__date=hoy
+    ).count()
+
+    pedidos_en_produccion = PedidoProduccion.objects.filter(
+        estado='en_produccion', fecha_pedido__date=hoy
+    ).count()
 
     return JsonResponse({
         'productos_bajo_min': productos_bajo_min,
         'productos_sin_stock': productos_sin_stock,
         'pedidos_pendientes': pedidos_pendientes,
         'pedidos_en_produccion': pedidos_en_produccion,
-
     })
+
 
 
 def api_indicadores_pt(request):

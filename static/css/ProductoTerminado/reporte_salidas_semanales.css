@@ -1,0 +1,138 @@
+
+#reporteSemanalPT {
+    --pt-fondo: #fff;
+    --pt-texto: #212529;
+    --pt-encabezado: #f1f3f5;
+    --pt-borde: #dee2e6;
+    --pt-total: #e9ecef;
+    --pt-hover: #dbeafe;
+    --pt-link: #0d6efd;
+    color: var(--pt-texto);
+}
+#reporteSemanalPT .dropdown-semanas { width: 350px; max-width: 90vw; }
+#reporteSemanalPT #listaSemanas { max-height: 350px; overflow-y: auto; }
+#reporteSemanalPT .tabla-semanal-pt { white-space: nowrap; font-size: .88rem; }
+#reporteSemanalPT .tabla-semanal-pt thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--pt-encabezado);
+    color: var(--pt-texto);
+    text-align: center;
+}
+#reporteSemanalPT .tabla-semanal-pt th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background: var(--pt-encabezado);
+    text-align: left;
+}
+#reporteSemanalPT .tabla-semanal-pt td:first-child {
+    position: sticky;
+    left: 0;
+    background: var(--pt-fondo);
+    color: var(--pt-texto);
+    font-weight: 600;
+    z-index: 1;
+}
+#reporteSemanalPT .tabla-semanal-pt .celda-clic {
+    cursor: pointer;
+    color: var(--pt-link);
+    font-weight: 600;
+}
+#reporteSemanalPT .tabla-semanal-pt .celda-clic:hover {
+    background: var(--pt-hover);
+    text-decoration: underline;
+}
+#reporteSemanalPT .tabla-semanal-pt tfoot td {
+    background: var(--pt-total);
+    color: var(--pt-texto);
+    font-weight: 700;
+}
+#reporteSemanalPT .tabla-semanal-pt tfoot td:first-child {
+    background: var(--pt-total);
+}
+#reporteSemanalPT .grupo-reporte-pt { margin-bottom: 24px; }
+#reporteSemanalPT .grupo-reporte-pt .card-header {
+    font-weight: 700;
+    padding: 12px 18px;
+    background: var(--pt-encabezado) !important;
+    color: var(--pt-texto);
+}
+#reporteSemanalPT .grupo-reporte-pt .table-responsive {
+    max-height: 65vh;
+    overflow: auto;
+}
+body.dark-mode #reporteSemanalPT,
+[data-bs-theme="dark"] #reporteSemanalPT {
+    --pt-fondo: #252a32;
+    --pt-texto: #e9ecef;
+    --pt-encabezado: #303844;
+    --pt-borde: #49515b;
+    --pt-total: #37414d;
+    --pt-hover: #35475d;
+    --pt-link: #80b6ff;
+}
+body.dark-mode #reporteSemanalPT .card,
+[data-bs-theme="dark"] #reporteSemanalPT .card {
+    background: var(--pt-fondo);
+    color: var(--pt-texto);
+    border-color: var(--pt-borde);
+}
+body.dark-mode #reporteSemanalPT .tabla-semanal-pt,
+[data-bs-theme="dark"] #reporteSemanalPT .tabla-semanal-pt {
+    --bs-table-bg: var(--pt-fondo);
+    --bs-table-color: var(--pt-texto);
+    --bs-table-border-color: var(--pt-borde);
+    --bs-table-hover-bg: #343d49;
+    --bs-table-hover-color: var(--pt-texto);
+}
+body.dark-mode #reporteSemanalPT .dropdown-menu,
+[data-bs-theme="dark"] #reporteSemanalPT .dropdown-menu {
+    background: var(--pt-fondo);
+    color: var(--pt-texto);
+    border-color: var(--pt-borde);
+}
+body.dark-mode #reporteSemanalPT .form-control,
+body.dark-mode #reporteSemanalPT .form-select,
+[data-bs-theme="dark"] #reporteSemanalPT .form-control,
+[data-bs-theme="dark"] #reporteSemanalPT .form-select {
+    background-color: #303844;
+    color: var(--pt-texto);
+    border-color: var(--pt-borde);
+    color-scheme: dark;
+}
+body.dark-mode #reporteSemanalPT .text-muted,
+[data-bs-theme="dark"] #reporteSemanalPT .text-muted,
+body.dark-mode .modal-semanal-pt .text-muted,
+[data-bs-theme="dark"] .modal-semanal-pt .text-muted {
+    color: #adb5bd !important;
+}
+body.dark-mode .modal-semanal-pt .modal-content,
+[data-bs-theme="dark"] .modal-semanal-pt .modal-content {
+    background: #252a32;
+    color: #e9ecef;
+    border-color: #49515b;
+}
+body.dark-mode .modal-semanal-pt .modal-header,
+[data-bs-theme="dark"] .modal-semanal-pt .modal-header {
+    border-color: #49515b;
+}
+body.dark-mode .modal-semanal-pt .table,
+[data-bs-theme="dark"] .modal-semanal-pt .table {
+    --bs-table-bg: #252a32;
+    --bs-table-color: #e9ecef;
+    --bs-table-border-color: #49515b;
+    --bs-table-hover-bg: #343d49;
+    --bs-table-hover-color: #e9ecef;
+}
+body.dark-mode .modal-semanal-pt .table-light,
+[data-bs-theme="dark"] .modal-semanal-pt .table-light {
+    --bs-table-bg: #303844;
+    --bs-table-color: #e9ecef;
+    --bs-table-border-color: #49515b;
+}
+@media (max-width: 768px) {
+    #reporteSemanalPT .dropdown-semanas { width: min(350px, 85vw); }
+    #reporteSemanalPT .tabla-semanal-pt { font-size: .8rem; }
+}

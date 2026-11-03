@@ -1,0 +1,120 @@
+
+/* =========================================
+   REGISTRAR ENTRADA - ESTILO GENERAL
+========================================= */
+#registrarEntradaPT {
+    --re-fondo: #fff;
+    --re-texto: #212529;
+    --re-encabezado: #f8f9fa;
+    --re-borde: #dee2e6;
+    color: var(--re-texto);
+}
+#registrarEntradaPT .stock-contenedor { font-size: .8rem; opacity: .6; }
+#registrarEntradaPT .celda-vacia { font-size: .85rem; }
+#registrarEntradaPT #productosTable thead th,
+table.fixedHeader-floating thead th {
+    background-color: var(--re-encabezado, #f8f9fa) !important;
+    color: var(--re-texto, #212529) !important;
+    font-weight: 700;
+    vertical-align: middle;
+    z-index: 10;
+}
+#resumenEntrada { max-height: 400px; overflow-y: auto; }
+
+/* Quitar flechas de los campos numéricos */
+#registrarEntradaPT .cantidad-input::-webkit-inner-spin-button,
+#registrarEntradaPT .cantidad-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+#registrarEntradaPT .cantidad-input {
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+/* =========================================
+   MODO OSCURO
+========================================= */
+body.dark-mode #registrarEntradaPT,
+[data-bs-theme="dark"] #registrarEntradaPT {
+    --re-fondo: #252a32;
+    --re-texto: #e9ecef;
+    --re-encabezado: #303844;
+    --re-borde: #49515b;
+}
+body.dark-mode #registrarEntradaPT .custom-card,
+[data-bs-theme="dark"] #registrarEntradaPT .custom-card {
+    background: var(--re-fondo);
+    color: var(--re-texto);
+    border: 1px solid var(--re-borde);
+}
+body.dark-mode #registrarEntradaPT #productosTable,
+[data-bs-theme="dark"] #registrarEntradaPT #productosTable {
+    --bs-table-bg: #252a32;
+    --bs-table-color: #e9ecef;
+    --bs-table-border-color: #49515b;
+    --bs-table-striped-bg: #2d3540;
+    --bs-table-striped-color: #e9ecef;
+    --bs-table-hover-bg: #343d49;
+    --bs-table-hover-color: #e9ecef;
+}
+body.dark-mode #registrarEntradaPT #productosTable thead th,
+body.dark-mode table.fixedHeader-floating thead th,
+[data-bs-theme="dark"] #registrarEntradaPT #productosTable thead th,
+[data-bs-theme="dark"] table.fixedHeader-floating thead th {
+    background: #303844 !important;
+    color: #e9ecef !important;
+}
+body.dark-mode #registrarEntradaPT .form-control,
+[data-bs-theme="dark"] #registrarEntradaPT .form-control {
+    background: #303844;
+    color: #e9ecef;
+    border-color: #49515b;
+    color-scheme: dark;
+}
+body.dark-mode #registrarEntradaPT .dt-container,
+[data-bs-theme="dark"] #registrarEntradaPT .dt-container {
+    color: #e9ecef;
+}
+body.dark-mode #registrarEntradaPT .dt-input,
+[data-bs-theme="dark"] #registrarEntradaPT .dt-input {
+    background: #303844;
+    color: #e9ecef;
+    border-color: #49515b;
+}
+body.dark-mode #registrarEntradaPT .dt-paging-button,
+[data-bs-theme="dark"] #registrarEntradaPT .dt-paging-button {
+    color: #e9ecef !important;
+}
+body.dark-mode #registrarEntradaPT .text-muted,
+[data-bs-theme="dark"] #registrarEntradaPT .text-muted {
+    color: #adb5bd !important;
+}
+body.dark-mode .modal-entrada-pt .modal-content,
+[data-bs-theme="dark"] .modal-entrada-pt .modal-content {
+    background: #252a32;
+    color: #e9ecef;
+    border-color: #49515b;
+}
+body.dark-mode .modal-entrada-pt .modal-header,
+body.dark-mode .modal-entrada-pt .modal-footer,
+[data-bs-theme="dark"] .modal-entrada-pt .modal-header,
+[data-bs-theme="dark"] .modal-entrada-pt .modal-footer {
+    border-color: #49515b;
+}
+body.dark-mode .modal-entrada-pt .table,
+[data-bs-theme="dark"] .modal-entrada-pt .table {
+    --bs-table-bg: #252a32;
+    --bs-table-color: #e9ecef;
+    --bs-table-border-color: #49515b;
+}
+body.dark-mode .modal-entrada-pt .table-light,
+[data-bs-theme="dark"] .modal-entrada-pt .table-light {
+    --bs-table-bg: #303844;
+    --bs-table-color: #e9ecef;
+}
+body.dark-mode .modal-entrada-pt .resumen-nota,
+[data-bs-theme="dark"] .modal-entrada-pt .resumen-nota {
+    background: #303844 !important;
+    color: #e9ecef;
+}

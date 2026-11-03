@@ -1,358 +1,160 @@
+
 {% load static %}
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+<link rel="stylesheet" href="{% static 'css/Dashboard/repartidor.css' %}">
 
-<div class="container-fluid">
+<div id="dashboard-repartidor" class="container-fluid px-0">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Dashboard del Repartidor</h2>
+            <p class="text-muted mb-0">Información de ruta, operaciones e inventario</p>
+        </div>
+        <span class="badge rounded-pill text-bg-primary px-3 py-2" id="fecha_jornada">Cargando fecha...</span>
+    </div>
 
-    <h1>Dashboard del Repartidor</h1>
-
-    <hr>
-
-    <!-- ========================= -->
     <!-- INFORMACIÓN DEL REPARTIDOR -->
-    <!-- ========================= -->
+    <div class="card dashboard-panel shadow-sm border-0 mb-4">
+        <div class="card-header bg-transparent border-0 pt-3 pb-0">
+            <h5 class="fw-bold mb-0"><i class="bi bi-person-badge me-2"></i>Información del repartidor</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12 col-md-6 col-xl-4">
+                    <div class="repartidor-dato">
+                        <div class="dato-icono icono-azul"><i class="bi bi-person"></i></div>
+                        <div><small>Nombre</small><div class="dato-valor" id="nombre_repartidor">Cargando...</div></div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-4">
+                    <div class="repartidor-dato">
+                        <div class="dato-icono icono-verde"><i class="bi bi-signpost-2"></i></div>
+                        <div><small>Ruta asignada</small><div class="dato-valor" id="nombre_ruta">Cargando...</div></div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-4">
+                    <div class="repartidor-dato">
+                        <div class="dato-icono icono-morado"><i class="bi bi-truck"></i></div>
+                        <div><small>Vehículo</small><div class="dato-valor" id="vehiculo">Cargando...</div></div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-4">
+                    <div class="repartidor-dato">
+                        <div class="dato-icono icono-amarillo"><i class="bi bi-boxes"></i></div>
+                        <div><small>MiniBodega</small><div class="dato-valor" id="minibodega">Cargando...</div></div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-xl-4">
+                    <div class="repartidor-dato">
+                        <div class="dato-icono icono-verde"><i class="bi bi-check-circle"></i></div>
+                        <div><small>Estado de MiniBodega</small><div class="dato-valor"><span id="estado_minibodega" class="badge text-bg-secondary">Cargando...</span></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <h2>Información del repartidor</h2>
-
-    <p>
-        <strong>Nombre:</strong>
-        <span id="nombre_repartidor">Cargando...</span>
-    </p>
-
-    <p>
-        <strong>Ruta:</strong>
-        <span id="nombre_ruta">Cargando...</span>
-    </p>
-
-    <p>
-        <strong>Vehículo:</strong>
-        <span id="vehiculo">Cargando...</span>
-    </p>
-
-    
-    <p>
-        <strong>MiniBodega:</strong>
-        <span id="minibodega">Cargando...</span>
-    </p>
-    
-    <p>
-        <strong>Estado:</strong>
-        <span id="estado_minibodega">Cargando...</span>
-    </p>
-
-
-    <hr>
-
-
-    <!-- ========================= -->
-    <!-- RESUMEN DE LA JORNADA -->
-    <!-- ========================= -->
-
-    <h2>Resumen de la jornada</h2>
+    <!-- RESUMEN DE OPERACIONES -->
+    <div class="mb-3">
+        <h5 class="fw-bold mb-1"><i class="bi bi-bar-chart-line me-2"></i>Resumen de la jornada</h5>
+        <p class="text-muted small mb-0">Movimientos registrados durante el día</p>
+    </div>
 
     <div class="row g-3 mb-4">
-
-        <!-- VENTAS -->
-        <div class="col-md-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-
-                    <h5 class="card-title">Ventas</h5>
-
-                    <h2 id="cantidad_ventas">0</h2>
-                    <p class="text-muted mb-3">ventas realizadas</p>
-
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Ventas de contado</span>
-                        <strong id="ventas_contado">$0.00</strong>
-                    </div>
-
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Ventas a crédito</span>
-                        <strong id="ventas_credito">$0.00</strong>
-                    </div>
-
-                    <hr>
-
-                    <div class="d-flex justify-content-between align-items-center">
-                        <strong>Total en ventas</strong>
-                        <h4 id="dinero_ventas" class="text-success fw-bold mb-0">
-                            $0.00
-                        </h4>
-                    </div>
-
+        <div class="col-12 col-md-6 col-xl-4">
+            <div class="resumen-metrica metrica-azul h-100">
+                <div class="d-flex justify-content-between align-items-center"><span>Ventas totales</span><i class="bi bi-cart-check"></i></div>
+                <div class="resumen-valor" id="dinero_ventas">$0.00</div>
+                <small><span id="cantidad_ventas">0</span> ventas realizadas</small>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-4">
+            <div class="resumen-metrica metrica-celeste h-100">
+                <div class="d-flex justify-content-between align-items-center"><span>Ventas de contado</span><i class="bi bi-cash-stack"></i></div>
+                <div class="resumen-valor" id="ventas_contado">$0.00</div>
+                <small>Ventas cobradas al momento</small>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-4">
+            <div class="resumen-metrica metrica-amarilla h-100">
+                <div class="d-flex justify-content-between align-items-center"><span>Ventas a crédito</span><i class="bi bi-credit-card"></i></div>
+                <div class="resumen-valor" id="ventas_credito">$0.00</div>
+                <small>No se suman directamente al efectivo</small>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-4">
+            <div class="resumen-metrica metrica-morada h-100">
+                <div class="d-flex justify-content-between align-items-center"><span>Abonos recibidos</span><i class="bi bi-wallet2"></i></div>
+                <div class="resumen-valor" id="dinero_abonos">$0.00</div>
+                <small><span id="cantidad_abonos">0</span> abonos realizados</small>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-4">
+            <div class="resumen-metrica metrica-roja h-100">
+                <div class="d-flex justify-content-between align-items-center"><span>Balance devoluciones</span><i class="bi bi-box-arrow-in-left"></i></div>
+                <div class="resumen-valor" id="balance_devoluciones">$0.00</div>
+                <small><span id="cantidad_devoluciones">0</span> devoluciones · Valor devuelto: <span id="dinero_devoluciones">$0.00</span></small>
+                <div class="metrica-detalle mt-2">
+                    <div>Recibido: <strong id="devoluciones_recibido">$0.00</strong></div>
+                    <div>Entregado: <strong id="devoluciones_entregado">$0.00</strong></div>
                 </div>
             </div>
         </div>
-
-
-        <!-- ABONOS -->
-        <div class="col-md-4">
-
-            <div class="card shadow-sm h-100">
-
-                <div class="card-body">
-
-                    <h5 class="card-title">
-                        Abonos
-                    </h5>
-
-                    <h2 id="cantidad_abonos">
-                        0
-                    </h2>
-
-                    <p class="text-muted mb-2">
-                        abonos realizados
-                    </p>
-
-                    <h4 id="dinero_abonos">
-                        $0.00
-                    </h4>
-
+        <div class="col-12 col-md-6 col-xl-4">
+            <div class="resumen-metrica metrica-verde h-100">
+                <div class="d-flex justify-content-between align-items-center"><span>Balance rotaciones</span><i class="bi bi-arrow-repeat"></i></div>
+                <div class="resumen-valor" id="balance_rotaciones">$0.00</div>
+                <small><span id="cantidad_rotaciones">0</span> rotaciones · Valor rotado: <span id="dinero_rotaciones">$0.00</span></small>
+                <div class="metrica-detalle mt-2">
+                    <div>Recibido: <strong id="rotaciones_recibido">$0.00</strong></div>
+                    <div>Entregado: <strong id="rotaciones_entregado">$0.00</strong></div>
                 </div>
-
             </div>
-
         </div>
-
-
-        <!-- DEVOLUCIONES -->
-        <div class="col-md-4">
-
-            <div class="card shadow-sm h-100">
-
-                <div class="card-body">
-
-                    <h5 class="card-title">
-                        Devoluciones
-                    </h5>
-
-                    <h2 id="cantidad_devoluciones">
-                        0
-                    </h2>
-
-                    <p class="text-muted mb-2">
-                        devoluciones realizadas
-                    </p>
-
-                    <h4 id="dinero_devoluciones">
-                        $0.00
-                    </h4>
-
-                </div>
-
-            </div>
-
-        </div>
-
     </div>
 
-
-    <!-- ========================= -->
     <!-- EFECTIVO ESPERADO -->
-    <!-- ========================= -->
-
-    <div class="card shadow-sm mb-4">
-
-        <div class="card-body text-center">
-
-            <h5 class="card-title">
-                Efectivo esperado
-            </h5>
-
-            <h1 id="efectivo_esperado">
-                $0.00
-            </h1>
-
-            <p class="text-muted mb-0">
-                Dinero que debería traer el repartidor
-            </p>
-
+    <div class="card dashboard-panel shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <h5 class="fw-bold mb-1"><i class="bi bi-currency-dollar me-2"></i>Dinero total a entregar</h5>
+                    <p class="text-muted small mb-0">Contado + abonos + balances de devoluciones y rotaciones en efectivo</p>
+                </div>
+                <h2 id="efectivo_esperado" class="fw-bold mb-0 text-success">$0.00</h2>
+            </div>
+            <div class="efectivo-desglose mt-3">
+                <span>Contado: <strong id="desglose_contado">$0.00</strong></span>
+                <span>Abonos: <strong id="desglose_abonos">$0.00</strong></span>
+                <span>Devoluciones: <strong id="desglose_devoluciones">$0.00</strong></span>
+                <span>Rotaciones: <strong id="desglose_rotaciones">$0.00</strong></span>
+            </div>
         </div>
-
     </div>
 
-
-    <hr>
-
-
-    <!-- ========================= -->
     <!-- INVENTARIO -->
-    <!-- ========================= -->
-
-    <h2>Inventario</h2>
-
-    <table class="table">
-
-        <thead>
-
-            <tr>
-                <th>Producto</th>
-                <th>Presentación</th>
-                <th>Cantidad inicial</th>
-                <th>Cantidad actual</th>
-            </tr>
-
-        </thead>
-
-        <tbody id="tabla_inventario">
-
-            <tr>
-
-                <td colspan="4">
-                    Cargando inventario...
-                </td>
-
-            </tr>
-
-        </tbody>
-
-    </table>
-
+    <div class="card dashboard-panel shadow-sm border-0 mb-4">
+        <div class="card-header bg-transparent d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
+            <h5 class="fw-bold mb-0"><i class="bi bi-box-seam me-2"></i>Inventario de MiniBodega</h5>
+            <span class="badge text-bg-primary" id="cantidad_productos_inventario">0 productos</span>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Presentación</th>
+                            <th class="text-end">Cantidad inicial</th>
+                            <th class="text-end">Cantidad actual</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla_inventario">
+                        <tr><td colspan="4" class="text-center text-muted py-4">Cargando inventario...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
-
-<script>
-
-document.addEventListener("DOMContentLoaded", () => {
-
-    fetch("/movil/dashboard/repartidor/api/")
-
-        .then(response => response.json())
-
-        .then(data => {
-
-            if (!data.success) {
-
-                document.getElementById("nombre_repartidor").textContent =
-                    data.mensaje;
-
-                return;
-            }
-
-
-            // =========================
-            // INFORMACIÓN DEL REPARTIDOR
-            // =========================
-
-            document.getElementById("nombre_repartidor").textContent =
-                data.repartidor.nombre;
-
-            document.getElementById("nombre_ruta").textContent =
-                data.ruta.nombre;
-
-            document.getElementById("vehiculo").textContent =
-                `${data.vehiculo.marca} - ${data.vehiculo.placa}`;
-
-
-            // =========================
-            // MINIBODEGA
-            // =========================
-
-            if (data.minibodega.id !== null) {
-
-                document.getElementById("minibodega").textContent =
-                    `MiniBodega #${data.minibodega.id}`;
-
-                document.getElementById("estado_minibodega").textContent =
-                    data.minibodega.estado
-                        ? "Activa"
-                        : "Cerrada";
-
-            } else {
-
-                document.getElementById("minibodega").textContent =
-                    "No encontrada";
-
-                document.getElementById("estado_minibodega").textContent =
-                    "-";
-            }
-
-
-            // =========================
-            // RESUMEN DE LA JORNADA
-            // =========================
-
-            document.getElementById("cantidad_ventas").textContent =
-            data.jornada.ventas.cantidad;
-
-            document.getElementById("ventas_contado").textContent =
-                `$${Number(data.jornada.ventas.contado).toFixed(2)}`;
-
-            document.getElementById("ventas_credito").textContent =
-                `$${Number(data.jornada.ventas.credito).toFixed(2)}`;
-
-            document.getElementById("dinero_ventas").textContent =
-                `$${Number(data.jornada.ventas.dinero).toFixed(2)}`;
-
-
-            document.getElementById("cantidad_abonos").textContent =
-                data.jornada.abonos.cantidad;
-
-            document.getElementById("dinero_abonos").textContent =
-                `$${Number(data.jornada.abonos.dinero).toFixed(2)}`;
-
-
-            document.getElementById("cantidad_devoluciones").textContent =
-                data.jornada.devoluciones.cantidad;
-
-            document.getElementById("dinero_devoluciones").textContent =
-                `$${Number(data.jornada.devoluciones.dinero).toFixed(2)}`;
-
-
-            document.getElementById("efectivo_esperado").textContent =
-                `$${Number(data.jornada.efectivo_esperado).toFixed(2)}`;
-
-
-            // =========================
-            // INVENTARIO
-            // =========================
-
-            const tabla =
-                document.getElementById("tabla_inventario");
-
-            tabla.innerHTML = "";
-
-
-            if (data.inventario.length === 0) {
-
-                tabla.innerHTML = `
-                    <tr>
-                        <td colspan="4">
-                            No hay productos registrados en la MiniBodega.
-                        </td>
-                    </tr>
-                `;
-
-                return;
-            }
-
-
-            data.inventario.forEach(detalle => {
-
-                const fila =
-                    document.createElement("tr");
-
-                fila.innerHTML = `
-                    <td>${detalle.producto}</td>
-                    <td>${detalle.presentacion}</td>
-                    <td>${detalle.cantidad_inicial}</td>
-                    <td>${detalle.cantidad_actual}</td>
-                `;
-
-                tabla.appendChild(fila);
-
-            });
-
-        })
-
-        .catch(error => {
-
-            console.error(
-                "Error cargando dashboard del repartidor:",
-                error
-            );
-
-        });
-
-});
-
-</script>
+<script src="{% static 'js/Dashboard/repartidor.js' %}" defer></script>
