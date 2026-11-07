@@ -1,12 +1,11 @@
 {% extends "Base/Sidebar.html" %}
 {% load static %}
-
 {% block content %}
     <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
-    <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-
-
+    <link rel="stylesheet"
+          href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
         .truncate-text {
             max-width: 50px; /* ajustar según el diseño */
@@ -16,109 +15,101 @@
         }
 
     </style>
-
-
     <div>
-        <span class="fw-bold text-dark">Producto a Granel</span>
-        <span class="mx-2 text-dark">|</span>
+        <span class="fw-bold">Producto a Granel</span>
+        <span class="mx-2">|</span>
         <span class="text-secondary">Lista de Pedidos de Producción</span>
     </div>
-
     <div class="custom-card mt-4">
         {% if messages %}
             <div id="message-container"></div>
         {% endif %}
-
         <div class="table-responsive">
             <table id="pedidosTable" class="table table-striped table-bordered">
                 <thead>
-                <tr>
-                    <th style="text-align: left;">ID</th>
-                    <th>Fecha</th>
-                    <th>Usuario</th>
-                    <th class="text-center">Estado</th>
-                    <th class="text-center">Acciones</th>
-                </tr>
+                    <tr>
+                        <th style="text-align: left;">ID</th>
+                        <th>Fecha</th>
+                        <th>Usuario</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
                 </thead>
                 <tbody>
-                {% for pedido in pedidos %}
-                    <tr>
-                        <td style="text-align: left;">{{ pedido.id }}</td>
-
-
-                        <td class="truncate-text"
-                            title="{{ pedido.fecha_pedido|date:'j \d\e F \d\e Y \a \l\a\s h:i A'|lower }}">
-                            {{ pedido.fecha_pedido|date:'j \d\e F \d\e Y \a \l\a\s h:i A'|lower }}
-                        </td>
-
-
-                        <td class="truncate-text">{{ pedido.usuario.first_name }} {{ pedido.usuario.last_name }}</td>
-
-                        <td class="text-center">
-                            {% if pedido.estado == "pendiente" %}
-                                <span class="badge bg-warning text-dark">Pendiente</span>
-                            {% elif pedido.estado == "rechazado" %}
-                                <span class="badge bg-danger">Rechazado</span>
-                            {% else %}
-                                <span class="badge bg-success">Procesado</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-center">
-
-                            <button class="btn btn-sm btn-custom-info" data-bs-toggle="modal"
-                                    data-bs-target="#modalDetalle{{ pedido.id }}">
-                                <i class="bi bi-eye-fill "></i>
-                            </button>
-                        </td>
-                    </tr>
-                {% endfor %}
+                    {% for pedido in pedidos %}
+                        <tr>
+                            <td style="text-align: left;">{{ pedido.id }}</td>
+                            <td class="truncate-text"
+                                title="{{ pedido.fecha_pedido|date:'j \d\e F \d\e Y \a \l\a\s h:i A'|lower }}">
+                                {{ pedido.fecha_pedido|date:'j \d\e F \d\e Y \a \l\a\s h:i A'|lower }}
+                            </td>
+                            <td class="truncate-text">{{ pedido.usuario.first_name }} {{ pedido.usuario.last_name }}</td>
+                            <td class="text-center">
+                                {% if pedido.estado == "pendiente" %}
+                                    <span class="badge bg-warning">Pendiente</span>
+                                {% elif pedido.estado == "rechazado" %}
+                                    <span class="badge bg-danger">Rechazado</span>
+                                {% else %}
+                                    <span class="badge bg-success">Procesado</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-custom-info"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalDetalle{{ pedido.id }}">
+                                    <i class="bi bi-eye-fill"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
-
     <!-- Modal de detalles del pedido -->
     {% for pedido in pedidos %}
-        <div class="modal fade" id="modalDetalle{{ pedido.id }}" tabindex="-1"
-             aria-labelledby="modalDetalleLabel{{ pedido.id }}" aria-hidden="true">
+        <div class="modal fade"
+             id="modalDetalle{{ pedido.id }}"
+             tabindex="-1"
+             aria-labelledby="modalDetalleLabel{{ pedido.id }}"
+             aria-hidden="true">
             <div class="modal-dialog modal-lg mt-5">
                 <div class="modal-content">
-
-
                     <div class="modal-header d-flex flex-column align-items-start">
-                        <h5 class="modal-title" id="modalDetalleLabel{{ pedido.id }}">Detalles del
-                            Pedido {{ pedido.id }}</h5>
+                        <h5 class="modal-title" id="modalDetalleLabel{{ pedido.id }}">
+                            Detalles del
+                            Pedido {{ pedido.id }}
+                        </h5>
                         {% if pedido.nota %}
                             <small class="text-muted" style="word-break: break-word;">Nota: {{ pedido.nota }}</small>
                         {% endif %}
-                        <button type="button" class="btn-close position-absolute top-0 end-0 m-3"
-                                data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button"
+                                class="btn-close position-absolute top-0 end-0 m-3"
+                                data-bs-dismiss="modal"
+                                aria-label="Close"></button>
                     </div>
-
-
                     <div class="modal-body">
                         {% if pedido.detallepedidoproduccion_set.all %}
                             <div class="table-responsive">
                                 <table class="table table-sm table-hover">
                                     <thead>
-                                    <tr>
-                                        <th>Producto</th>
-                                        <th>Cantidad</th>
-
-                                    </tr>
+                                        <tr>
+                                            <th>Producto</th>
+                                            <th>Cantidad</th>
+                                        </tr>
                                     </thead>
                                     <tbody>
-                                    {% for detalle in pedido.detallepedidoproduccion_set.all %}
-                                        <tr>
-                                            <td>
-                                                {{ detalle.producto_granel.nombre }}<br>
-                                                <small class="text-muted">(Stock
+                                        {% for detalle in pedido.detallepedidoproduccion_set.all %}
+                                            <tr>
+                                                <td>
+                                                    {{ detalle.producto_granel.nombre }}
+                                                    <br>
+                                                    <small class="text-muted">(Stock
                                                     actual: {{ detalle.producto_granel.stock }} {{ detalle.producto_granel.unidad_medida }})</small>
-                                            </td>
-                                            <td>{{ detalle.cantidad }} {{ detalle.producto_granel.unidad_medida }}</td>
-
-                                        </tr>
-                                    {% endfor %}
+                                                </td>
+                                                <td>{{ detalle.cantidad }} {{ detalle.producto_granel.unidad_medida }}</td>
+                                            </tr>
+                                        {% endfor %}
                                     </tbody>
                                 </table>
                             </div>
@@ -128,36 +119,30 @@
                     </div>
                     <div class="modal-footer">
                         {% if pedido.estado == "pendiente" %}
-
-
-
-
-                            <form action="{% url 'aceptar_pedido_produccion' pedido.id %}" method="post"
+                            <form action="{% url 'aceptar_pedido_produccion' pedido.id %}"
+                                  method="post"
                                   class="d-inline">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-custom-success btn-aceptar">
                                     <span class="icono"><i class="bi bi-check-circle-fill me-1"></i></span>
-                                    <span class="spinner-border spinner-border-sm d-none" role="status"
+                                    <span class="spinner-border spinner-border-sm d-none"
+                                          role="status"
                                           aria-hidden="true"></span>
                                     Aceptar Pedido
                                 </button>
                             </form>
-
-
-                            <form action="{% url 'rechazar_pedido_produccion' pedido.id %}" method="post"
+                            <form action="{% url 'rechazar_pedido_produccion' pedido.id %}"
+                                  method="post"
                                   class="d-inline">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-danger btn-rechazar">
                                     <span class="icono"><i class="bi bi-x-circle-fill me-1"></i></span>
-                                    <span class="spinner-border spinner-border-sm d-none" role="status"
+                                    <span class="spinner-border spinner-border-sm d-none"
+                                          role="status"
                                           aria-hidden="true"></span>
                                     Rechazar Pedido
                                 </button>
                             </form>
-
-
-
-
                         {% endif %}
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                     </div>
@@ -165,14 +150,13 @@
             </div>
         </div>
     {% endfor %}
-
     <!-- JS -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
-
+    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css"
+          rel="stylesheet">
     <script>
         $(document).ready(function () {
             $('#pedidosTable').DataTable({

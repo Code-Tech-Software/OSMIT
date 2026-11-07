@@ -1,82 +1,77 @@
 {% extends "Base/Sidebar.html" %}
 {% load static %}
-
 {% block content %}
-<!-- Estilos personalizados -->
-<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
-<link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
-
-<div>
-    <span class="fw-bold text-dark">Gestión de Categorías</span>
-    <span class="mx-2 text-dark">|</span>
-    <span class="text-secondary">Listado de categorías de productos</span>
-</div>
-
-<div class="text-end">
-    <a href="{% url 'crear_categoria' %}" class="btn btn-custom-success btn-add mb-4">
-        <i class="bi bi-plus-circle"></i> Crear nueva categoría
-    </a>
-</div>
-
-<div class="custom-card">
-    <div class="table-responsive">
-        <table id="categoriasTable" class="table table-striped table-bordered">
-            <thead>
-                <tr>
-                    <th>Nombre</th>
-                    <th>Descripción</th>
-                   
-                    <th>Estado</th>
-                    <th style="text-align: center;">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for categoria in categorias %}
-                <tr>
-                    <td>{{ categoria.nombre }}</td>
-                    <td>{{ categoria.descripcion|default:"Sin descripción" }}</td>
-              
-                    <td class="text-center">
-                        {% if categoria.estado %}
-                            <span class="badge bg-custom-success">Activa</span>
-                        {% else %}
-                            <span class="badge bg-custom-danger">Inactiva</span>
-                        {% endif %}
-                    </td>
-                    <td class="text-center">
-                        <div class="d-flex justify-content-center gap-2">
-                            <a href="{% url 'editar_categoria' categoria.pk %}" class="btn btn-custom-info btn-sm" title="Editar">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <a href="{% url 'eliminar_categoria' categoria.pk %}" class="btn btn-custom-danger btn-sm btn-delete" title="Eliminar">
-                                <i class="bi bi-trash"></i>
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-                
-          
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- Estilos personalizados -->
+    <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+    <link rel="stylesheet"
+          href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+    <div>
+        <span class="fw-bold">Gestión de Categorías</span>
+        <span class="mx-2">|</span>
+        <span class="text-secondary">Listado de categorías de productos</span>
     </div>
-
-
-
-    <!-- Switch mostrar todos -->
-    <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" id="toggleEstado" {% if mostrar_todos %}checked{% endif %}>
-        <label class="form-check-label text-dark" for="toggleEstado">Mostrar todas las categorías</label>
+    <div class="text-end">
+        <a href="{% url 'crear_categoria' %}"
+           class="btn btn-custom-success btn-add mb-4">
+            <i class="bi bi-plus-circle"></i> Crear nueva categoría
+        </a>
     </div>
-
-</div>
-
-<!-- Scripts -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<script>
+    <div class="custom-card">
+        <div class="table-responsive">
+            <table id="categoriasTable" class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Descripción</th>
+                        <th>Estado</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for categoria in categorias %}
+                        <tr>
+                            <td>{{ categoria.nombre }}</td>
+                            <td>{{ categoria.descripcion|default:"Sin descripción" }}</td>
+                            <td class="text-center">
+                                {% if categoria.estado %}
+                                    <span class="badge bg-custom-success">Activa</span>
+                                {% else %}
+                                    <span class="badge bg-custom-danger">Inactiva</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex justify-content-center gap-2">
+                                    <a href="{% url 'editar_categoria' categoria.pk %}"
+                                       class="btn btn-custom-info btn-sm"
+                                       title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'eliminar_categoria' categoria.pk %}"
+                                       class="btn btn-custom-danger btn-sm btn-delete"
+                                       title="Eliminar">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <!-- Switch mostrar todos -->
+        <div class="form-check form-switch">
+            <input class="form-check-input"
+                   type="checkbox"
+                   id="toggleEstado"
+                   {% if mostrar_todos %}checked{% endif %}>
+            <label class="form-check-label" for="toggleEstado">Mostrar todas las categorías</label>
+        </div>
+    </div>
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
 
     // Switch lógica
     $('#toggleEstado').on('change', function () {
@@ -135,14 +130,13 @@
             });
         });
     });
-</script>
-
-<!-- Notificaciones -->
-<script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
-
-{% if messages %}
-<script>
+    </script>
+    <!-- Notificaciones -->
+    <script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css"
+          rel="stylesheet">
+    {% if messages %}
+        <script>
     const notyf = new Notyf({
         duration: 3000,
         position: {x: 'right', y: 'bottom'},
@@ -156,6 +150,6 @@
             notyf.error("{{ message }}");
         {% endif %}
     {% endfor %}
-</script>
-{% endif %}
+        </script>
+    {% endif %}
 {% endblock %}

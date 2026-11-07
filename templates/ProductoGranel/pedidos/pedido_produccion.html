@@ -1,66 +1,68 @@
 {% extends "Base/Sidebar.html" %}
 {% load static %}
-
 {% block content %}
     <!-- Estilos -->
     <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
-    <link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css" rel="stylesheet">
-
+    <link rel="stylesheet"
+          href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css"
+          rel="stylesheet">
     <div>
-        <span class="fw-bold text-dark">Producción</span>
-        <span class="mx-2 text-dark">|</span>
+        <span class="fw-bold">Producción</span>
+        <span class="mx-2">|</span>
         <span class="text-secondary">Realizar Pedido</span>
     </div>
-
     <div class="custom-card mt-4">
         <form id="pedidoForm" method="post">
             {% csrf_token %}
-
             <!-- Tabla de productos -->
             <div class="table-responsive">
                 <table id="productosTable" class="table table-striped table-bordered">
                     <thead>
-                    <tr>
-                        <th>Producto</th>
-                        <th>Stock Actual</th>
-                        <th>Cantidad a Pedir</th>
-                    </tr>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Stock Actual</th>
+                            <th>Cantidad a Pedir</th>
+                        </tr>
                     </thead>
                     <tbody>
-                    {% for producto in productos %}
-                        <tr>
-                            <td>{{ producto.nombre }}</td>
-                            <td>
-                                {% if producto.stock == 0 %}
-                                    <span class="text-danger fw-semibold">{{ producto.stock }}</span>
-                                    <span class="text-danger fw-light"> {{ producto.unidad_medida }}</span>
-                                    <i class="bi bi-x-octagon-fill text-danger ms-1" title="Producto agotado"></i>
-                                {% elif producto.stock <= producto.stock_min %}
-                                    <span class="fw-semibold">{{ producto.stock }}</span>
-                                    <span class="fw-light"> {{ producto.unidad_medida }}</span>
-                                    <i class="bi bi-exclamation-triangle-fill text-warning ms-2" title="Stock por debajo del mínimo"></i>
-                                {% else %}
-                                    <span class="fw-semibold">{{ producto.stock }}</span>
-                                    <span class="fw-light"> {{ producto.unidad_medida }}</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <input type="number" step="any" min="0" name="cantidad_{{ producto.id }}"
-                                       class="form-control" placeholder="0.0">
-                            </td>
-                        </tr>
-                    {% endfor %}
+                        {% for producto in productos %}
+                            <tr>
+                                <td>{{ producto.nombre }}</td>
+                                <td>
+                                    {% if producto.stock == 0 %}
+                                        <span class="text-danger fw-semibold">{{ producto.stock }}</span>
+                                        <span class="text-danger fw-light">{{ producto.unidad_medida }}</span>
+                                        <i class="bi bi-x-octagon-fill text-danger ms-1"
+                                           title="Producto agotado"></i>
+                                    {% elif producto.stock <= producto.stock_min %}
+                                        <span class="fw-semibold">{{ producto.stock }}</span>
+                                        <span class="fw-light">{{ producto.unidad_medida }}</span>
+                                        <i class="bi bi-exclamation-triangle-fill text-warning ms-2"
+                                           title="Stock por debajo del mínimo"></i>
+                                    {% else %}
+                                        <span class="fw-semibold">{{ producto.stock }}</span>
+                                        <span class="fw-light">{{ producto.unidad_medida }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <input type="number"
+                                           step="any"
+                                           min="0"
+                                           name="cantidad_{{ producto.id }}"
+                                           class="form-control"
+                                           placeholder="0.0">
+                                </td>
+                            </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
-
             <!-- Campo de Nota -->
             <div class="mt-4">
                 <label for="id_nota" class="form-label fw-semibold">Nota (opcional):</label>
                 {{ pedido_form.nota }}
             </div>
-
             <!-- Botón de envío -->
             <div class="text-end mt-3">
                 <button type="submit" class="btn btn-custom-success" id="submitBtn">
@@ -69,33 +71,38 @@
             </div>
         </form>
     </div>
-
     <!-- Modal de confirmación -->
-    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal fade"
+         id="confirmModal"
+         tabindex="-1"
+         aria-labelledby="confirmModalLabel"
+         aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="confirmModalLabel">Confirmar pedido de producción</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body">
                     <h6>Resumen de productos solicitados:</h6>
-                    <div id="resumenPedido" style="max-height: 400px; overflow-y: auto; word-wrap: break-word;"></div>
+                    <div id="resumenPedido"
+                         style="max-height: 400px;
+                                overflow-y: auto;
+                                word-wrap: break-word"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-custom-success" id="confirmSubmit">
-                        Confirmar y registrar
-                    </button>
+                    <button type="button" class="btn btn-custom-success" id="confirmSubmit">Confirmar y registrar</button>
                 </div>
             </div>
         </div>
     </div>
-
     <!-- JS: jQuery + DataTables -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
-
     <script>
         $(document).ready(function () {
             // Guarda la instancia en window para poder usar DT.$ y recorrer TODAS las páginas
@@ -127,13 +134,10 @@
             });
         });
     </script>
-
     <!-- Notificaciones -->
-    {% include 'Partials/notificaciones.html' %}
-
+    {% include "Partials/notificaciones.html" %}
     <!-- Bootstrap (Modal) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
     <!-- Lógica del modal, clon de inputs paginados y UX -->
     <script>
         const form = document.getElementById('pedidoForm');
