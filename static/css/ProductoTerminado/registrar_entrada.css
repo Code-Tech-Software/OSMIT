@@ -118,3 +118,92 @@ body.dark-mode .modal-entrada-pt .resumen-nota,
     background: #303844 !important;
     color: #e9ecef;
 }
+
+
+/* =========================================================
+   RESPONSIVE - REGISTRO DE ENTRADAS
+   Solo tablets y celulares
+   ========================================================= */
+@media (max-width: 1199.98px) {
+    #registrarEntradaPT,
+    #registrarEntradaPT .custom-card,
+    #registrarEntradaPT .dt-container {
+        min-width: 0;
+        max-width: 100%;
+    }
+    #registrarEntradaPT .custom-card { padding: 15px; }
+    #registrarEntradaPT .table-responsive {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+    #registrarEntradaPT #productosTable {
+        width: max-content !important;
+        min-width: 100%;
+    }
+    #registrarEntradaPT #productosTable th,
+    #registrarEntradaPT #productosTable td {
+        padding: 7px 5px;
+        font-size: .85rem;
+        vertical-align: middle;
+    }
+    #registrarEntradaPT #productosTable th { white-space: nowrap; }
+    #registrarEntradaPT #productosTable td:not(:first-child) { min-width: 85px; }
+    #registrarEntradaPT #productosTable td:first-child {
+        min-width: 135px;
+        max-width: 165px;
+        overflow-wrap: anywhere;
+    }
+    #registrarEntradaPT #productosTable .cantidad-input {
+        width: 100%;
+        min-width: 65px;
+        padding: 5px;
+        font-size: .85rem;
+        text-align: center;
+    }
+    #registrarEntradaPT .stock-contenedor {
+        font-size: .73rem;
+        white-space: nowrap;
+    }
+    #registrarEntradaPT .dt-layout-row {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    #registrarEntradaPT .dt-search,
+    #registrarEntradaPT .dt-length { max-width: 100%; }
+    #registrarEntradaPT .dt-input { max-width: 100%; }
+}
+
+/* =========================================================
+   CELULARES
+   ========================================================= */
+@media (max-width: 767.98px) {
+    #registrarEntradaPT .custom-card { padding: 10px; }
+    #registrarEntradaPT #productosTable th,
+    #registrarEntradaPT #productosTable td {
+        padding: 5px 4px;
+        font-size: .8rem;
+    }
+    #registrarEntradaPT #productosTable td:not(:first-child) { min-width: 75px; }
+    #registrarEntradaPT #productosTable td:first-child {
+        min-width: 110px;
+        max-width: 135px;
+    }
+    #registrarEntradaPT #productosTable .cantidad-input {
+        min-width: 55px;
+        padding: 5px 3px;
+        font-size: .8rem;
+    }
+    #registrarEntradaPT .stock-contenedor { font-size: .7rem; }
+    #registrarEntradaPT .dt-layout-row {
+        justify-content: center;
+        text-align: center;
+    }
+    #registrarEntradaPT .dt-search,
+    #registrarEntradaPT .dt-length { width: 100%; }
+    #registrarEntradaPT .dt-search input { width: 100%; }
+    #registrarEntradaPT .dt-paging { max-width: 100%; }
+}
+

@@ -13,3 +13,29 @@
 #resumen-operaciones .resumen-total .fs-2{color:var(--bs-success-text-emphasis,#146c43)}
 #resumen-operaciones .table th{white-space:nowrap}
 #resumen-operaciones .table td{vertical-align:middle}
+
+
+/* VALOR TOTAL DE PRODUCTOS DEVUELTOS */
+#resumen-operaciones .resumen-devoluciones-total {
+    padding: 18px 22px;
+    border-radius: 12px;
+    background: rgba(220, 53, 69, 0.07);
+    border: 1px solid rgba(220, 53, 69, 0.22);
+    color: var(--bs-body-color);
+}
+#resumen-operaciones .resumen-devoluciones-total .fw-semibold {
+    color: #c0394b;
+}
+#resumen-operaciones .resumen-devoluciones-total small {
+    color: var(--bs-secondary-color);
+}
+[data-bs-theme="dark"] #resumen-operaciones .resumen-devoluciones-total {
+    background: rgba(220, 53, 69, 0.12);
+    border-color: rgba(255, 110, 125, 0.3);
+}
+[data-bs-theme="dark"] #resumen-operaciones .resumen-devoluciones-total .fw-semibold {
+    color: #ff8793;
+}
+@media (max-width: 576px) {
+    #resumen-operaciones .resumen-devoluciones-total { padding: 15px; }
+}

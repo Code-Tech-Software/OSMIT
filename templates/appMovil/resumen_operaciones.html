@@ -79,12 +79,23 @@
             </div>
           </div>
         </div>
+        <!-- DINERO TOTAL A ENTREGAR -->
         <div class="resumen-total mt-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
           <div>
             <div class="fw-semibold">Dinero total a entregar</div>
             <small>Contado + abonos + balances de devoluciones y rotaciones en efectivo</small>
           </div>
           <div class="fs-2 fw-bold">${{ total_efectivo|floatformat:2 }}</div>
+        </div>
+        <!-- VALOR DE PRODUCTOS DEVUELTOS -->
+        <div class="resumen-devoluciones-total mt-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <div>
+            <div class="fw-semibold">
+              <i class="bi bi-box-arrow-in-left me-2"></i>Valor total de productos devueltos
+            </div>
+            <small>Valor de la mercancía devuelta, independiente del efectivo a entregar</small>
+          </div>
+          <div class="fs-4 fw-bold">${{ total_productos_devueltos|floatformat:2 }}</div>
         </div>
       </div>
     </div>

@@ -13,12 +13,12 @@ $(document).ready(function () {
     const ordenPersonalizado = document.getElementById('ordenPersonalizado');
     const tablaProductos = document.getElementById('productosTable');
     const confirmModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal'));
-    const notyf = new Notyf({duration:3000, position:{x:'right',y:'bottom'}, dismissible:true});
+    const notyf = new Notyf({ duration: 3000, position: { x: 'right', y: 'bottom' }, dismissible: true });
 
     window.productosDT = $('#productosTable').DataTable({
         pageLength: 50,
         responsive: true,
-        fixedHeader: {header:true, headerOffset:70},
+        fixedHeader: { header: true, headerOffset: 70 },
         order: [],
         language: {
             decimal: '',
@@ -32,20 +32,42 @@ $(document).ready(function () {
             search: 'Buscar:',
             zeroRecords: 'No se encontraron productos coincidentes',
             paginate: {
-                first:'<i class="bi bi-rewind-fill"></i>',
-                last:'<i class="bi bi-fast-forward-fill"></i>',
-                next:'<i class="bi bi-caret-right-fill"></i>',
-                previous:'<i class="bi bi-caret-left-fill"></i>'
+                first: '<i class="bi bi-rewind-fill"></i>',
+                last: '<i class="bi bi-fast-forward-fill"></i>',
+                next: '<i class="bi bi-caret-right-fill"></i>',
+                previous: '<i class="bi bi-caret-left-fill"></i>'
             }
         }
     });
 
+    // Sincronizar encabezado flotante en tablets y celulares
+    const scrollTablaPT = tablaProductos.closest('.table-responsive');
+    if (scrollTablaPT) {
+        const sincronizarHeaderPT = () => {
+            if (window.innerWidth > 1199) return;
+            const headerFlotante = document.querySelector('table.fixedHeader-floating');
+            if (!headerFlotante) return;
+            const tablaRect = tablaProductos.getBoundingClientRect();
+            const headerRect = headerFlotante.getBoundingClientRect();
+            const diferencia = headerRect.left - tablaRect.left;
+            headerFlotante.style.width = `${tablaRect.width}px`;
+            headerFlotante.style.transform = 'none';
+            headerFlotante.style.marginLeft = '0';
+            headerFlotante.style.left = `${headerFlotante.offsetLeft - diferencia}px`;
+
+        };
+        scrollTablaPT.addEventListener('scroll', sincronizarHeaderPT, { passive: true });
+        window.addEventListener('resize', sincronizarHeaderPT);
+        window.addEventListener('scroll', sincronizarHeaderPT, { passive: true });
+    }
+
+
     // Evitar cambios accidentales en cantidades por scroll o flechas del teclado
-    tablaProductos.addEventListener('wheel', function(e) {
+    tablaProductos.addEventListener('wheel', function (e) {
         if (e.target.matches('input.cantidad-input')) e.target.blur();
-    }, {passive:true});
-    tablaProductos.addEventListener('keydown', function(e) {
-        if (e.target.matches('input.cantidad-input') && ['ArrowUp','ArrowDown'].includes(e.key)) {
+    }, { passive: true });
+    tablaProductos.addEventListener('keydown', function (e) {
+        if (e.target.matches('input.cantidad-input') && ['ArrowUp', 'ArrowDown'].includes(e.key)) {
             e.preventDefault();
         }
     });
@@ -81,9 +103,9 @@ $(document).ready(function () {
         actualizandoStockPT = true;
         try {
             const respuesta = await fetch(contenedor.dataset.urlStock, {
-                method:'GET',
-                cache:'no-store',
-                headers:{'X-Requested-With':'XMLHttpRequest'}
+                method: 'GET',
+                cache: 'no-store',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
             if (!respuesta.ok) throw new Error('No se pudo consultar el stock.');
             const datos = await respuesta.json();
@@ -106,11 +128,11 @@ $(document).ready(function () {
 
                 if (stockValor) {
                     stockValor.textContent = nuevoStock;
-                    stockValor.classList.remove('text-danger','text-warning','text-muted','fw-bold');
+                    stockValor.classList.remove('text-danger', 'text-warning', 'text-muted', 'fw-bold');
                     if (nuevoStock <= 0) {
-                        stockValor.classList.add('text-danger','fw-bold');
+                        stockValor.classList.add('text-danger', 'fw-bold');
                     } else if (nuevoStock <= stockMin) {
-                        stockValor.classList.add('text-warning','fw-bold');
+                        stockValor.classList.add('text-warning', 'fw-bold');
                     } else {
                         stockValor.classList.add('text-muted');
                     }
@@ -128,7 +150,7 @@ $(document).ready(function () {
     setInterval(actualizarStockPT, 5000);
 
     // Evitar cantidades negativas y envío accidental con Enter
-    form.addEventListener('keydown', function(e) {
+    form.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' && e.target.tagName.toLowerCase() !== 'textarea') {
             e.preventDefault();
         }
@@ -138,7 +160,7 @@ $(document).ready(function () {
     });
 
     // Validar productos y preparar el modal
-    form.addEventListener('submit', function(e) {
+    form.addEventListener('submit', function (e) {
         e.preventDefault();
         if (destinoSelect?.value === 'opcion1' && (!rutaSelect || rutaSelect.value === '')) {
             notyf.error('Debes seleccionar una Ruta específica.');

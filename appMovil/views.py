@@ -95,20 +95,24 @@ from .autenticacion_dispositivo import DispositivoActivoPermission
 # Create your views here.
 
 class BaseSyncViewSet(viewsets.ModelViewSet):
+    """ViewSet base para sincronizacion con permisos de dispositivos activos."""
     permission_classes = [DispositivoActivoPermission]
 
     def get_queryset(self):
+        """Obtiene el conjunto de registros definido por el ViewSet."""
         queryset = super().get_queryset().all()
 
         return queryset
    
 
 class RolViewSet(BaseSyncViewSet):
+    """Gestiona la sincronizacion de roles para la sincronizacion."""
     queryset = Rol.objects.all()
     serializer_class = RolSerializer
 
 
 class UsuarioViewSet(BaseSyncViewSet):
+    """Gestiona la sincronizacion de usuarios repartidores con roles activos."""
     queryset = Usuario.objects.filter(
         rol__nombre="Repartidor",
         rol__estado=True
@@ -117,51 +121,61 @@ class UsuarioViewSet(BaseSyncViewSet):
 
 
 class CategoriaProductoViewSet(BaseSyncViewSet):
+    """Gestiona la sincronizacion de categorias de productos."""
     queryset = CategoriaProducto.objects.all()
     serializer_class = CategoriaProductoSerializer
 
 
 class PresentacionProductoTerminadoViewSet(BaseSyncViewSet):
+    """Gestiona la sincronizacion de presentaciones de productos terminados."""
     queryset = PresentacionProductoTerminado.objects.all()
     serializer_class = PresentacionProductoTerminadoSerializer
 
 
 class ProductoTerminadoViewSet(BaseSyncViewSet):
+    """Gestiona la sincronizacion de productos terminados."""
     queryset = ProductoTerminado.objects.all()
     serializer_class = ProductoTerminadoSerializer
 
 
 class ProductoVariacionViewSet(BaseSyncViewSet):
+    """Gestiona la sincronizacion de variaciones de productos terminados."""
     queryset = ProductoVariacion.objects.all()
     serializer_class = ProductoVariacionSerializer
 
 
 class VehiculoViewSet(BaseSyncViewSet):
+    """Gestiona la sincronizacion de vehiculos registrados"""
     queryset = Vehiculo.objects.all()
     serializer_class = VehiculoSerializer
 
 
 class RutaViewSet(BaseSyncViewSet):
+    """"Gestiona la sincronizacion de rutas asignadas a los repartidores"""
     queryset = Ruta.objects.all()
     serializer_class = RutaSerializer
 
 
 class ClienteViewSet(BaseSyncViewSet):
+    """Gestiona la sincronizacion de clientes registrados"""
     queryset = Cliente.objects.all()
     serializer_class = ClienteSerializer
 
 
 class ClienteDiasVisitaViewSet(BaseSyncViewSet):
+    """"Gestiona la sincronizacion de dias de visita de los clientes registrados"""
     queryset = ClienteDiasVisita.objects.all()
     serializer_class = ClienteDiasVisitaSerializer
 
 
 class MiniBodegaViewSet(BaseSyncViewSet):
+    """"Gestiona la sincronizacion de mini bodegas de los repartidores"""
     queryset = MiniBodega.objects.all()
     serializer_class = MiniBodegaSerializer
 
 
 class MiniBodegaDetalleViewSet(BaseSyncViewSet):
+    """""gestiona la sincronizacion del detalle de inventario de las minibodegas."""
     queryset = MiniBodegaDetalle.objects.all()
     serializer_class = MiniBodegaDetalleSerializer
 
@@ -191,21 +205,29 @@ class PedidoReabastecimientoDetalleViewSet(BaseSyncViewSet):
 
 
 class PinAdminThrottle(SimpleRateThrottle):
+    """"Limita los intentos de verificacion del Pin administrativo por dispositivo."""
     scope = "pin_admin"
 
     def get_cache_key(self, request, view):
+        """"Genera una clave de limitacion usando el codigo del dispositivo o su IP."""
         codigo = getattr(getattr(request, "dispositivo", None), "codigo", None)
         if not codigo:
             codigo = self.get_ident(request)
         return self.cache_format % {"scope": self.scope, "ident": codigo}
 
     def get_rate(self):
+        """Establece un limite de 5 solicitudes por minuto para la verificacion del PIN administrativo."""
         return "5/min"
 
 @api_view(["POST"])
 @permission_classes([DispositivoActivoPermission])
 @throttle_classes([PinAdminThrottle])
 def verificar_pin_admin(request):
+    """
+    Verifica el PIN administrativopara autorizar el acceso a funciones protegidas.
+    Valida el formato del PIN y lo compara con el hash configurado.
+    Registra los intentos fallidos por dispositivo y bloquea temporalmente
+    la verificacion despues de 5 intentos fallidos."""
     pin = request.data.get("pin", "")
     if not isinstance(pin, str) or len(pin) != 6 or not pin.isdigit():
         return Response({
@@ -244,24 +266,31 @@ def verificar_pin_admin(request):
     })
 
 
-"""
-{
-  "mini_bodega_id": 1,
-  "productos": [
-    {
-      "producto_variacion_id": 1,
-      "cantidad_actual": 5
-    },
-    {
-      "producto_variacion_id": 2,
-      "cantidad_actual": 0
-    }
-  ]
-}
-"""
 @api_view(['POST'])
 @permission_classes([DispositivoActivoPermission])
 def cerrar_mini_bodega(request):
+    """"
+    Cierra una minibodega y actualiza las existencias finales de sus productos.
+    
+    Valida las cantidades reportadas, considerando los productos recibidos
+    mediante rotaciones. permite registrar productos nuevos provenientes
+     de rotaciones y realiza el cierre dentro de una transaccion atomica.
+      
+    Args:
+        reuqest(Request):Solicitud HTTP con el identificador de la 
+        minibodega y las cantidades finales de sus productos.
+    Returns:
+        Response: Confirmación de cierre o detalle de los errores encontrados.
+    
+    ejemplo de solicitud:
+    {
+            "mini_bodega_id": 1,
+            "productos": [
+                {"producto_variacion_id": 1, "cantidad_actual": 5},
+                {"producto_variacion_id": 2, "cantidad_actual": 0}
+            ]
+        }
+    """
     serializer = CerrarMiniBodegaSerializer2(data=request.data)
 
     if not serializer.is_valid():
@@ -368,24 +397,30 @@ def cerrar_mini_bodega(request):
 
 
 
-
-{
-  "uuid": "550e8400-e29b-41d4-a716-446655440000",
-  "ruta_id": 1,
-  "productos": [
-    {
-      "producto_variacion_id": 1,
-      "cantidad": 20
-    },
-    {
-      "producto_variacion_id": 2,
-      "cantidad": 10
-    }
-  ]
-}
 @api_view(['POST'])
 @permission_classes([DispositivoActivoPermission])
 def crear_reabastecimiento(request):
+    """
+    Registra un pedido de reabastecimiento para una ruta de reparto.
+    valida la ruta , el usuario asigando y los productos solicitados.
+    Evita registrar pedidos duplicados mediante su uuid y guarda el
+    pedido junto con sus detalles dentro de una transaccion atomica.
+    Despues de confirmar el registro,envia una notificacion mediante pusher
+    Args:
+        request (Request): Solicitud HTTP con los datos del pedido de reabastecimiento.
+    Returns:
+        Response: Confirmación de creación o detalle de los errores encontrados.
+
+    ejemplo de solicitud:
+        {
+            "uuid": "550e8400-e29b-41d4-a716-446655440000",
+            "ruta_id": 1,
+            "productos": [
+                {"producto_variacion_id": 1, "cantidad": 20},
+                {"producto_variacion_id": 2, "cantidad": 10}
+            ]
+        }
+    """
     data = request.data
 
     ruta_id = data.get('ruta_id')
@@ -467,7 +502,7 @@ def crear_reabastecimiento(request):
 @login_required
 @requiere_roles("Producto Terminado")
 def lista_pedidos(request):
-    # Filtramos solo los pedidos activos (pendientes) y ordenamos por ID descendente
+    """Muestra los pedidos de reabastecimiento activos, ordenados del más reciente al más antiguo."""
     pedidos = PedidoReabastecimiento.objects.filter(estado=True).order_by('-id')
     return render(request, 'appMovil/reabastecimiento/lista_pedidos.html', {'pedidos': pedidos})
 
@@ -476,6 +511,19 @@ def lista_pedidos(request):
 @login_required
 @requiere_roles("Producto Terminado")
 def detalle_pedido(request, pedido_id):
+    """
+    Muestra la informacion detallada de un pedido de reabastecimiento.
+    Consulta los productos solicitados, el catalogo de variaciones disponibles
+    y el historial de modificaciones del pedido. Permite editar, agregar o eliminar productos
+    
+    Args:
+        request (Request): Solicitud HTTP del usuario autenticado.
+        pedido_id (int): Identificador del pedido a consultar.
+    Returns:
+        HttpResponse: Renderiza la plantilla con los detalles del pedido o muestra un error si no se encuentra.
+    Raises:
+        Http404: Si el pedido no existe.
+    """
     pedido = get_object_or_404(
         PedidoReabastecimiento.objects.select_related(
             'ruta', 'usuario', 'usuario_cierre'
@@ -512,6 +560,22 @@ def detalle_pedido(request, pedido_id):
 @requiere_roles("Producto Terminado")
 @require_POST
 def editar_pedido_reabastecimiento(request, pedido_id):
+    """
+    Modifica un producto o la cantidad solicitada en un pedido de reabastecimiento.
+    Valida  que el pedido este activo y pendiente , comprueba la cantidad
+    solicitada y evita productos duplicados. Registra las modificaciones
+    en el historial y actualiza pedido mediante una transaccion atomica.
+
+    Args:
+        request (HttpRequest): Solicitud POST con el identificador del detalle,
+            la variacion del producto y la cantidad solicitada.
+        pedido_id (int): Identificador del pedido de reabastecimiento a modificar.
+    Returns:
+        HttpResponseRedirect: Redirige a la vista de detalle del pedido con un mensaje de éxito o error.
+
+    Raises:
+        Http404: Si el pedido o el detalle no existen.
+    """
     detalle_id = request.POST.get('detalle_id')
     variacion_id = request.POST.get('producto_variacion_id')
     cantidad = validar_cantidad_pedido(request.POST.get('cantidad'))
@@ -576,6 +640,25 @@ def editar_pedido_reabastecimiento(request, pedido_id):
 @requiere_roles("Producto Terminado")
 @require_POST
 def agregar_producto_pedido(request, pedido_id):
+    """
+    Agregar un producto a un pedido de reabastecimeitno existente.
+    Valida que el pedido esté activo y pendiente, comprueba que la cantidad
+    sea válida y evita agregar productos duplicados. Registra el nuevo
+    producto en el historial y actualiza el pedido mediante una
+    transacción atómica.
+
+    Args:
+        request (HttpRequest): Solicitud POST con la variación del producto
+            y la cantidad que se desea agregar.
+        pedido_id (int): Identificador del pedido de reabastecimiento.
+
+    Returns:
+        HttpResponseRedirect: Redirección al detalle del pedido con un
+            mensaje indicando el resultado de la operación.
+
+    Raises:
+        Http404: Si el pedido o la variación del producto no existen.
+    """
     variacion_id = request.POST.get('producto_variacion_id')
     cantidad = validar_cantidad_pedido(request.POST.get('cantidad'))
 
@@ -626,6 +709,22 @@ def agregar_producto_pedido(request, pedido_id):
 @requiere_roles("Producto Terminado")
 @require_POST
 def eliminar_producto_pedido(request, pedido_id, detalle_id):
+    """
+    Elimina un producto de un pedido de reabastecimiento existente.
+
+    Valida que el pedido este activo y pendienteantes de permitir la
+    eliminacion. Registra el producto y la cantidad eliminados en el
+    historial, y actualiza el pedido mediante una transacción atómica.
+
+    Args:
+        request (HttpRequest): Solicitud POST del usuario autenticado.
+        pedido_id (int): Identificador del pedido de reabastecimiento.
+        detalle_id (int): Identificador del detalle del producto a eliminar.
+    Returns:
+        HttpResponseRedirect: Redirige a la vista de detalle del pedido con un mensaje de éxito o error.
+    Raises:
+        Http404: Si el pedido o el detalle no existen.
+    """
     with transaction.atomic():
         pedido = get_object_or_404(
             PedidoReabastecimiento.objects.select_for_update(),
@@ -1929,117 +2028,6 @@ from .models import Venta
 from .forms import FiltroVentasForm
 
 
-@method_decorator(login_required,'dispatch')
-@method_decorator(requiere_roles("Producto Terminado","Recursos Humanos"), name='dispatch')
-class ListaVentasView(ListView):
-    model = Venta
-    template_name = 'appMovil/ventas/lista_ventas.html'
-    context_object_name = 'ventas'
-    paginate_by = 50
-
-    def get_queryset(self):
-        queryset = super().get_queryset().select_related(
-            'cliente',
-            'usuario'
-        )
-
-        hoy = timezone.localdate().strftime('%Y-%m-%d')
-
-        fecha_inicio = self.request.GET.get('fecha_inicio') or hoy
-        fecha_fin = self.request.GET.get('fecha_fin') or hoy
-        repartidor = self.request.GET.get('repartidor')
-
-        queryset = queryset.filter(
-            fecha__date__gte=fecha_inicio,
-            fecha__date__lte=fecha_fin
-        )
-
-        if repartidor:
-            queryset = queryset.filter(usuario_id=repartidor)
-
-        return queryset.order_by('-fecha')
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        hoy = timezone.localdate().strftime('%Y-%m-%d')
-
-        fecha_inicio = self.request.GET.get('fecha_inicio') or hoy
-        fecha_fin = self.request.GET.get('fecha_fin') or hoy
-        repartidor = self.request.GET.get('repartidor')
-
-        context['form'] = FiltroVentasForm({
-            'fecha_inicio': fecha_inicio,
-            'fecha_fin': fecha_fin,
-            'repartidor': repartidor
-        })
-
-        # =========================
-        # VENTAS
-        # =========================
-
-        ventas_filtradas = self.get_queryset()
-
-        # Valor total de todas las ventas realizadas
-        total_ventas = ventas_filtradas.aggregate(
-            total=Sum('total')
-        )['total'] or Decimal('0.00')
-
-        # Dinero recibido inmediatamente por ventas de contado
-        total_contado = ventas_filtradas.filter(
-            tipo_venta='CONTADO'
-        ).aggregate(
-            total=Sum('total')
-        )['total'] or Decimal('0.00')
-
-        # Valor de ventas hechas a crédito
-        total_credito = ventas_filtradas.filter(
-            tipo_venta='CREDITO'
-        ).aggregate(
-            total=Sum('total')
-        )['total'] or Decimal('0.00')
-
-        # =========================
-        # ABONOS
-        # =========================
-
-        abonos_filtrados = Abono.objects.select_related(
-            'venta',
-            'venta__cliente',
-            'usuario'
-        ).filter(
-            fecha__date__gte=fecha_inicio,
-            fecha__date__lte=fecha_fin
-        )
-
-        if repartidor:
-            abonos_filtrados = abonos_filtrados.filter(
-                usuario_id=repartidor
-            )
-
-        abonos_filtrados = abonos_filtrados.order_by('-fecha')
-
-        total_abonos = abonos_filtrados.aggregate(
-            total=Sum('monto')
-        )['total'] or Decimal('0.00')
-
-        # =========================
-        # DINERO REALMENTE RECIBIDO
-        # =========================
-
-        total_recibido = total_contado + total_abonos
-
-        context['total_ventas'] = total_ventas
-        context['total_contado'] = total_contado
-        context['total_credito'] = total_credito
-
-        context['abonos'] = abonos_filtrados
-        context['total_abonos'] = total_abonos
-
-        context['total_recibido'] = total_recibido
-
-        return context
-
 
 from django.views.generic import DetailView
 from .models import Venta
@@ -2117,78 +2105,6 @@ from .models import Devolucion
 
 
 
-
-@method_decorator(login_required, 'dispatch')
-@method_decorator(requiere_roles("Producto Terminado", "Recursos Humanos"), name='dispatch')
-class ListaDevolucionesView(ListView):
-    model = Devolucion
-    template_name = 'appMovil/devoluciones/lista_devoluciones.html'
-    context_object_name = 'devoluciones'
-    paginate_by = 50
-
-    def get_queryset(self):
-        sustitucion = DevolucionSustitucion.objects.filter(
-            devolucion=OuterRef('pk')
-        )
-
-        queryset = super().get_queryset().select_related(
-            'cliente',
-            'usuario',
-            'mini_bodega'
-        ).annotate(
-            total=Sum(
-                F('devoluciondetalle__cantidad') *
-                F('devoluciondetalle__precio_unitario'),
-                output_field=FloatField()
-            ),
-            tiene_cambio_producto=Exists(sustitucion)
-        )
-
-        hoy = timezone.localdate().strftime('%Y-%m-%d')
-
-        fecha_inicio = self.request.GET.get('fecha_inicio') or hoy
-        fecha_fin = self.request.GET.get('fecha_fin') or hoy
-        repartidor = self.request.GET.get('repartidor')
-
-        queryset = queryset.filter(
-            fecha__date__gte=fecha_inicio,
-            fecha__date__lte=fecha_fin
-        )
-
-        if repartidor:
-            queryset = queryset.filter(
-                usuario_id=repartidor
-            )
-
-        return queryset.order_by('-fecha')
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        hoy = timezone.localdate().strftime('%Y-%m-%d')
-
-        fecha_inicio = self.request.GET.get('fecha_inicio') or hoy
-        fecha_fin = self.request.GET.get('fecha_fin') or hoy
-        repartidor = self.request.GET.get('repartidor')
-
-        context['form'] = FiltroDevolucionesForm({
-            'fecha_inicio': fecha_inicio,
-            'fecha_fin': fecha_fin,
-            'repartidor': repartidor
-        })
-
-        devoluciones_filtradas = self.get_queryset()
-
-        total_suma = sum(
-            devolucion.total or 0
-            for devolucion in devoluciones_filtradas
-        )
-
-        context['total_suma'] = total_suma
-
-        return context
-
-
 @method_decorator(login_required,'dispatch')
 @method_decorator(requiere_roles("Producto Terminado","Recursos Humanos"), name='dispatch')
 class DetalleDevolucionView(DetailView):
@@ -2211,6 +2127,7 @@ class DetalleDevolucionView(DetailView):
                 output_field=FloatField()
             )
         )
+
 
 
 @method_decorator(login_required, name='dispatch')
@@ -2297,6 +2214,11 @@ class ResumenOperacionesView(TemplateView):
             )
         )
 
+        # NUEVO: TOTAL MONETARIO DE PRODUCTOS DEVUELTOS
+        total_productos_devueltos = devoluciones.aggregate(
+            total_general=Sum('total')
+        )['total_general'] or cero
+
         # =========================================================
         # ROTACIONES
         # =========================================================
@@ -2355,6 +2277,7 @@ class ResumenOperacionesView(TemplateView):
             total_devoluciones_recibido=total_devoluciones_recibido,
             total_devoluciones_entregado=total_devoluciones_entregado,
             balance_devoluciones=balance_devoluciones,
+            total_productos_devueltos=total_productos_devueltos,
 
             total_rotaciones_recibido=total_rotaciones_recibido,
             total_rotaciones_entregado=total_rotaciones_entregado,
@@ -3269,7 +3192,7 @@ def dashboard_repartidor_api(request):
     })
 
 
-
+##Administrar minibodegas cambios de productos y eso
 
 @login_required
 @solo_administrador
@@ -3295,58 +3218,41 @@ def admin_minibodega_list(request):
 @login_required
 @solo_administrador
 def admin_minibodega_edit(request, pk):
-
     minibodega = get_object_or_404(
-        MiniBodega.objects.select_related(
-            'ruta',
-            'usuario',
-            'vehiculo'
-        ),
+        MiniBodega.objects.select_related('ruta', 'usuario', 'vehiculo'),
         pk=pk
     )
 
+    # =========================================================
+    # ACCIONES POST
+    # =========================================================
     if request.method == 'POST':
-
         accion = request.POST.get('accion')
 
         try:
-
             with transaction.atomic():
 
+                # =================================================
+                # GUARDAR INFORMACIÓN GENERAL
+                # =================================================
                 if accion == 'guardar':
-
                     ruta_id = request.POST.get('ruta')
                     usuario_id = request.POST.get('usuario')
                     vehiculo_id = request.POST.get('vehiculo')
-
                     estado = request.POST.get('estado') == 'on'
 
-                    minibodega.ruta = get_object_or_404(
-                        Ruta,
-                        pk=ruta_id
-                    )
-
-                    minibodega.usuario = get_object_or_404(
-                        Usuario,
-                        pk=usuario_id
-                    )
-
-                    minibodega.vehiculo = get_object_or_404(
-                        Vehiculo,
-                        pk=vehiculo_id
-                    )
-
+                    minibodega.ruta = get_object_or_404(Ruta, pk=ruta_id)
+                    minibodega.usuario = get_object_or_404(Usuario, pk=usuario_id)
+                    minibodega.vehiculo = get_object_or_404(Vehiculo, pk=vehiculo_id)
                     minibodega.estado = estado
-
                     minibodega.save()
 
-                    return redirect(
-                        'admin_minibodega_edit',
-                        pk=minibodega.pk
-                    )
+                    return redirect('admin_minibodega_edit', pk=minibodega.pk)
 
+                # =================================================
+                # MODIFICAR CANTIDADES
+                # =================================================
                 elif accion == 'modificar_cantidad':
-
                     detalle_id = request.POST.get('detalle_id')
                     cantidad_inicial = request.POST.get('cantidad_inicial')
                     cantidad_actual = request.POST.get('cantidad_actual')
@@ -3376,19 +3282,22 @@ def admin_minibodega_edit(request, pk):
                     detalle.cantidad_actual = nueva_cantidad_actual
                     detalle.save()
 
-                    return redirect(
-                        'admin_minibodega_edit',
-                        pk=minibodega.pk
-                    )
+                    return redirect('admin_minibodega_edit', pk=minibodega.pk)
 
+                # =================================================
+                # AGREGAR PRODUCTO CON VARIACIÓN
+                # =================================================
                 elif accion == 'agregar_producto':
-
                     producto_id = request.POST.get('producto')
+                    variacion_id = request.POST.get('variacion')
                     cantidad = request.POST.get('cantidad')
 
                     producto = get_object_or_404(
                         ProductoVariacion,
-                        pk=producto_id
+                        pk=variacion_id,
+                        producto_id=producto_id,
+                        producto__estado=True,
+                        presentacion__estado=True
                     )
 
                     try:
@@ -3423,13 +3332,12 @@ def admin_minibodega_edit(request, pk):
                         cantidad_actual=nueva_cantidad
                     )
 
-                    return redirect(
-                        'admin_minibodega_edit',
-                        pk=minibodega.pk
-                    )
+                    return redirect('admin_minibodega_edit', pk=minibodega.pk)
 
+                # =================================================
+                # QUITAR PRODUCTO
+                # =================================================
                 elif accion == 'quitar_producto':
-
                     detalle_id = request.POST.get('detalle_id')
 
                     detalle = get_object_or_404(
@@ -3440,25 +3348,23 @@ def admin_minibodega_edit(request, pk):
 
                     detalle.delete()
 
-                    return redirect(
-                        'admin_minibodega_edit',
-                        pk=minibodega.pk
-                    )
+                    return redirect('admin_minibodega_edit', pk=minibodega.pk)
 
                 else:
-
                     return JsonResponse({
                         'success': False,
                         'message': 'Acción no válida.'
                     }, status=400)
 
         except Exception as e:
-
             return JsonResponse({
                 'success': False,
                 'message': str(e)
             }, status=400)
 
+    # =========================================================
+    # DETALLES DE LA MINIBODEGA
+    # =========================================================
     detalles = MiniBodegaDetalle.objects.filter(
         mini_bodega=minibodega
     ).select_related(
@@ -3470,27 +3376,46 @@ def admin_minibodega_edit(request, pk):
         'producto_variacion__presentacion__nombre'
     )
 
+    # =========================================================
+    # CATÁLOGOS GENERALES
+    # =========================================================
     rutas = Ruta.objects.all().order_by('nombre')
+    usuarios = Usuario.objects.filter(is_active=True).order_by('username')
+    vehiculos = Vehiculo.objects.all().order_by('placa')
 
-    usuarios = Usuario.objects.filter(
-        is_active=True
-    ).order_by('username')
-
-    vehiculos = Vehiculo.objects.all().order_by(
-        'placa'
-    )
-
-    productos = ProductoVariacion.objects.filter(
+    # =========================================================
+    # PRODUCTOS Y VARIACIONES PARA SELECTS DEPENDIENTES
+    # =========================================================
+    variaciones = ProductoVariacion.objects.filter(
         producto__estado=True,
         presentacion__estado=True
     ).select_related(
-        'producto',
-        'presentacion'
+        'producto', 'presentacion'
     ).order_by(
         'producto__nombre',
         'presentacion__nombre'
     )
 
+    productos = {}
+
+    for variacion in variaciones:
+        producto = variacion.producto
+
+        if producto.id not in productos:
+            productos[producto.id] = {
+                'id': producto.id,
+                'nombre': producto.nombre,
+                'variaciones': []
+            }
+
+        productos[producto.id]['variaciones'].append({
+            'id': variacion.id,
+            'nombre': variacion.presentacion.nombre
+        })
+    productos = list(productos.values())
+    # =========================================================
+    # CONTEXTO
+    # =========================================================
     context = {
         'minibodega': minibodega,
         'detalles': detalles,
@@ -3498,8 +3423,8 @@ def admin_minibodega_edit(request, pk):
         'usuarios': usuarios,
         'vehiculos': vehiculos,
         'productos': productos,
+        'variaciones': variaciones,
     }
-
     return render(
         request,
         'appMovil/miniBodegas/administracion/edit.html',

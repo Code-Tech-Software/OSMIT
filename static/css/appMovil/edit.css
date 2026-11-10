@@ -1,0 +1,289 @@
+
+/* =========================================================
+   ADMINISTRACIÓN DE MINIBODEGA - ESTILOS GENERALES
+   ========================================================= */
+#admin-minibodega-edit {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding-bottom: 20px;
+}
+#admin-minibodega-edit .card {
+    border-radius: 12px;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--bs-border-color);
+}
+#admin-minibodega-edit .card-header {
+    padding: 15px 20px;
+    background: var(--bs-tertiary-bg);
+}
+#admin-minibodega-edit .card-header h5 {
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+#admin-minibodega-edit .card-body {
+    padding: 20px;
+    min-width: 0;
+}
+#admin-minibodega-edit .form-label {
+    font-weight: 500;
+    margin-bottom: 7px;
+}
+#admin-minibodega-edit .form-control,
+#admin-minibodega-edit .form-select {
+    width: 100%;
+    min-width: 0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+#admin-minibodega-edit .form-control:focus,
+#admin-minibodega-edit .form-select:focus {
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.12);
+}
+#admin-minibodega-edit .form-select:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+#admin-minibodega-edit .btn {
+    border-radius: 7px;
+    white-space: nowrap;
+}
+#admin-minibodega-edit .badge {
+    font-size: 0.78rem;
+    padding: 7px 10px;
+}
+
+/* =========================================================
+   TABLA DE PRODUCTOS
+   ========================================================= */
+#admin-minibodega-edit .table-responsive {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+#admin-minibodega-edit .table {
+    width: 100%;
+    margin-bottom: 0;
+    vertical-align: middle;
+}
+#admin-minibodega-edit .table th {
+    font-size: 0.88rem;
+    font-weight: 600;
+    white-space: nowrap;
+    padding: 12px;
+}
+#admin-minibodega-edit .table td {
+    font-size: 0.9rem;
+    padding: 10px 12px;
+    vertical-align: middle;
+}
+#admin-minibodega-edit .table input[type="number"] {
+    width: 115px;
+    min-width: 100px;
+    max-width: 140px;
+    text-align: center;
+}
+#admin-minibodega-edit .acciones-minibodega {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    min-width: 145px;
+}
+#admin-minibodega-edit .acciones-minibodega form {
+    margin: 0;
+}
+#admin-minibodega-edit .acciones-minibodega .btn {
+    min-width: 65px;
+}
+
+/* =========================================================
+   TABLETS - HASTA 1199px
+   ========================================================= */
+@media (max-width: 1199.98px) {
+    #admin-minibodega-edit .card-body { padding: 18px; }
+    #admin-minibodega-edit .table { min-width: 690px; }
+    #admin-minibodega-edit .table th,
+    #admin-minibodega-edit .table td { padding: 10px 8px; }
+    #admin-minibodega-edit .table input[type="number"] {
+        width: 100px;
+        min-width: 90px;
+    }
+    #admin-minibodega-edit .acciones-minibodega { gap: 5px; }
+}
+
+/* =========================================================
+   TABLETS PEQUEÑAS - HASTA 991px
+   ========================================================= */
+@media (max-width: 991.98px) {
+    #admin-minibodega-edit h2 { font-size: 1.5rem; }
+    #admin-minibodega-edit .card-header { padding: 13px 16px; }
+    #admin-minibodega-edit .card-body { padding: 16px; }
+    #admin-minibodega-edit .table { min-width: 720px; }
+    #admin-minibodega-edit .form-control,
+    #admin-minibodega-edit .form-select { font-size: 0.9rem; }
+    #admin-minibodega-edit .acciones-minibodega {
+        flex-direction: column;
+        align-items: stretch;
+        min-width: 90px;
+    }
+    #admin-minibodega-edit .acciones-minibodega .btn { width: 100%; }
+}
+
+/* =========================================================
+   CELULARES - HASTA 767px
+   ========================================================= */
+@media (max-width: 767.98px) {
+    #admin-minibodega-edit {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+    #admin-minibodega-edit h2 {
+        font-size: 1.3rem;
+        line-height: 1.4;
+        margin-bottom: 5px;
+        overflow-wrap: anywhere;
+    }
+    #admin-minibodega-edit .card {
+        border-radius: 10px;
+        margin-bottom: 16px !important;
+    }
+    #admin-minibodega-edit .card-header {
+        padding: 12px 14px;
+        gap: 8px;
+    }
+    #admin-minibodega-edit .card-header h5 {
+        font-size: 0.98rem;
+        line-height: 1.4;
+    }
+    #admin-minibodega-edit .card-body { padding: 14px; }
+    #admin-minibodega-edit .form-label {
+        font-size: 0.9rem;
+        margin-bottom: 5px;
+    }
+    #admin-minibodega-edit .form-control,
+    #admin-minibodega-edit .form-select {
+        min-height: 42px;
+        font-size: 16px;
+    }
+    #admin-minibodega-edit .btn {
+        min-height: 40px;
+        font-size: 0.9rem;
+    }
+    #admin-minibodega-edit .table-responsive {
+        border: 1px solid var(--bs-border-color);
+        border-radius: 8px;
+    }
+    #admin-minibodega-edit .table {
+        min-width: 700px;
+        margin-bottom: 0;
+    }
+    #admin-minibodega-edit .table th { font-size: 0.82rem; }
+    #admin-minibodega-edit .table td { font-size: 0.85rem; }
+    #admin-minibodega-edit .table input[type="number"] {
+        width: 95px;
+        min-height: 36px;
+        font-size: 14px;
+    }
+    #admin-minibodega-edit .acciones-minibodega {
+        min-width: 85px;
+        gap: 6px;
+    }
+    #admin-minibodega-edit .acciones-minibodega .btn {
+        min-height: 35px;
+        padding: 5px 8px;
+        font-size: 0.82rem;
+    }
+    #admin-minibodega-edit .badge {
+        font-size: 0.7rem;
+        padding: 6px 8px;
+        white-space: nowrap;
+    }
+}
+
+/* =========================================================
+   CELULARES PEQUEÑOS - HASTA 480px
+   ========================================================= */
+@media (max-width: 480px) {
+    #admin-minibodega-edit {
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+    #admin-minibodega-edit h2 { font-size: 1.15rem; }
+    #admin-minibodega-edit .card-header { padding: 11px 12px; }
+    #admin-minibodega-edit .card-header h5 { font-size: 0.9rem; }
+    #admin-minibodega-edit .card-body { padding: 12px; }
+    #admin-minibodega-edit .table { min-width: 660px; }
+    #admin-minibodega-edit .table th,
+    #admin-minibodega-edit .table td { padding: 8px 6px; }
+    #admin-minibodega-edit .table input[type="number"] {
+        width: 90px;
+        min-width: 85px;
+    }
+    #admin-minibodega-edit .acciones-minibodega { min-width: 80px; }
+    #admin-minibodega-edit .form-check-label { font-size: 0.9rem; }
+}
+
+/* =========================================================
+   MODO OSCURO
+   ========================================================= */
+body.dark-mode #admin-minibodega-edit .card {
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    border-color: var(--bs-border-color);
+}
+body.dark-mode #admin-minibodega-edit .card-header {
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-body-color);
+}
+body.dark-mode #admin-minibodega-edit .table-responsive {
+    border-color: var(--bs-border-color);
+}
+
+
+/* =========================================================
+   TABLA OPTIMIZADA PARA TABLETS
+   ========================================================= */
+@media (min-width: 768px) and (max-width: 1199.98px) {
+    #admin-minibodega-edit .table {
+        width: 100%;
+        min-width: 0;
+        table-layout: fixed;
+    }
+    #admin-minibodega-edit .table th,
+    #admin-minibodega-edit .table td {
+        padding: 8px 5px;
+        font-size: 0.8rem;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+    #admin-minibodega-edit .table th:nth-child(1) { width: 26%; }
+    #admin-minibodega-edit .table th:nth-child(2) { width: 19%; }
+    #admin-minibodega-edit .table th:nth-child(3) { width: 17%; }
+    #admin-minibodega-edit .table th:nth-child(4) { width: 17%; }
+    #admin-minibodega-edit .table th:nth-child(5) { width: 21%; }
+
+    #admin-minibodega-edit .table input[type="number"] {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        padding: 6px 4px;
+        font-size: 0.8rem;
+    }
+    #admin-minibodega-edit .acciones-minibodega {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 5px;
+        min-width: 0;
+    }
+    #admin-minibodega-edit .acciones-minibodega .btn {
+        width: 100%;
+        min-width: 0;
+        padding: 5px 3px;
+        font-size: 0.78rem;
+    }
+}

@@ -28,8 +28,8 @@
                         <th>Ruta</th>
                         <th>Fecha</th>
                         <th>Usuario</th>
-                        <th style="text-align: center;">Estado</th>
-                        <th style="text-align: center;">Acciones</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -37,7 +37,8 @@
                         <tr>
                             <td class="truncate-text">{{ corte.id }}</td>
                             <td class="truncate-text">{{ corte.mini_bodega.id }}</td>
-                            <td class="truncate-text" title="{{ corte.mini_bodega.ruta.nombre }}">{{ corte.mini_bodega.ruta.nombre }}</td>
+                            <td class="truncate-text"
+                                title="{{ corte.mini_bodega.ruta.nombre }}">{{ corte.mini_bodega.ruta.nombre }}</td>
                             <td class="truncate-text">{{ corte.fecha|date:"d/m/Y H:i" }}</td>
                             <td class="truncate-text" title="{{ corte.usuario }}">{{ corte.usuario }}</td>
                             <td class="text-center">

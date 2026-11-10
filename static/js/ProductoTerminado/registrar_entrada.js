@@ -37,6 +37,29 @@ $(document).ready(function () {
         }
     });
 
+
+    // Sincronizar encabezado flotante en tablets y celulares
+    const scrollTablaPT = tablaProductos.closest('.table-responsive');
+    if (scrollTablaPT) {
+        const sincronizarHeaderPT = () => {
+            if (window.innerWidth > 1199) return;
+            const headerFlotante = document.querySelector('table.fixedHeader-floating');
+            if (!headerFlotante) return;
+            const tablaRect = tablaProductos.getBoundingClientRect();
+            const headerRect = headerFlotante.getBoundingClientRect();
+            const diferencia = headerRect.left - tablaRect.left;
+            headerFlotante.style.width = `${tablaRect.width}px`;
+            headerFlotante.style.transform = 'none';
+            headerFlotante.style.marginLeft = '0';
+            headerFlotante.style.left = `${headerFlotante.offsetLeft - diferencia}px`;
+        };
+        scrollTablaPT.addEventListener('scroll', sincronizarHeaderPT, {passive:true});
+        window.addEventListener('resize', sincronizarHeaderPT);
+        window.addEventListener('scroll', sincronizarHeaderPT, {passive:true});
+    }
+
+
+
     // Evitar cambios accidentales por rueda del mouse y teclas de dirección
     tablaProductos.addEventListener('wheel', function(e) {
         if (e.target.matches('input.cantidad-input')) e.target.blur();

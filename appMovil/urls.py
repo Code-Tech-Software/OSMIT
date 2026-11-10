@@ -72,13 +72,8 @@ urlpatterns = [
 
 
     path('resumen-operaciones/', ResumenOperacionesView.as_view(), name='resumen_operaciones'),
-
-    path('ventas2/', ListaVentasView.as_view(), name='lista_ventas'),
     path('ventas2/<int:pk>/', DetalleVentaView.as_view(), name='detalle_venta'),
-
-    path('devoluciones/', ListaDevolucionesView.as_view(), name='lista_devoluciones'),
     path('devoluciones/<int:pk>/', DetalleDevolucionView.as_view(), name='detalle_devolucion'),
-
     path('rotaciones/<int:pk>/', DetalleRotacionView.as_view(), name='detalle_rotacion'),
     
     path('minibodega/<int:pk>/abrir/', views.abrir_minibodega_manual, name='abrir_minibodega_manual'),

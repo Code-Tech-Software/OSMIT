@@ -93,3 +93,92 @@ body.dark-mode #registrarSalidaPT .dt-paging-button,
 [data-bs-theme="dark"] #registrarSalidaPT .dt-paging-button {
     color: #e9ecef !important;
 }
+
+
+
+/* =========================================================
+   RESPONSIVE - REGISTRO DE SALIDAS
+   Solo tablets y celulares
+   ========================================================= */
+@media (max-width: 1199.98px) {
+    #registrarSalidaPT,
+    #registrarSalidaPT .custom-card,
+    #registrarSalidaPT .dt-container {
+        min-width: 0;
+        max-width: 100%;
+    }
+    #registrarSalidaPT .custom-card { padding: 15px; }
+    #registrarSalidaPT .table-responsive {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+    #registrarSalidaPT #productosTable {
+        width: max-content !important;
+        min-width: 100%;
+    }
+    #registrarSalidaPT #productosTable th,
+    #registrarSalidaPT #productosTable td {
+        padding: 7px 5px;
+        font-size: .85rem;
+        vertical-align: middle;
+    }
+    #registrarSalidaPT #productosTable th { white-space: nowrap; }
+    #registrarSalidaPT #productosTable td:not(:first-child) { min-width: 85px; }
+    #registrarSalidaPT #productosTable td:first-child {
+        min-width: 135px;
+        max-width: 165px;
+        overflow-wrap: anywhere;
+    }
+    #registrarSalidaPT #productosTable .cantidad-input {
+        width: 100%;
+        min-width: 65px;
+        padding: 5px;
+        font-size: .85rem;
+        text-align: center;
+    }
+    #registrarSalidaPT .stock-contenedor {
+        font-size: .73rem;
+        white-space: nowrap;
+    }
+    #registrarSalidaPT .dt-layout-row {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    #registrarSalidaPT .dt-search,
+    #registrarSalidaPT .dt-length { max-width: 100%; }
+    #registrarSalidaPT .dt-input { max-width: 100%; }
+}
+
+/* =========================================================
+   CELULARES
+   ========================================================= */
+@media (max-width: 767.98px) {
+    #registrarSalidaPT .custom-card { padding: 10px; }
+    #registrarSalidaPT #productosTable th,
+    #registrarSalidaPT #productosTable td {
+        padding: 5px 4px;
+        font-size: .8rem;
+    }
+    #registrarSalidaPT #productosTable td:not(:first-child) { min-width: 75px; }
+    #registrarSalidaPT #productosTable td:first-child {
+        min-width: 110px;
+        max-width: 135px;
+    }
+    #registrarSalidaPT #productosTable .cantidad-input {
+        min-width: 55px;
+        padding: 5px 3px;
+        font-size: .8rem;
+    }
+    #registrarSalidaPT .stock-contenedor { font-size: .7rem; }
+    #registrarSalidaPT .dt-layout-row {
+        justify-content: center;
+        text-align: center;
+    }
+    #registrarSalidaPT .dt-search,
+    #registrarSalidaPT .dt-length { width: 100%; }
+    #registrarSalidaPT .dt-search input { width: 100%; }
+    #registrarSalidaPT .dt-paging { max-width: 100%; }
+}
