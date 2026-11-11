@@ -1,0 +1,125 @@
+
+/* =========================================================
+   LISTA DE CORTES - ESTILOS GENERALES
+   ========================================================= */
+#listaCortesMinibodega .truncate-text {
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#listaCortesMinibodega #cortesTable {
+    width: 100%;
+}
+#listaCortesMinibodega #cortesTable th,
+#listaCortesMinibodega #cortesTable td {
+    vertical-align: middle;
+}
+#listaCortesMinibodega #cortesTable td:last-child {
+    white-space: nowrap;
+}
+
+/* =========================================================
+   MODO OSCURO - TARJETAS Y FILTROS
+   ========================================================= */
+body.dark-mode #listaCortesMinibodega .custom-card {
+    background-color: #242424 !important;
+    color: #e9ecef !important;
+    border-color: #444 !important;
+}
+body.dark-mode #listaCortesMinibodega .form-label,
+body.dark-mode #listaCortesMinibodega h5 {
+    color: #e9ecef !important;
+}
+body.dark-mode #listaCortesMinibodega .text-secondary,
+body.dark-mode #listaCortesMinibodega .text-muted {
+    color: #adb5bd !important;
+}
+body.dark-mode #listaCortesMinibodega .form-control {
+    background-color: #303030 !important;
+    color: #f8f9fa !important;
+    border-color: #555 !important;
+    color-scheme: dark;
+}
+body.dark-mode #listaCortesMinibodega .form-control:focus {
+    border-color: #6ea8fe !important;
+    box-shadow: 0 0 0 0.2rem rgba(110,168,254,0.15);
+}
+
+/* =========================================================
+   MODO OSCURO - DATATABLES
+   ========================================================= */
+body.dark-mode #listaCortesMinibodega .dt-container {
+    color: #e9ecef !important;
+}
+body.dark-mode #listaCortesMinibodega .dt-container .dt-input {
+    background-color: #303030 !important;
+    color: #f8f9fa !important;
+    border: 1px solid #555 !important;
+}
+body.dark-mode #listaCortesMinibodega .dt-container .dt-info,
+body.dark-mode #listaCortesMinibodega .dt-container .dt-length,
+body.dark-mode #listaCortesMinibodega .dt-container .dt-search {
+    color: #dee2e6 !important;
+}
+body.dark-mode #listaCortesMinibodega .dt-container .dt-paging .dt-paging-button {
+    color: #e9ecef !important;
+    background: #303030 !important;
+    border: 1px solid #444 !important;
+}
+body.dark-mode #listaCortesMinibodega .dt-container .dt-paging .dt-paging-button:hover:not(.disabled) {
+    background: #454545 !important;
+    color: #fff !important;
+}
+body.dark-mode #listaCortesMinibodega .dt-container .dt-paging .dt-paging-button.current {
+    background: #495057 !important;
+    color: #fff !important;
+}
+
+/* =========================================================
+   MODO OSCURO - TABLA
+   ========================================================= */
+body.dark-mode #listaCortesMinibodega #cortesTable {
+    --bs-table-bg: #242424;
+    --bs-table-color: #e9ecef;
+    --bs-table-border-color: #444;
+    --bs-table-striped-bg: #303030;
+    --bs-table-striped-color: #e9ecef;
+    --bs-table-hover-bg: #383838;
+    --bs-table-hover-color: #fff;
+    background-color: #242424 !important;
+    color: #e9ecef !important;
+    border-color: #444 !important;
+}
+body.dark-mode #listaCortesMinibodega #cortesTable thead th {
+    background-color: #303030 !important;
+    color: #f8f9fa !important;
+    border-color: #444 !important;
+}
+body.dark-mode #listaCortesMinibodega #cortesTable tbody td {
+    background-color: var(--bs-table-bg) !important;
+    color: #e9ecef !important;
+    border-color: #444 !important;
+}
+body.dark-mode #listaCortesMinibodega #cortesTable tbody tr:nth-of-type(odd) td {
+    background-color: #303030 !important;
+}
+body.dark-mode #listaCortesMinibodega #cortesTable .badge {
+    color: inherit;
+}
+body.dark-mode #listaCortesMinibodega #cortesTable .badge.bg-warning,
+body.dark-mode #listaCortesMinibodega #cortesTable .badge.bg-info {
+    color: #212529 !important;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+@media (max-width: 768px) {
+    #listaCortesMinibodega .custom-card {
+        padding: 15px;
+    }
+    #listaCortesMinibodega #cortesTable {
+        font-size: 0.875rem;
+    }
+}

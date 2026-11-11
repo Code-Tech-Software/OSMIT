@@ -1,0 +1,191 @@
+
+/* =========================================
+   LISTADO DE PRODUCTOS TERMINADOS
+========================================= */
+#listarProductosPT { min-width: 0; }
+#listarProductosPT .truncate-text {
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+#listarProductosPT .sub-table-container { padding: 0 !important; }
+#listarProductosPT .sub-table { background-color: transparent; }
+#listarProductosPT .sub-table td {
+    padding: .5rem;
+    vertical-align: middle;
+}
+#listarProductosPT .sub-table .badge { white-space: nowrap; }
+#listarProductosPT .dt-container { min-width: 0; }
+
+
+/* Distribución de columnas de variaciones */
+#listarProductosPT .variacion-presentacion { width: 30%; }
+#listarProductosPT .variacion-codigo { width: 20%; }
+#listarProductosPT .variacion-costo { width: 15%; text-align: center; }
+#listarProductosPT .variacion-precio { width: 15%; text-align: center; }
+#listarProductosPT .variacion-stock { width: 20%; text-align: right; }
+
+
+/* =========================================
+   MODO OSCURO
+========================================= */
+body.dark-mode #listarProductosPT,
+[data-bs-theme="dark"] #listarProductosPT {
+    color: #e9ecef;
+}
+body.dark-mode #listarProductosPT .section-title .text-dark,
+[data-bs-theme="dark"] #listarProductosPT .section-title .text-dark {
+    color: #e9ecef !important;
+}
+body.dark-mode #listarProductosPT .text-secondary,
+[data-bs-theme="dark"] #listarProductosPT .text-secondary {
+    color: #adb5bd !important;
+}
+body.dark-mode #listarProductosPT .custom-card,
+[data-bs-theme="dark"] #listarProductosPT .custom-card {
+    background: #252a32;
+    color: #e9ecef;
+    border-color: #49515b;
+}
+body.dark-mode #listarProductosPT #productosPTTable,
+[data-bs-theme="dark"] #listarProductosPT #productosPTTable {
+    --bs-table-bg: #252a32;
+    --bs-table-color: #e9ecef;
+    --bs-table-border-color: #49515b;
+    --bs-table-striped-bg: #2d3540;
+    --bs-table-striped-color: #e9ecef;
+    --bs-table-hover-bg: #343d49;
+    --bs-table-hover-color: #e9ecef;
+}
+body.dark-mode #listarProductosPT #productosPTTable thead th,
+[data-bs-theme="dark"] #listarProductosPT #productosPTTable thead th {
+    background-color: #303844 !important;
+    color: #e9ecef !important;
+    border-color: #49515b !important;
+}
+body.dark-mode #listarProductosPT .sub-table,
+[data-bs-theme="dark"] #listarProductosPT .sub-table {
+    --bs-table-bg: transparent;
+    --bs-table-color: #e9ecef;
+    --bs-table-border-color: #49515b;
+    background: transparent !important;
+    color: #e9ecef;
+}
+body.dark-mode #listarProductosPT .sub-table td,
+[data-bs-theme="dark"] #listarProductosPT .sub-table td {
+    background: transparent !important;
+    color: #e9ecef;
+    border-color: #49515b;
+}
+body.dark-mode #listarProductosPT .sub-table .text-muted,
+[data-bs-theme="dark"] #listarProductosPT .sub-table .text-muted {
+    color: #adb5bd !important;
+}
+body.dark-mode #listarProductosPT .sub-table .text-success,
+[data-bs-theme="dark"] #listarProductosPT .sub-table .text-success {
+    color: #75d6a1 !important;
+}
+body.dark-mode #listarProductosPT .form-check-label.text-dark,
+[data-bs-theme="dark"] #listarProductosPT .form-check-label.text-dark {
+    color: #e9ecef !important;
+}
+body.dark-mode #listarProductosPT .dt-container,
+[data-bs-theme="dark"] #listarProductosPT .dt-container {
+    color: #e9ecef;
+}
+body.dark-mode #listarProductosPT .dt-input,
+[data-bs-theme="dark"] #listarProductosPT .dt-input {
+    background: #303844;
+    color: #e9ecef;
+    border-color: #49515b;
+    color-scheme: dark;
+}
+body.dark-mode #listarProductosPT .dt-paging-button,
+[data-bs-theme="dark"] #listarProductosPT .dt-paging-button {
+    color: #e9ecef !important;
+}
+body.dark-mode #listarProductosPT .dt-paging-button.current,
+[data-bs-theme="dark"] #listarProductosPT .dt-paging-button.current {
+    background: #3b4552 !important;
+    border-color: #596473 !important;
+    color: #fff !important;
+}
+body.dark-mode #listarProductosPT .dt-info,
+body.dark-mode #listarProductosPT .dt-length,
+body.dark-mode #listarProductosPT .dt-search,
+[data-bs-theme="dark"] #listarProductosPT .dt-info,
+[data-bs-theme="dark"] #listarProductosPT .dt-length,
+[data-bs-theme="dark"] #listarProductosPT .dt-search {
+    color: #e9ecef;
+}
+
+/* =========================================
+   TABLETS Y CELULARES
+========================================= */
+@media (max-width: 1199.98px) {
+    #listarProductosPT .custom-card {
+        min-width: 0;
+        padding: 15px;
+    }
+    #listarProductosPT .table-responsive {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+    #listarProductosPT #productosPTTable {
+        width: max-content !important;
+        min-width: 100%;
+    }
+    #listarProductosPT #productosPTTable > thead > tr > th,
+    #listarProductosPT #productosPTTable > tbody > tr > td {
+        padding: 8px 6px;
+        font-size: .85rem;
+    }
+    #listarProductosPT #productosPTTable > tbody > tr > td:first-child {
+        min-width: 140px;
+        max-width: 180px;
+        overflow-wrap: anywhere;
+    }
+    #listarProductosPT .sub-table {
+        min-width: 650px;
+    }
+    #listarProductosPT .sub-table td {
+        padding: 6px;
+        font-size: .8rem;
+    }
+    #listarProductosPT .dt-layout-row {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    #listarProductosPT .dt-input { max-width: 100%; }
+}
+
+/* =========================================
+   CELULARES
+========================================= */
+@media (max-width: 767.98px) {
+    #listarProductosPT .custom-card { padding: 10px; }
+    #listarProductosPT .agregar-producto-container {
+        text-align: stretch !important;
+    }
+    #listarProductosPT .agregar-producto-container .btn {
+        width: 100%;
+    }
+    #listarProductosPT #productosPTTable > tbody > tr > td:first-child {
+        min-width: 110px;
+        max-width: 145px;
+    }
+    #listarProductosPT .sub-table { min-width: 600px; }
+    #listarProductosPT .sub-table td { padding: 5px 4px; }
+    #listarProductosPT .dt-layout-row {
+        justify-content: center;
+        text-align: center;
+    }
+    #listarProductosPT .dt-search,
+    #listarProductosPT .dt-length { width: 100%; }
+    #listarProductosPT .dt-search input { width: 100%; }
+    #listarProductosPT .dt-paging { max-width: 100%; }
+}

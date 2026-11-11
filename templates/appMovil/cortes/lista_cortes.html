@@ -1,26 +1,48 @@
+
 {% extends "Base/Sidebar.html" %}
 {% load static %}
 {% block content %}
-    <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
-    <link rel="stylesheet"
-          href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
-    <style>
-    .truncate-text {
-        max-width: 150px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    </style>
-    <!-- Breadcrumb Header -->
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+<link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+<link rel="stylesheet" href="{% static 'css/appMovil/lista_cortes.css' %}">
+
+<div id="listaCortesMinibodega">
+    <!-- ENCABEZADO -->
     <div class="mb-3">
         <span class="fw-bold">Inventario</span>
         <span class="mx-2">|</span>
         <span class="text-secondary">Cortes de Mini Bodega</span>
     </div>
+
+    <!-- FILTRO DE FECHA -->
+    <div class="custom-card mb-4">
+        <form method="get" id="formFiltroCortes">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="fechaCorte" class="form-label fw-semibold">Fecha del corte</label>
+                    <input type="date" name="fecha" id="fechaCorte" class="form-control"
+                           value="{{ fecha_seleccionada|date:'Y-m-d' }}" required>
+                </div>
+                <div class="col-md-auto">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i> Consultar cortes
+                    </button>
+                </div>
+                <div class="col-md-auto">
+                    <span class="text-muted small">Por defecto se muestra el martes más reciente.</span>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- LISTA DE CORTES -->
     <div class="custom-card">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h5 class="fw-bold mb-0">Cortes registrados</h5>
+            <span class="badge bg-primary">{{ cortes|length }} cortes</span>
+        </div>
         <div class="table-responsive">
-            <table id="cortesTable" class="table table-striped table-bordered">
+            <table id="cortesTable" class="table table-striped table-bordered align-middle">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -34,83 +56,42 @@
                 </thead>
                 <tbody>
                     {% for corte in cortes %}
-                        <tr>
-                            <td class="truncate-text">{{ corte.id }}</td>
-                            <td class="truncate-text">{{ corte.mini_bodega.id }}</td>
-                            <td class="truncate-text"
-                                title="{{ corte.mini_bodega.ruta.nombre }}">{{ corte.mini_bodega.ruta.nombre }}</td>
-                            <td class="truncate-text">{{ corte.fecha|date:"d/m/Y H:i" }}</td>
-                            <td class="truncate-text" title="{{ corte.usuario }}">{{ corte.usuario }}</td>
-                            <td class="text-center">
-                                {% if corte.estado == "correcto" %}
-                                    <span class="badge bg-custom-success">Correcto</span>
-                                {% elif corte.estado == "pendiente" %}
-                                    <span class="badge bg-warning">Pendiente</span>
-                                {% elif corte.estado == "ajustado" %}
-                                    <span class="badge bg-info">Ajustado</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center">
-                                <div class="d-flex justify-content-center gap-2">
-                                    <!-- Ver detalle -->
-                                    <a href="{% url 'detalle_corte_minibodega' corte.id %}"
-                                       class="btn btn-custom-info btn-sm"
-                                       title="Ver detalle">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                    {% empty %}
+                    <tr>
+                        <td class="truncate-text">{{ corte.id }}</td>
+                        <td class="truncate-text">{{ corte.mini_bodega.id }}</td>
+                        <td class="truncate-text" title="{{ corte.mini_bodega.ruta.nombre }}">
+                            {{ corte.mini_bodega.ruta.nombre }}
+                        </td>
+                        <td class="truncate-text" data-order="{{ corte.fecha|date:'Y-m-d H:i:s' }}">
+                            {{ corte.fecha|date:"d/m/Y H:i" }}
+                        </td>
+                        <td class="truncate-text" title="{{ corte.usuario }}">{{ corte.usuario }}</td>
+                        <td class="text-center">
+                            {% if corte.estado == "correcto" %}
+                            <span class="badge bg-custom-success">Correcto</span>
+                            {% elif corte.estado == "pendiente" %}
+                            <span class="badge bg-warning text-dark">Pendiente</span>
+                            {% elif corte.estado == "ajustado" %}
+                            <span class="badge bg-info text-dark">Ajustado</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center gap-2">
+                                <a href="{% url 'detalle_corte_minibodega' corte.id %}"
+                                   class="btn btn-custom-info btn-sm" title="Ver detalle">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <!-- DataTables -->
-    <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
-    <script>
+</div>
 
-    $(document).ready(function () {
-
-        $('#cortesTable').DataTable({
-
-            columnDefs: [
-                { width: "5%", targets: 0 },
-                { width: "10%", targets: 1 },
-                { width: "20%", targets: 2 },
-                { width: "15%", targets: 3 },
-                { width: "20%", targets: 4 },
-                { width: "15%", targets: 5, className: "text-center" },
-                { width: "15%", targets: 6, className: "text-center" }
-            ],
-
-            language: {
-                decimal: "",
-                emptyTable: "No hay datos disponibles",
-                info: "Mostrando _START_ a _END_ de _TOTAL_ cortes",
-                infoEmpty: "Mostrando 0 a 0 de 0 cortes",
-                infoFiltered: "(filtrado de _MAX_ cortes totales)",
-                lengthMenu: "Mostrar _MENU_ cortes",
-                loadingRecords: "Cargando...",
-                processing: "Procesando...",
-                search: "Buscar:",
-                zeroRecords: "No se encontraron cortes",
-
-                paginate: {
-                    first: '<i class="bi bi-rewind-fill"></i>',
-                    last: '<i class="bi bi-fast-forward-fill"></i>',
-                    next: '<i class="bi bi-caret-right-fill"></i>',
-                    previous: '<i class="bi bi-caret-left-fill"></i>'
-                }
-            },
-
-            responsive: true
-        });
-
-    });
-
-    </script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+<script src="{% static 'js/appMovil/lista_cortes.js' %}"></script>
 {% endblock %}

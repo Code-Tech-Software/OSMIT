@@ -1,0 +1,165 @@
+
+/* =========================================
+   EDITAR PRODUCTO - ESTILO GENERAL
+========================================= */
+#editarProductoPT { min-width: 0; }
+#editarProductoPT .custom-card { min-width: 0; }
+#editarProductoPT .variacion-item { transition: background-color .2s ease; }
+#editarProductoPT .variacion-item .form-label { font-weight: 500; }
+#editarProductoPT .variacion-item .form-control,
+#editarProductoPT .variacion-item .form-select,
+#editarProductoPT .variacion-item select,
+#editarProductoPT .variacion-item input:not([type="checkbox"]) {
+    width: 100%;
+    max-width: 100%;
+}
+#editarProductoPT .variacion-item .row > div { min-width: 0; }
+#editarProductoPT .variacion-item .form-check { padding-top: 8px; }
+#editarProductoPT .variacion-item .form-check-input { cursor: pointer; }
+#editarProductoPT .acciones-producto .btn { white-space: normal; }
+
+/* =========================================
+   MODO OSCURO
+========================================= */
+body.dark-mode #editarProductoPT,
+[data-bs-theme="dark"] #editarProductoPT {
+    color: #e9ecef;
+}
+body.dark-mode #editarProductoPT .section-title .text-dark,
+[data-bs-theme="dark"] #editarProductoPT .section-title .text-dark {
+    color: #e9ecef !important;
+}
+body.dark-mode #editarProductoPT .section-title .text-secondary,
+[data-bs-theme="dark"] #editarProductoPT .section-title .text-secondary {
+    color: #adb5bd !important;
+}
+body.dark-mode #editarProductoPT .custom-card,
+[data-bs-theme="dark"] #editarProductoPT .custom-card {
+    background-color: #252a32;
+    color: #e9ecef;
+    border-color: #49515b;
+}
+body.dark-mode #editarProductoPT .variacion-item,
+[data-bs-theme="dark"] #editarProductoPT .variacion-item {
+    background-color: #2d3540 !important;
+    color: #e9ecef;
+    border-color: #49515b !important;
+}
+body.dark-mode #editarProductoPT .form-label,
+body.dark-mode #editarProductoPT .form-check-label,
+[data-bs-theme="dark"] #editarProductoPT .form-label,
+[data-bs-theme="dark"] #editarProductoPT .form-check-label {
+    color: #e9ecef;
+}
+body.dark-mode #editarProductoPT .form-check-label.text-danger,
+[data-bs-theme="dark"] #editarProductoPT .form-check-label.text-danger {
+    color: #ff858e !important;
+}
+body.dark-mode #editarProductoPT .form-control,
+body.dark-mode #editarProductoPT .form-select,
+body.dark-mode #editarProductoPT select,
+body.dark-mode #editarProductoPT textarea,
+body.dark-mode #editarProductoPT input:not([type="checkbox"]):not([type="hidden"]),
+[data-bs-theme="dark"] #editarProductoPT .form-control,
+[data-bs-theme="dark"] #editarProductoPT .form-select,
+[data-bs-theme="dark"] #editarProductoPT select,
+[data-bs-theme="dark"] #editarProductoPT textarea,
+[data-bs-theme="dark"] #editarProductoPT input:not([type="checkbox"]):not([type="hidden"]) {
+    background-color: #303844;
+    color: #e9ecef;
+    border-color: #49515b;
+    color-scheme: dark;
+}
+body.dark-mode #editarProductoPT .form-control::placeholder,
+body.dark-mode #editarProductoPT input::placeholder,
+body.dark-mode #editarProductoPT textarea::placeholder,
+[data-bs-theme="dark"] #editarProductoPT .form-control::placeholder,
+[data-bs-theme="dark"] #editarProductoPT input::placeholder,
+[data-bs-theme="dark"] #editarProductoPT textarea::placeholder {
+    color: #adb5bd;
+    opacity: 1;
+}
+body.dark-mode #editarProductoPT .form-control:focus,
+body.dark-mode #editarProductoPT .form-select:focus,
+[data-bs-theme="dark"] #editarProductoPT .form-control:focus,
+[data-bs-theme="dark"] #editarProductoPT .form-select:focus {
+    border-color: #6b94c8;
+    box-shadow: 0 0 0 .2rem rgba(107,148,200,.18);
+}
+body.dark-mode #editarProductoPT input[type="file"]::file-selector-button,
+[data-bs-theme="dark"] #editarProductoPT input[type="file"]::file-selector-button {
+    background: #49515b;
+    color: #e9ecef;
+    border-color: #6c757d;
+}
+body.dark-mode #editarProductoPT input[type="file"]::file-selector-button:hover,
+[data-bs-theme="dark"] #editarProductoPT input[type="file"]::file-selector-button:hover {
+    background: #596473;
+}
+body.dark-mode #editarProductoPT hr,
+[data-bs-theme="dark"] #editarProductoPT hr {
+    border-color: #6c757d;
+    opacity: .5;
+}
+body.dark-mode #editarProductoPT .text-muted,
+[data-bs-theme="dark"] #editarProductoPT .text-muted {
+    color: #adb5bd !important;
+}
+body.dark-mode #editarProductoPT .form-check-input,
+[data-bs-theme="dark"] #editarProductoPT .form-check-input {
+    background-color: #303844;
+    border-color: #6c757d;
+}
+body.dark-mode #editarProductoPT .form-check-input:checked,
+[data-bs-theme="dark"] #editarProductoPT .form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+body.dark-mode #editarProductoPT .alert-danger,
+[data-bs-theme="dark"] #editarProductoPT .alert-danger {
+    background: #452b30;
+    color: #ffb3bb;
+    border-color: #8a414b;
+}
+
+/* =========================================
+   TABLETS
+========================================= */
+@media (max-width: 1199.98px) {
+    #editarProductoPT .variacion-item .row > .col-md-2 {
+        flex: 0 0 33.333333%;
+        max-width: 33.333333%;
+    }
+    #editarProductoPT .variacion-item .form-check.ms-3 {
+        margin-left: 0 !important;
+        padding-left: 35px;
+    }
+}
+
+/* =========================================
+   CELULARES
+========================================= */
+@media (max-width: 767.98px) {
+    #editarProductoPT .custom-card { padding: 15px; }
+    #editarProductoPT .encabezado-variaciones {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 12px;
+    }
+    #editarProductoPT .encabezado-variaciones h5 { font-size: 1.05rem; }
+    #editarProductoPT #btn-add-variacion { width: 100%; }
+    #editarProductoPT .variacion-item { padding: 12px !important; }
+    #editarProductoPT .variacion-item .row > .col-md-2 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    #editarProductoPT .variacion-item .row > div { margin-bottom: 12px !important; }
+    #editarProductoPT .variacion-item .form-check.ms-3 {
+        padding-left: 35px;
+        margin-left: 0 !important;
+    }
+    #editarProductoPT .acciones-producto .btn {
+        width: 100%;
+        padding: 9px 12px;
+    }
+}

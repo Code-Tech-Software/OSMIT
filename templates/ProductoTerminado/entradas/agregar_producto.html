@@ -1,16 +1,18 @@
+
 {% extends "Base/Sidebar.html" %}
 {% load static %}
 {% block content %}
-    {% include "Base/includes/_notificaciones.html" %}
-    <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+{% include "Base/includes/_notificaciones.html" %}
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+<link rel="stylesheet" href="{% static 'css/ProductoTerminado/agregar_producto.css' %}">
 
+<div id="agregarProductoPT">
     <div class="section-title">
         <span class="fw-bold text-dark">Gestión de Productos</span>
         <span class="mx-2 text-dark">|</span>
         <span class="text-secondary">Agregar Producto con Variaciones</span>
     </div>
-    
-    
+
     <div class="custom-card mt-4">
         <form method="post" enctype="multipart/form-data" id="producto-form">
             {% csrf_token %}
@@ -18,7 +20,6 @@
             {% if form.non_field_errors %}
                 <div class="alert alert-danger">{{ form.non_field_errors }}</div>
             {% endif %}
-
 
             <h5 class="fw-bold mb-3">Información General</h5>
 
@@ -32,9 +33,7 @@
                         <label class="form-label">{{ field.label }}</label>
                         {{ field }}
                         {% if field.errors %}
-                            <div class="text-danger small mt-1">
-                                {{ field.errors|striptags }}
-                            </div>
+                            <div class="text-danger small mt-1">{{ field.errors|striptags }}</div>
                         {% endif %}
                     </div>
                 {% endfor %}
@@ -42,8 +41,7 @@
 
             <hr class="my-4">
 
-
-            <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-3 encabezado-variaciones">
                 <h5 class="fw-bold mb-0">Variaciones del Producto</h5>
                 <button type="button" id="add-variacion" class="btn btn-sm btn-custom-primary">
                     <i class="bi bi-plus-circle me-1"></i> Agregar Variación
@@ -51,6 +49,7 @@
             </div>
 
             {{ formset.management_form }}
+
             <div id="variaciones-container">
                 {% for form in formset %}
                     <div class="variacion-form border p-3 mb-3 rounded bg-light position-relative">
@@ -64,9 +63,7 @@
                                         <label class="form-label">{{ field.label }}</label>
                                         {{ field }}
                                         {% if field.errors %}
-                                            <div class="text-danger small mt-1">
-                                                {{ field.errors|striptags }}
-                                            </div>
+                                            <div class="text-danger small mt-1">{{ field.errors|striptags }}</div>
                                         {% endif %}
                                     </div>
                                 {% else %}
@@ -76,8 +73,8 @@
                                 {% endif %}
                             {% endfor %}
                         </div>
-
-                        <button type="button" class="btn btn-outline-danger btn-sm remove-variacion"> Eliminar Variación
+                        <button type="button" class="btn btn-outline-danger btn-sm remove-variacion">
+                            Eliminar Variación
                         </button>
                     </div>
                 {% endfor %}
@@ -85,11 +82,9 @@
 
             <div id="empty-form-template" class="d-none">
                 <div class="variacion-form border p-3 mb-3 rounded bg-light">
-
                     {% for hidden in formset.empty_form.hidden_fields %}
                         {{ hidden }}
                     {% endfor %}
-
                     <div class="row">
                         {% for field in formset.empty_form.visible_fields %}
                             {% if field.name != "DELETE" %}
@@ -104,57 +99,23 @@
                             {% endif %}
                         {% endfor %}
                     </div>
-
-                    <button type="button" class="btn btn-outline-danger btn-sm remove-variacion"> Eliminar Variación
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-variacion">
+                        Eliminar Variación
                     </button>
                 </div>
             </div>
 
-
-            <div class="mt-4 d-flex gap-2">
+            <div class="mt-4 d-flex gap-2 acciones-producto">
                 <button type="submit" class="btn btn-custom-success btn-sm">
                     <i class="bi bi-save me-1"></i>Guardar Producto
                 </button>
-                <a href="{% url 'listar_productosPT' %}"  class="btn btn-custom-secondary btn-sm">
-                     <i class="bi bi-arrow-return-left me-1"></i>Volver
+                <a href="{% url 'listar_productosPT' %}" class="btn btn-custom-secondary btn-sm">
+                    <i class="bi bi-arrow-return-left me-1"></i>Volver
                 </a>
             </div>
         </form>
     </div>
+</div>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const addButton = document.getElementById("add-variacion");
-            const container = document.getElementById("variaciones-container");
-            const totalFormsInput = document.querySelector('[name$="-TOTAL_FORMS"]');
-            const template = document.getElementById("empty-form-template").innerHTML;
-            const existingVariations = container.querySelectorAll(".variacion-form");
-            existingVariations.forEach(function (formDiv) {
-                const deleteInput = formDiv.querySelector('input[type="checkbox"][name$="-DELETE"]');
-                if (deleteInput && deleteInput.checked) {
-                    formDiv.style.display = 'none';
-                }
-            });
-            addButton.addEventListener("click", function () {
-                let formCount = parseInt(totalFormsInput.value);
-                let newFormHtml = template.replace(/__prefix__/g, formCount);
-                container.insertAdjacentHTML("beforeend", newFormHtml);
-                totalFormsInput.value = formCount + 1;
-            });
-
-            container.addEventListener("click", function (e) {
-                if (e.target.classList.contains("remove-variacion")) {
-                    const formDiv = e.target.closest(".variacion-form");
-                    const deleteInput = formDiv.querySelector('input[name$="-DELETE"]');
-
-                    if (deleteInput) {
-                        deleteInput.checked = true;
-                        formDiv.style.display = 'none';
-                    } else {
-                        formDiv.remove();
-                    }
-                }
-            });
-        });
-    </script>
+<script src="{% static 'js/ProductoTerminado/agregar_producto.js' %}"></script>
 {% endblock %}

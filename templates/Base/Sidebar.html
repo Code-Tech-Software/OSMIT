@@ -328,6 +328,11 @@
                 <!-- Contenido específico de cada vista -->
             {% endblock %}
         </main>
+        <div id="mensajesGlobales" class="d-none">
+            {% for message in messages %}
+                <span data-tipo="{{ message.tags }}" data-texto="{{ message }}"></span>
+            {% endfor %}
+        </div>
         <!-- ==========================================================
          CONFIGURACIÓN DE NOTIFICACIONES
     ========================================================== -->

@@ -1,76 +1,75 @@
+
 {% extends "Base/Sidebar.html" %}
 {% load static %}
 {% block content %}
-    <link rel="stylesheet" href="{% static 'css/appMovil/edit.css' %}">
-    <div class="container-fluid mt-4" id="admin-minibodega-edit">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-            <div>
-                <h2>Editar MiniBodega #{{ minibodega.id }}</h2>
-                <p class="text-muted mb-0">{{ minibodega.fecha|date:"d/m/Y" }}</p>
-            </div>
-            <a href="{% url 'admin_minibodega_list' %}" class="btn btn-secondary">Volver</a>
+<link rel="stylesheet" href="{% static 'css/appMovil/edit.css' %}">
+<div class="container-fluid mt-4" id="admin-minibodega-edit">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <div>
+            <h2>Editar MiniBodega #{{ minibodega.id }}</h2>
+            <p class="text-muted mb-0">{{ minibodega.fecha|date:"d/m/Y" }}</p>
         </div>
-        <!-- INFORMACIÓN GENERAL -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">Información de la MiniBodega</h5>
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
-                    <input type="hidden" name="accion" value="guardar">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label for="ruta" class="form-label">Ruta</label>
-                            <select name="ruta" id="ruta" class="form-select" required>
-                                {% for ruta in rutas %}
-                                    <option value="{{ ruta.id }}"
-                                            {% if ruta.id == minibodega.ruta_id %}selected{% endif %}>{{ ruta.nombre }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="usuario" class="form-label">Repartidor / Usuario</label>
-                            <select name="usuario" id="usuario" class="form-select" required>
-                                {% for usuario in usuarios %}
-                                    <option value="{{ usuario.id }}"
-                                            {% if usuario.id == minibodega.usuario_id %}selected{% endif %}>{{ usuario.get_full_name|default:usuario.username }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="vehiculo" class="form-label">Vehículo</label>
-                            <select name="vehiculo" id="vehiculo" class="form-select" required>
-                                {% for vehiculo in vehiculos %}
-                                    <option value="{{ vehiculo.id }}"
-                                            {% if vehiculo.id == minibodega.vehiculo_id %}selected{% endif %}>{{ vehiculo }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-check form-switch mt-4">
-                                <input class="form-check-input"
-                                       type="checkbox"
-                                       name="estado"
-                                       id="estado"
-                                       {% if minibodega.estado %}checked{% endif %}>
-                                <label class="form-check-label" for="estado">MiniBodega activa</label>
-                            </div>
+        <a href="{% url 'admin_minibodega_list' %}" class="btn btn-secondary">Volver</a>
+    </div>
+
+    <!-- INFORMACIÓN GENERAL -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Información de la MiniBodega</h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="guardar">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="ruta" class="form-label">Ruta</label>
+                        <select name="ruta" id="ruta" class="form-select" required>
+                            {% for ruta in rutas %}
+                            <option value="{{ ruta.id }}" {% if ruta.id == minibodega.ruta_id %}selected{% endif %}>{{ ruta.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="usuario" class="form-label">Repartidor / Usuario</label>
+                        <select name="usuario" id="usuario" class="form-select" required>
+                            {% for usuario in usuarios %}
+                            <option value="{{ usuario.id }}" {% if usuario.id == minibodega.usuario_id %}selected{% endif %}>{{ usuario.get_full_name|default:usuario.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="vehiculo" class="form-label">Vehículo</label>
+                        <select name="vehiculo" id="vehiculo" class="form-select" required>
+                            {% for vehiculo in vehiculos %}
+                            <option value="{{ vehiculo.id }}" {% if vehiculo.id == minibodega.vehiculo_id %}selected{% endif %}>{{ vehiculo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check form-switch mt-4">
+                            <input class="form-check-input" type="checkbox" name="estado" id="estado" {% if minibodega.estado %}checked{% endif %}>
+                            <label class="form-check-label" for="estado">MiniBodega activa</label>
                         </div>
                     </div>
-                    <div class="mt-4">
-                        <button type="submit" class="btn btn-primary">Guardar cambios</button>
-                    </div>
-                </form>
-            </div>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                </div>
+            </form>
         </div>
-        <!-- PRODUCTOS DE LA MINIBODEGA -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Productos de la MiniBodega</h5>
-                <span class="badge bg-primary">{{ detalles|length }} productos</span>
-            </div>
-            <div class="card-body">
+    </div>
+
+    <!-- PRODUCTOS DE LA MINIBODEGA -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <h5 class="mb-0">Productos de la MiniBodega</h5>
+            <span class="badge bg-primary">{{ detalles|length }} productos</span>
+        </div>
+        <div class="card-body">
+            <form method="post" id="form-cantidades-masivas">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="modificar_cantidades">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
                         <thead>
@@ -84,104 +83,83 @@
                         </thead>
                         <tbody>
                             {% for detalle in detalles %}
-                                <tr>
-                                    <td>{{ detalle.producto_variacion.producto.nombre }}</td>
-                                    <td>{{ detalle.producto_variacion.presentacion.nombre }}</td>
-                                    <td>
-                                        <input type="number"
-                                               name="cantidad_inicial"
-                                               value="{{ detalle.cantidad_inicial }}"
-                                               min="0"
-                                               step="0.01"
-                                               class="form-control form-control-sm"
-                                               form="form-cantidad-{{ detalle.id }}"
-                                               required>
-                                    </td>
-                                    <td>
-                                        <input type="number"
-                                               name="cantidad_actual"
-                                               value="{{ detalle.cantidad_actual }}"
-                                               min="0"
-                                               step="0.01"
-                                               class="form-control form-control-sm"
-                                               form="form-cantidad-{{ detalle.id }}"
-                                               required>
-                                    </td>
-                                    <td class="text-end">
-                                        <div class="acciones-minibodega">
-                                            <form method="post" id="form-cantidad-{{ detalle.id }}">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="accion" value="modificar_cantidad">
-                                                <input type="hidden" name="detalle_id" value="{{ detalle.id }}">
-                                                <button type="submit" class="btn btn-success btn-sm">Guardar</button>
-                                            </form>
-                                            <form method="post" class="form-quitar-producto">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="accion" value="quitar_producto">
-                                                <input type="hidden" name="detalle_id" value="{{ detalle.id }}">
-                                                <button type="submit" class="btn btn-danger btn-sm">Quitar</button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
+                            <tr>
+                                <td>{{ detalle.producto_variacion.producto.nombre }}</td>
+                                <td>{{ detalle.producto_variacion.presentacion.nombre }}</td>
+                                <td>
+                                    <input type="number" name="cantidad_inicial_{{ detalle.id }}" value="{{ detalle.cantidad_inicial }}" min="0" step="0.01" class="form-control form-control-sm cantidad-editable" required>
+                                </td>
+                                <td>
+                                    <input type="number" name="cantidad_actual_{{ detalle.id }}" value="{{ detalle.cantidad_actual }}" min="0" step="0.01" class="form-control form-control-sm cantidad-editable" required>
+                                </td>
+                                <td class="text-end">
+                                    <button type="submit" form="form-quitar-{{ detalle.id }}" class="btn btn-danger btn-sm">Quitar</button>
+                                </td>
+                            </tr>
                             {% empty %}
-                                <tr>
-                                    <td colspan="5"
-                                        class="text-center text-muted py-4">Esta MiniBodega no tiene productos.</td>
-                                </tr>
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">Esta MiniBodega no tiene productos.</td>
+                            </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
-        <!-- AGREGAR PRODUCTO -->
-        <div class="card shadow-sm mb-5">
-            <div class="card-header">
-                <h5 class="mb-0">Agregar producto</h5>
-            </div>
-            <div class="card-body">
-                <form method="post" id="form-agregar-producto">
-                    {% csrf_token %}
-                    <input type="hidden" name="accion" value="agregar_producto">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label for="productoSelect" class="form-label">Producto</label>
-                            <select name="producto" id="productoSelect" class="form-select" required>
-                                <option value="">Seleccionar producto...</option>
-                                {% for producto in productos %}
-                                    <option value="{{ producto.id }}">{{ producto.nombre }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label for="variacionSelect" class="form-label">Presentación</label>
-                            <select name="variacion"
-                                    id="variacionSelect"
-                                    class="form-select"
-                                    required
-                                    disabled>
-                                <option value="">Primero selecciona un producto</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label for="cantidadAgregar" class="form-label">Cantidad</label>
-                            <input type="number"
-                                   name="cantidad"
-                                   id="cantidadAgregar"
-                                   min="0"
-                                   step="0.01"
-                                   class="form-control"
-                                   required>
-                        </div>
-                        <div class="col-md-2 d-flex align-items-end">
-                            <button type="submit" class="btn btn-success w-100">Agregar</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
+                <div class="d-flex flex-wrap justify-content-end align-items-center gap-3 mt-3">
+                    <span id="contadorCambios" class="text-muted small">Sin cambios pendientes</span>
+                    <button type="submit" class="btn btn-success" id="btnGuardarCantidades" disabled>
+                        <i class="bi bi-check-circle"></i> Guardar todas las cantidades
+                    </button>
+                </div>
+            </form>
+
+            <!-- FORMULARIOS INDIVIDUALES PARA QUITAR PRODUCTOS -->
+            {% for detalle in detalles %}
+            <form method="post" id="form-quitar-{{ detalle.id }}" class="form-quitar-producto">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="quitar_producto">
+                <input type="hidden" name="detalle_id" value="{{ detalle.id }}">
+            </form>
+            {% endfor %}
         </div>
     </div>
-    {{ productos|json_script:"productos-minibodega-data" }}
-    <script src="{% static 'js/appMovil/edit.js' %}" defer></script>
+
+    <!-- AGREGAR PRODUCTO -->
+    <div class="card shadow-sm mb-5">
+        <div class="card-header">
+            <h5 class="mb-0">Agregar producto</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" id="form-agregar-producto">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="agregar_producto">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="productoSelect" class="form-label">Producto</label>
+                        <select name="producto" id="productoSelect" class="form-select" required>
+                            <option value="">Seleccionar producto...</option>
+                            {% for producto in productos %}
+                            <option value="{{ producto.id }}">{{ producto.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="variacionSelect" class="form-label">Presentación</label>
+                        <select name="variacion" id="variacionSelect" class="form-select" required disabled>
+                            <option value="">Primero selecciona un producto</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="cantidadAgregar" class="form-label">Cantidad</label>
+                        <input type="number" name="cantidad" id="cantidadAgregar" min="0" step="0.01" class="form-control" required>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-success w-100">Agregar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{{ productos|json_script:"productos-minibodega-data" }}
+<script src="{% static 'js/appMovil/edit.js' %}" defer></script>
 {% endblock %}

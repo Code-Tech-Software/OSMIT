@@ -275,3 +275,23 @@ if (notificationConfig) {
         console.warn('No se cargaron Pusher o SweetAlert2. Las notificaciones en tiempo real no estarán disponibles.');
     }
 }
+
+// NOTIFICACIONES GLOBALES
+document.addEventListener('DOMContentLoaded', () => {
+    const mensajes = document.querySelectorAll('#mensajesGlobales [data-tipo]');
+    if (!mensajes.length || typeof Notyf === 'undefined') return;
+
+    const notyf = new Notyf({
+        duration: 4000,
+        position: {x:'right', y:'bottom'},
+        dismissible: true
+    });
+
+    mensajes.forEach(mensaje => {
+        const tipos = mensaje.dataset.tipo.split(' ');
+        const texto = mensaje.dataset.texto;
+        if (tipos.includes('success')) notyf.success(texto);
+        else if (tipos.includes('error') || tipos.includes('warning')) notyf.error(texto);
+        else notyf.success(texto);
+    });
+});

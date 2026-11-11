@@ -1,0 +1,123 @@
+
+/* =========================================================
+   DETALLE DE MINIBODEGA - MODO CLARO
+   ========================================================= */
+#minibodegaDetail #detalleTable {
+    width: 100%;
+}
+#minibodegaDetail #detalleTable th,
+#minibodegaDetail #detalleTable td {
+    vertical-align: middle;
+}
+#minibodegaDetail #detalleTable td:last-child {
+    white-space: nowrap;
+}
+#minibodegaDetail .btn-regresar-producto {
+    white-space: nowrap;
+}
+
+/* =========================================================
+   DETALLE DE MINIBODEGA - MODO OSCURO
+   ========================================================= */
+body.dark-mode #minibodegaDetail .custom-card {
+    background-color: #242424 !important;
+    color: #e9ecef !important;
+    border-color: #444 !important;
+}
+body.dark-mode #minibodegaDetail .row.border {
+    background-color: #2b2b2b !important;
+    border-color: #444 !important;
+}
+body.dark-mode #minibodegaDetail h5,
+body.dark-mode #minibodegaDetail .fw-medium,
+body.dark-mode #minibodegaDetail .fw-semibold {
+    color: #e9ecef !important;
+}
+body.dark-mode #minibodegaDetail .text-secondary,
+body.dark-mode #minibodegaDetail .text-muted {
+    color: #adb5bd !important;
+}
+body.dark-mode #minibodegaDetail hr {
+    border-color: #555 !important;
+}
+
+/* =========================================================
+   DATATABLES - MODO OSCURO
+   ========================================================= */
+body.dark-mode #minibodegaDetail .dt-container {
+    color: #e9ecef !important;
+}
+body.dark-mode #minibodegaDetail .dt-container .dt-input {
+    background-color: #303030 !important;
+    color: #f8f9fa !important;
+    border: 1px solid #555 !important;
+}
+body.dark-mode #minibodegaDetail .dt-container .dt-input:focus {
+    border-color: #6ea8fe !important;
+    outline: none;
+}
+body.dark-mode #minibodegaDetail .dt-container .dt-info,
+body.dark-mode #minibodegaDetail .dt-container .dt-length,
+body.dark-mode #minibodegaDetail .dt-container .dt-search {
+    color: #dee2e6 !important;
+}
+body.dark-mode #minibodegaDetail .dt-container .dt-paging .dt-paging-button {
+    color: #e9ecef !important;
+    background: #303030 !important;
+    border: 1px solid #444 !important;
+}
+body.dark-mode #minibodegaDetail .dt-container .dt-paging .dt-paging-button:hover:not(.disabled) {
+    background: #454545 !important;
+    color: #fff !important;
+}
+body.dark-mode #minibodegaDetail .dt-container .dt-paging .dt-paging-button.current {
+    background: #495057 !important;
+    color: #fff !important;
+}
+
+/* =========================================================
+   TABLA - MODO OSCURO
+   ========================================================= */
+body.dark-mode #minibodegaDetail #detalleTable {
+    --bs-table-bg: #242424;
+    --bs-table-color: #e9ecef;
+    --bs-table-border-color: #444;
+    --bs-table-striped-bg: #303030;
+    --bs-table-striped-color: #e9ecef;
+    --bs-table-hover-bg: #383838;
+    --bs-table-hover-color: #fff;
+    background-color: #242424 !important;
+    color: #e9ecef !important;
+    border-color: #444 !important;
+}
+body.dark-mode #minibodegaDetail #detalleTable thead th {
+    background-color: #303030 !important;
+    color: #f8f9fa !important;
+    border-color: #444 !important;
+}
+body.dark-mode #minibodegaDetail #detalleTable tbody td {
+    background-color: var(--bs-table-bg) !important;
+    color: #e9ecef !important;
+    border-color: #444 !important;
+}
+body.dark-mode #minibodegaDetail #detalleTable tbody tr:nth-of-type(odd) td {
+    background-color: #303030 !important;
+}
+body.dark-mode #minibodegaDetail #detalleTable tbody td .text-danger {
+    color: #ff6b6b !important;
+}
+body.dark-mode #minibodegaDetail #detalleTable tbody td .text-muted {
+    color: #adb5bd !important;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+@media (max-width: 768px) {
+    #minibodegaDetail .custom-card {
+        padding: 15px;
+    }
+    #minibodegaDetail #detalleTable {
+        font-size: 0.875rem;
+    }
+}

@@ -1,0 +1,127 @@
+
+/* =========================================================
+   DETALLE DEL CORTE - ESTILOS GENERALES
+   ========================================================= */
+#detalleCorteMinibodega .card {
+    border-radius: 10px;
+    overflow: hidden;
+}
+#detalleCorteMinibodega .card-header {
+    padding: 15px 20px;
+}
+#detalleCorteMinibodega .card-body {
+    padding: 20px;
+}
+#detalleCorteMinibodega #tablaDetalleCorte {
+    width: 100%;
+}
+#detalleCorteMinibodega #tablaDetalleCorte th,
+#detalleCorteMinibodega #tablaDetalleCorte td {
+    vertical-align: middle;
+}
+
+/* =========================================================
+   VALOR TOTAL DEL INVENTARIO
+   ========================================================= */
+#detalleCorteMinibodega .tarjeta-valor-inventario {
+    border-left: 5px solid #198754;
+}
+#detalleCorteMinibodega .valor-total-inventario {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #198754;
+}
+#detalleCorteMinibodega .moneda-inventario {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #6c757d;
+}
+
+/* =========================================================
+   MODO OSCURO - TARJETAS
+   ========================================================= */
+body.dark-mode #detalleCorteMinibodega {
+    color: #e9ecef;
+}
+body.dark-mode #detalleCorteMinibodega .card {
+    background-color: #242424 !important;
+    color: #e9ecef !important;
+    border-color: #444 !important;
+}
+body.dark-mode #detalleCorteMinibodega .card-header {
+    background-color: #303030 !important;
+    color: #f8f9fa !important;
+    border-bottom: 1px solid #444 !important;
+}
+body.dark-mode #detalleCorteMinibodega .card-body {
+    background-color: #242424 !important;
+}
+body.dark-mode #detalleCorteMinibodega .text-muted {
+    color: #adb5bd !important;
+}
+body.dark-mode #detalleCorteMinibodega h2,
+body.dark-mode #detalleCorteMinibodega h5,
+body.dark-mode #detalleCorteMinibodega strong {
+    color: #f8f9fa !important;
+}
+
+/* =========================================================
+   MODO OSCURO - TABLA
+   ========================================================= */
+body.dark-mode #detalleCorteMinibodega #tablaDetalleCorte {
+    --bs-table-bg: #242424;
+    --bs-table-color: #e9ecef;
+    --bs-table-border-color: #444;
+    --bs-table-striped-bg: #303030;
+    --bs-table-striped-color: #e9ecef;
+    background-color: #242424 !important;
+    color: #e9ecef !important;
+    border-color: #444 !important;
+}
+body.dark-mode #detalleCorteMinibodega #tablaDetalleCorte thead th {
+    background-color: #303030 !important;
+    color: #f8f9fa !important;
+    border-color: #444 !important;
+}
+body.dark-mode #detalleCorteMinibodega #tablaDetalleCorte tbody td {
+    background-color: var(--bs-table-bg) !important;
+    color: #e9ecef !important;
+    border-color: #444 !important;
+}
+body.dark-mode #detalleCorteMinibodega #tablaDetalleCorte tbody tr:nth-of-type(odd) td {
+    background-color: #303030 !important;
+}
+body.dark-mode #detalleCorteMinibodega #tablaDetalleCorte .text-success {
+    color: #75d6a3 !important;
+}
+body.dark-mode #detalleCorteMinibodega #tablaDetalleCorte .text-danger {
+    color: #ff8080 !important;
+}
+
+/* =========================================================
+   MODO OSCURO - VALOR TOTAL
+   ========================================================= */
+body.dark-mode #detalleCorteMinibodega .tarjeta-valor-inventario {
+    border-left-color: #75d6a3 !important;
+}
+body.dark-mode #detalleCorteMinibodega .valor-total-inventario {
+    color: #75d6a3 !important;
+}
+body.dark-mode #detalleCorteMinibodega .moneda-inventario {
+    color: #adb5bd !important;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+@media (max-width: 768px) {
+    #detalleCorteMinibodega .card-body {
+        padding: 15px;
+    }
+    #detalleCorteMinibodega .valor-total-inventario {
+        font-size: 1.6rem;
+    }
+    #detalleCorteMinibodega #tablaDetalleCorte {
+        font-size: 0.875rem;
+    }
+}

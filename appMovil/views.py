@@ -759,6 +759,24 @@ def eliminar_producto_pedido(request, pedido_id, detalle_id):
 @requiere_roles("Producto Terminado")
 @require_POST
 def rechazar_pedido_reabastecimiento(request, pedido_id):
+    """
+    Rechaza un pedido de reabastecimiento pendiente.
+    
+    Validaque el pedido esté activo y pendiente antes de permitir el rechazo.
+    Actuañliza su estado y resultado, resgistra el motivo del rechazo,
+    el usuario responsable y la fecha de cierre.Guarda la operacion
+    en el historial mediante una transacción atómica.
+
+    Args:
+        request (HttpRequest): Solicitud POST con el motivo del rechazo,
+            que puede estar vacío.
+        pedido_id (int): Identificador del pedido de reabastecimiento a rechazar.
+    Returns:
+        HttpResponseRedirect: Redirige a la lista de pedidos con un mensaje
+            indicando el resultado de la operación.
+    Raises:
+        Http404: Si el pedido no existe.
+    """
     motivo = request.POST.get('motivo_rechazo', '').strip()
 
     with transaction.atomic():
@@ -795,6 +813,21 @@ def rechazar_pedido_reabastecimiento(request, pedido_id):
 @requiere_roles("Producto Terminado")
 @require_POST
 def procesar_reabastecimiento(request, pedido_id):
+    """
+    Procesa un pedido de reabastecimineto y actualiza los inventarios.
+    Valida que el pedido este activo y pendiente, comprueba sus productos
+    y cantidades, y localiza la minibodega correspondinete a la rtuta.
+    Reactiva la minibodega y establece las existencias  actuales como
+    inventario inicial del dia
+    
+    Surte los productos segun la disponibilidad del inventario central,
+    registra  las salidas de producto terminado y actualiza las existencias
+    de la minibodega. clasifica los productos como surtidos completamente,
+    parcialmente o no surtidos.
+    
+    Finalmente, marca el pedido como procesado, registra el usuario 
+    responsable y la fecha de cierre. Todas las modificaciones se
+    realiazn dentro de una transaccion atómica"""
     try:
         with transaction.atomic():
 
@@ -970,6 +1003,16 @@ def procesar_reabastecimiento(request, pedido_id):
 
 
 def validar_cantidad_pedido(valor):
+    """
+    Valida y convierte una cantidad solicitada en un pedido de reabastecimiento.
+    
+    Comprueba que sea un numero decimal finito, mayor a cero, con un
+    máximo de dos decimales y menor a 100,000,000.Devuelve None si
+    no cumple con los criterios.
+    Args:
+        valor (Any): Valor que se desea convertir y validar.
+    Returns:
+        Decimal or None: La cantidad validada como Decimal, o None si es inválida."""
     try:
         cantidad = Decimal(str(valor))
         if not cantidad.is_finite() or cantidad <= 0:
@@ -985,7 +1028,17 @@ def validar_cantidad_pedido(valor):
 @login_required
 @requiere_roles("Producto Terminado","Recursos Humanos")
 def minibodega_list(request):
-    # Traemos todas las mini bodegas, ordenadas de la más reciente a la más vieja
+    """
+    Muestra un listado de todas las Mini Bodegas registradas en el sistema.
+    
+    Consulta las minibodegas y las ordena por fecha e identificador
+    de forma descendente,mmostrando primero las mas recientes.
+    
+    Args:
+        request (HttpRequest): Solicitud HTTP del usuario autenticado.
+    Returns:
+        HttpResponse: Renderiza la plantilla con el listado de minibodegas.
+    """
     minibodegas = MiniBodega.objects.all().order_by('-fecha', '-id')
 
     # Mandamos el contexto al template
@@ -996,20 +1049,63 @@ def minibodega_list(request):
 
 
 # Vista para el detalle
+
 @login_required
-@requiere_roles("Producto Terminado","Recursos Humanos")
+@requiere_roles("Producto Terminado", "Recursos Humanos")
 def minibodega_detail(request, pk):
-    # Buscamos la mini bodega por su ID (Primary Key). Si no existe, lanza un 404.
+    """
+    Muestra información detallada de la minibodega.
+
+    Obtiene la minibodega mediante su clave primaria y presenta
+    los productos ordenados según el orden personalizado.
+
+    Args:
+        request (HttpRequest): Solicitud HTTP del usuario autenticado.
+        pk (int): Clave primaria de la minibodega a consultar.
+    Returns:
+        HttpResponse: Renderiza la plantilla con los detalles de la minibodega.
+    Raises:
+        Http404: Si la minibodega no existe.
+    """
     minibodega = get_object_or_404(MiniBodega, pk=pk)
+
+    orden_productos = {nombre.strip().upper(): i for i, nombre in enumerate(ORDEN_PRODUCTOS_CORTE_MINIBODEGA)}
+    orden_presentaciones = {nombre.strip().upper(): i for i, nombre in enumerate(ORDEN_PRESENTACIONES_CORTE_MINIBODEGA)}
+
+    detalles = list(
+        MiniBodegaDetalle.objects.filter(mini_bodega=minibodega)
+        .select_related('producto_variacion__producto', 'producto_variacion__presentacion')
+    )
+
+    detalles.sort(key=lambda detalle: (
+        orden_productos.get(detalle.producto_variacion.producto.nombre.strip().upper(), len(orden_productos)),
+        detalle.producto_variacion.producto.nombre.strip().upper(),
+        orden_presentaciones.get(detalle.producto_variacion.presentacion.nombre.strip().upper(), len(orden_presentaciones)),
+        detalle.producto_variacion.presentacion.nombre.strip().upper()
+    ))
+
     context = {
-        'minibodega': minibodega
+        'minibodega': minibodega,
+        'detalles': detalles
     }
     return render(request, 'appMovil/miniBodegas/minibodega_detail.html', context)
 
 @login_required
 @requiere_roles("Producto Terminado")
 def cerrar_minibodega(request, pk):
+    """
+    Cierra una minibodega registrada en el sistema.
+    Valda que la solicitud utilice el metodo POST y compruebe que la
+    minibodega se encuentre activa antes de modificar su estado.
+    Actualiza el estado de cerraro y devuelve una respuestaJSON
+    indicacndo ek resultado de la operación.
 
+    Args:
+        request (HttpRequest): Solicitud HTTP del usuario autenticado.
+        pk (int): Clave primaria de la minibodega a cerrar.
+    Returns:
+        JsonResponse: Respuesta JSON indicando el éxito o error de la operación.
+    """
     if request.method != 'POST':
         return JsonResponse({
             'success': False,
@@ -1049,7 +1145,20 @@ from django.http import JsonResponse
 @login_required
 @requiere_roles("Producto Terminado")
 def abrir_minibodega_manual(request, pk):
-
+    """
+    Abre manualmente una minibodega y prepara su inventario inicial.
+    
+    Valida que la solicitud utilice el metodo POST, elimina los productos
+    sin existencias y actualiza la cantidad inical de los productos
+    restantes utilizando la cantidad actual. Finalmenete, establece
+    la minibodega como activa.
+    
+    Args:
+        request (HttpRequest): Solicitud HTTP del usuario autenticado.
+        pk (int): Clave primaria de la minibodega a abrir.
+    Returns:
+        JsonResponse:  Resultado de la operación, indicando si la apertura
+            fue exitosa o el motivo por el que no pudo realizarse."""
     if request.method == 'POST':
 
         try:
@@ -1097,6 +1206,29 @@ def abrir_minibodega_manual(request, pk):
 @login_required
 @requiere_roles("Producto Terminado")
 def regresar_producto_bodega(request, detalle_pk):
+    """
+     Regresa existencias de una minibodega al inventario principal.
+
+    Valida que la solicitud utilice el método POST y que la cantidad
+    solicitada sea mayor a cero y no supere las existencias disponibles.
+    Descuenta la cantidad de la minibodega, actualiza su inventario
+    inicial y elimina el detalle si las existencias llegan a cero.
+
+    Incrementa el stock del producto en la bodega principal y registra
+    el movimiento mediante una entrada de producto terminado.
+    Todas las modificaciones se realizan dentro de una transacción
+    atómica para mantener la consistencia de los inventarios.
+
+    Args:
+        request (HttpRequest): Solicitud POST con un cuerpo JSON que
+            contiene la cantidad de producto que se desea regresar.
+        detalle_pk (int): Identificador del detalle de inventario
+            de la minibodega.
+
+    Returns:
+        JsonResponse: Resultado de la operación, indicando si el retorno
+            fue exitoso o el motivo por el que no pudo realizarse.
+    """
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -1191,6 +1323,22 @@ from .forms import MiniBodegaForm, FiltroDevolucionesForm
 @login_required
 @requiere_roles("Producto Terminado","Recursos Humanos")
 def agregar_minibodega(request):
+    """
+    Permite registrar una nueva minibodega en el sistema.
+
+    Muestra el formulario de registro mediante GET y procesa los datos
+    recibidos mediante POST. Valida la información antes de guardar
+    la minibodega y muestra mensajes de éxito o error según el resultado.
+
+    Args:
+        request (HttpRequest): Solicitud HTTP del usuario, que puede
+            contener los datos del formulario de registro.
+
+    Returns:
+        HttpResponse | HttpResponseRedirect: Formulario de registro
+            o redirección al listado de minibodegas tras guardar
+            correctamente la información.
+    """
     if request.method == 'POST':
         form = MiniBodegaForm(request.POST)
         if form.is_valid():
@@ -1211,55 +1359,59 @@ def agregar_minibodega(request):
 
 ##Nuevas apis 
 
-"""
-{
-  "ventas": [
-    {
-      "uuid": "11111111-1111-1111-1111-111111111111",
-      "usuario_id": 2,
-      "cliente_id": 10,
-      "total": 150.00,
-      "tipo_venta": "CREDITO",
-      "fecha": "2026-05-19T10:02:10"
-    },
-    {
-      "uuid": "22222222-2222-2222-2222-222222222222",
-      "usuario_id": 2,
-      "cliente_id": null,
-      "total": 80.00,
-      "tipo_venta": "CONTADO",
-      "fecha": "2026-05-19T11:15:00"
-    }
-  ],
-  "detalles": [
-    {
-      "uuid": "aaaaaaa1-aaaa-aaaa-aaaa-aaaaaaaaaaa1",
-      "venta_uuid": "11111111-1111-1111-1111-111111111111",
-      "producto_variacion_id": 5,
-      "cantidad": 2,
-      "precio_unitario": 50.00,
-      "nombre_producto": "Coca 600ml"
-    }
-  ]
-}
-"""
 @api_view(['POST'])
 @permission_classes([DispositivoActivoPermission])
 def sync_ventas(request):
-    data = request.data
+    """
+    Sincroniza las ventas y sus detalles enviados desde la aplicación Android.
 
+    Registra las ventas evitando duplicados mediante UUID, valida los usuarios
+    y clientes asociados, y determina el estado de pago según el tipo de venta.
+    Actualiza el saldo de los clientes cuando se registran ventas a crédito
+    y conserva las fechas originales de las operaciones.
+
+    Posteriormente, registra los detalles asociados a cada venta, evitando
+    duplicados. Todas las operaciones se realizan dentro de una transacción
+    atómica para mantener la integridad de los registros.
+
+    Args:
+        request (Request): Solicitud POST con las listas de ventas y detalles.
+
+    Returns:
+        Response: Confirmación de la sincronización realizada.
+
+    Ejemplo de solicitud:
+        {
+            "ventas": [
+                {
+                    "uuid": "11111111-1111-1111-1111-111111111111",
+                    "usuario_id": 2,
+                    "cliente_id": 10,
+                    "total": 150.00,
+                    "tipo_venta": "CREDITO",
+                    "fecha": "2026-05-19T10:02:10"
+                }
+            ],
+            "detalles": [
+                {
+                    "uuid": "aaaaaaa1-aaaa-aaaa-aaaa-aaaaaaaaaaa1",
+                    "venta_uuid": "11111111-1111-1111-1111-111111111111",
+                    "producto_variacion_id": 5,
+                    "cantidad": 2,
+                    "precio_unitario": 50.00,
+                    "nombre_producto": "Coca 600ml"
+                }
+            ]
+        }
+    """
+    data = request.data
     ventas = data.get('ventas', [])
     detalles = data.get('detalles', [])
-
     ventas_cache = {}
 
     with transaction.atomic():
-
-        # =========================
-        # 🔥 VENTAS
-        # =========================
+        # Registrar ventas
         for v in ventas:
-
             if Venta.objects.filter(uuid=v.get('uuid')).exists():
                 continue
 
@@ -1267,109 +1419,100 @@ def sync_ventas(request):
             if not usuario:
                 continue
 
-            cliente = None
-            if v.get('cliente_id'):
-                cliente = Cliente.objects.filter(id=v.get('cliente_id')).first()
-
+            cliente = Cliente.objects.filter(id=v.get('cliente_id')).first() if v.get('cliente_id') else None
             total = Decimal(str(v.get('total', 0)))
             tipo = v.get('tipo_venta', 'CONTADO')
 
             if total <= 0:
                 continue
 
-            # 🔥 lógica de pago
-            if tipo == "CONTADO":
-                estado = "PAGADO"
-                saldo = 0
-            else:
-                estado = "PENDIENTE"
-                saldo = total
+            estado = "PAGADO" if tipo == "CONTADO" else "PENDIENTE"
+            saldo = 0 if tipo == "CONTADO" else total
 
-            # 🔥 FECHA (OBLIGATORIA)
             fecha_str = v.get('fecha')
-
             if fecha_str:
                 try:
                     fecha = datetime.fromisoformat(fecha_str)
-
-                 # 🔥 convertir a timezone si viene sin zona
                     if timezone.is_naive(fecha):
                         fecha = timezone.make_aware(fecha, timezone.get_current_timezone())
-
                 except:
                     fecha = timezone.now()
             else:
                 fecha = timezone.now()
 
             venta = Venta.objects.create(
-                uuid=v.get('uuid'),
-                cliente=cliente,
-                usuario=usuario,
-                total=total,
-                tipo_venta=tipo,
-                estado_pago=estado,
-                saldo_pendiente=saldo,
-                fecha=fecha
+                uuid=v.get('uuid'), cliente=cliente, usuario=usuario,
+                total=total, tipo_venta=tipo, estado_pago=estado,
+                saldo_pendiente=saldo, fecha=fecha
             )
 
-            # 🔥 actualizar cliente si es crédito
             if tipo == "CREDITO" and cliente:
                 cliente.saldo_adeudo += Decimal(str(total))
                 cliente.save()
 
             ventas_cache[str(v.get('uuid'))] = venta
 
-        # =========================
-        # 🔥 DETALLES
-        # =========================
+        # Registrar detalles de ventas
         for d in detalles:
-
             if VentaDetalle.objects.filter(uuid=d.get('uuid')).exists():
                 continue
 
-            venta = ventas_cache.get(d.get('venta_uuid')) \
-                or Venta.objects.filter(uuid=d.get('venta_uuid')).first()
+            venta = ventas_cache.get(d.get('venta_uuid')) or Venta.objects.filter(
+                uuid=d.get('venta_uuid')
+            ).first()
 
             if not venta:
                 raise Exception(f"Venta no encontrada para detalle {d.get('uuid')}")
 
             VentaDetalle.objects.create(
-                uuid=d.get('uuid'),
-                venta=venta,
+                uuid=d.get('uuid'), venta=venta,
                 producto_variacion_id=d.get('producto_variacion_id'),
                 cantidad=d.get('cantidad'),
                 precio_unitario=d.get('precio_unitario'),
                 nombre_producto=d.get('nombre_producto', 'Producto')
             )
 
-    return Response({
-        "message": "Ventas sincronizadas correctamente"
-    })
+    return Response({"message": "Ventas sincronizadas correctamente"})
 
 
-"""
-{
-  "abonos": [
-    {
-      "uuid": "33333333-3333-3333-3333-333333333333",
-      "venta_uuid": "11111111-1111-1111-1111-111111111111",
-      "usuario_id": 5,
-      "monto": 50.00,
-      "fecha": "2026-05-19T10:02:10"
-    },
-    {
-      "uuid": "44444444-4444-4444-4444-444444444444",
-      "venta_uuid": "11111111-1111-1111-1111-111111111111",
-      "usuario_id": 5,
-      "monto": 100.00,
-      "fecha": "2026-05-19T11:15:00"
-    }
-  ]
-}
-"""
+
+
 @api_view(['POST'])
 @permission_classes([DispositivoActivoPermission])
 def sync_abonos(request):
+    """
+    Sincroniza los abonos registrados desde la aplicación Android.
+
+    Evita duplicados mediante UUID y verifica la existencia de la venta
+    y el usuario asociados. Valida el monto y conserva la fecha original
+    del abono, utilizando la fecha actual cuando no está disponible.
+
+    Actualiza el saldo pendiente y estado de pago de cada venta, además
+    del saldo adeudado por el cliente correspondiente. Todas las operaciones
+    se ejecutan dentro de una transacción atómica.
+
+    Args:
+        request (Request): Solicitud POST con una lista de abonos en JSON.
+
+    Returns:
+        Response: Confirmación de la sincronización realizada.
+
+    Raises:
+        Exception: Si alguno de los abonos contiene un monto no válido.
+
+    Ejemplo de solicitud:
+        {
+            "abonos": [
+                {
+                    "uuid": "33333333-3333-3333-3333-333333333333",
+                    "venta_uuid": "11111111-1111-1111-1111-111111111111",
+                    "usuario_id": 5,
+                    "monto": 50.00,
+                    "fecha": "2026-05-19T10:02:10"
+                }
+            ]
+        }
+    """
     data = request.data
     abonos = data.get('abonos', [])
 
@@ -1458,55 +1601,87 @@ def sync_abonos(request):
     })
 
 
-
-
-
-"""
-{
-  "devoluciones": [
-    {
-      "uuid": "11111111-1111-1111-1111-111111111111",
-      "tipo": "Devolución de cliente",
-      "cliente_id": 10,
-      "usuario_id": 3,
-      "mini_bodega_id": 1,
-      "fecha": "2026-10-03T14:30:00",
-      "descripcion": ""
-    }
-  ],
-  "detalles": [
-    {
-      "uuid": "22222222-2222-2222-2222-222222222222",
-      "devolucion_uuid": "11111111-1111-1111-1111-111111111111",
-      "producto_variacion_id": 5,
-      "cantidad": 2,
-      "precio_unitario": 20.00
-    }
-  ],
-  "mermas": [
-    {
-      "uuid": "33333333-3333-3333-3333-333333333333",
-      "mini_bodega_id": 1,
-      "producto_variacion_id": 5,
-      "cantidad": 2,
-      "devolucion_uuid": "11111111-1111-1111-1111-111111111111"
-    }
-  ],
-  "sustituciones": [
-    {
-      "uuid": "44444444-4444-4444-4444-444444444444",
-      "devolucion_uuid": "11111111-1111-1111-1111-111111111111",
-      "devolucion_detalle_uuid": "22222222-2222-2222-2222-222222222222",
-      "producto_variacion_id": 8,
-      "cantidad": 1,
-      "precio_unitario": 40.00
-    }
-  ]
-}
-"""
 @api_view(['POST'])
 @permission_classes([DispositivoActivoPermission])
 def sync_devoluciones(request):
+    """
+    Sincroniza las devoluciones registradas desde la aplicación Android.
+
+    Procesa devoluciones, detalles, mermas y sustituciones, evitando
+    registros duplicados mediante UUID. Verifica la existencia de los
+    usuarios y minibodegas asociados, conserva las fechas originales
+    y registra las diferencias monetarias y formas de liquidación.
+
+    Valida que las sustituciones correspondan a los detalles de sus
+    devoluciones y que sus cantidades y precios sean válidos.
+    Todas las operaciones se ejecutan dentro de una transacción atómica
+    para garantizar la integridad de los registros.
+
+    Args:
+        request (Request): Solicitud POST con un cuerpo JSON que contiene
+            las listas de devoluciones, detalles, mermas y sustituciones.
+
+    Returns:
+        Response: Confirmación de la sincronización completada correctamente.
+
+    Raises:
+        ValueError: Si una sustitución no corresponde al detalle de su
+            devolución o contiene cantidades o precios inválidos.
+        Devolucion.DoesNotExist: Si no existe una devolución referenciada.
+        DevolucionDetalle.DoesNotExist: Si no existe un detalle referenciado
+            por una sustitución.
+
+    Ejemplo de solicitud:
+        {
+            "devoluciones": [
+                {
+                    "uuid": "11111111-1111-1111-1111-111111111111",
+                    "tipo": "Devolución de cliente",
+                    "cliente_id": 10,
+                    "usuario_id": 3,
+                    "mini_bodega_id": 1,
+                    "fecha": "2026-10-03T14:30:00",
+                    "descripcion": "",
+                    "diferencia_dinero": 0,
+                    "tipo_diferencia": "SIN_DIFERENCIA",
+                    "forma_liquidacion": "EFECTIVO"
+                }
+            ],
+            "detalles": [
+                {
+                    "uuid": "22222222-2222-2222-2222-222222222222",
+                    "devolucion_uuid": "11111111-1111-1111-1111-111111111111",
+                    "producto_variacion_id": 5,
+                    "cantidad": 2,
+                    "precio_unitario": 20.00
+                }
+            ],
+            "mermas": [
+                {
+                    "uuid": "33333333-3333-3333-3333-333333333333",
+                    "mini_bodega_id": 1,
+                    "producto_variacion_id": 5,
+                    "cantidad": 2,
+                    "devolucion_uuid": "11111111-1111-1111-1111-111111111111"
+                }
+            ],
+            "sustituciones": [
+                {
+                    "uuid": "44444444-4444-4444-4444-444444444444",
+                    "devolucion_uuid": "11111111-1111-1111-1111-111111111111",
+                    "devolucion_detalle_uuid": "22222222-2222-2222-2222-222222222222",
+                    "producto_variacion_id": 8,
+                    "cantidad": 1,
+                    "precio_unitario": 40.00
+                }
+            ]
+        }
+
+    Ejemplo de respuesta:
+        {
+            "message": "Sincronización completada correctamente"
+        }
+    """
     data = request.data
     devoluciones = data.get('devoluciones', [])
     detalles = data.get('detalles', [])
@@ -1626,6 +1801,60 @@ def sync_devoluciones(request):
 @api_view(['POST'])
 @permission_classes([DispositivoActivoPermission])
 def sync_cancelaciones(request):
+    """
+    Sincroniza las cancelaciones de ventas registradas desde la aplicacion android
+
+    Procesa las cancelaciones y su detalles , evitando registros duplicados
+    meidante uuid. Verifica la existencia de los usuarios, minibodegas y
+    productos asociados, y conserva las fechas originales de las operaciones.
+
+    Registra cada cancelacion con su venta de referencia, motivo e importe 
+    total, junto con los productos y cantidades correspondientes.
+    Todas las operaciones se ejecutan dentro de una transaccion atomica
+    para mantener la integridad de los registros.
+
+    Args:
+        request (Request): Solicitud POST con un cuerpo JSON que contiene
+            las listas de cancelaciones a detalle
+
+    Returns:
+        Response:Confirmacion de la sincronizacion completa correctamente.
+    
+    
+    Raises:
+        CancelacionVenta.DoesNotExist: Si no existe la cancelación
+            referenciada por alguno de los detalles.
+
+    Ejemplo de solicitud:
+        {
+            "cancelaciones": [
+                {
+                    "uuid": "11111111-1111-1111-1111-111111111111",
+                    "venta_uuid": "22222222-2222-2222-2222-222222222222",
+                    "usuario_id": 3,
+                    "mini_bodega_id": 1,
+                    "fecha": "2026-10-03T14:30:00",
+                    "total": 150.00,
+                    "motivo": "Error al registrar la venta"
+                }
+            ],
+            "detalles": [
+                {
+                    "uuid": "33333333-3333-3333-3333-333333333333",
+                    "cancelacion_uuid": "11111111-1111-1111-1111-111111111111",
+                    "producto_variacion_id": 5,
+                    "nombre_producto": "Producto de ejemplo",
+                    "cantidad": 2,
+                    "precio_unitario": 75.00
+                }
+            ]
+        }
+
+    Ejemplo de respuesta:
+        {
+            "message": "Cancelaciones sincronizadas correctamente"
+        }
+    """
     data = request.data
     cancelaciones = data.get('cancelaciones', [])
     detalles = data.get('detalles', [])
@@ -1699,6 +1928,75 @@ def sync_cancelaciones(request):
 @api_view(['POST'])
 @permission_classes([DispositivoActivoPermission])
 def sync_cancelaciones_devoluciones(request):
+    """
+    Sincroniza las cancelaciones de devoluciones desde la aplicación Android.
+
+    Procesa las cancelaciones, sus detalles y productos de sustitución,
+    evitando registros duplicados mediante UUID. Verifica la existencia
+    de los usuarios, minibodegas y productos asociados, y conserva las
+    fechas originales de las operaciones.
+
+    Registra el motivo, importe total, diferencias monetarias y forma
+    de liquidación de cada cancelación. Los detalles y sustituciones
+    se vinculan con su cancelación correspondiente.
+
+    Todas las operaciones se ejecutan dentro de una transacción atómica
+    para mantener la integridad de los registros.
+
+    Args:
+        request (Request): Solicitud POST con un cuerpo JSON que contiene
+            las listas de cancelaciones, detalles y sustituciones.
+
+    Returns:
+        Response: Confirmación de la sincronización completada correctamente.
+
+    Raises:
+        CancelacionDevolucion.DoesNotExist: Si no existe la cancelación
+            referenciada por un detalle o una sustitución.
+
+    Ejemplo de solicitud:
+        {
+            "cancelaciones": [
+                {
+                    "uuid": "11111111-1111-1111-1111-111111111111",
+                    "devolucion_uuid": "22222222-2222-2222-2222-222222222222",
+                    "usuario_id": 3,
+                    "mini_bodega_id": 1,
+                    "fecha": "2026-10-03T14:30:00",
+                    "total": 100.00,
+                    "motivo": "Error al registrar la devolución",
+                    "diferencia_dinero": 20.00,
+                    "tipo_diferencia": "CLIENTE_PAGA",
+                    "forma_liquidacion": "EFECTIVO"
+                }
+            ],
+            "detalles": [
+                {
+                    "uuid": "33333333-3333-3333-3333-333333333333",
+                    "cancelacion_uuid": "11111111-1111-1111-1111-111111111111",
+                    "producto_variacion_id": 5,
+                    "nombre_producto": "Producto devuelto",
+                    "cantidad": 2,
+                    "precio_unitario": 50.00
+                }
+            ],
+            "sustituciones": [
+                {
+                    "uuid": "44444444-4444-4444-4444-444444444444",
+                    "cancelacion_uuid": "11111111-1111-1111-1111-111111111111",
+                    "producto_variacion_id": 8,
+                    "nombre_producto": "Producto sustituto",
+                    "cantidad": 2,
+                    "precio_unitario": 40.00
+                }
+            ]
+        }
+
+    Ejemplo de respuesta:
+        {
+            "message": "Cancelaciones de devoluciones sincronizadas correctamente"
+        }
+    """
     data = request.data
 
     cancelaciones = data.get('cancelaciones', [])
@@ -1826,6 +2124,92 @@ def sync_cancelaciones_devoluciones(request):
 @permission_classes([DispositivoActivoPermission])
 @transaction.atomic
 def sync_rotaciones(request):
+    """
+    Sincroniza las rotaciones de productos registradas desde la aplicación Android.
+
+    Procesa rotaciones, detalles y sustituciones, evitando registros duplicados
+    mediante UUID. Valida el formato de los datos, las fechas, los valores
+    decimales y las diferencias económicas asociadas a cada operación.
+
+    Comprueba que las sustituciones correspondan a los detalles de su
+    rotación y registra las cantidades, precios y productos involucrados.
+    Todas las operaciones se ejecutan dentro de una transacción atómica,
+    revirtiendo los cambios si ocurre algún error.
+
+    Args:
+        request (Request): Solicitud POST con un cuerpo JSON que contiene
+            las listas de rotaciones, detalles y sustituciones.
+
+    Returns:
+        Response: Confirmación de la sincronización y cantidad de registros
+            recibidos por categoría. Devuelve HTTP 400 si los datos son
+            inválidos o se produce un error durante el procesamiento.
+
+    Ejemplo de solicitud:
+        {
+            "rotaciones": [
+                {
+                    "uuid": "11111111-1111-1111-1111-111111111111",
+                    "cliente_id": 10,
+                    "usuario_id": 3,
+                    "mini_bodega_id": 1,
+                    "fecha": "2026-10-03T14:30:00",
+                    "descripcion": "Rotación de productos en buen estado",
+                    "diferencia_dinero": 0.00,
+                    "tipo_diferencia": "SIN_DIFERENCIA",
+                    "forma_liquidacion": "EFECTIVO",
+                    "created_at": "2026-10-03T14:30:00"
+                }
+            ],
+            "detalles": [
+                {
+                    "uuid": "22222222-2222-2222-2222-222222222222",
+                    "rotacion_uuid": "11111111-1111-1111-1111-111111111111",
+                    "producto_variacion_id": 5,
+                    "nombre_producto": "Producto devuelto",
+                    "cantidad": 2,
+                    "precio_unitario": 20.00
+                }
+            ],
+            "sustituciones": [
+                {
+                    "uuid": "33333333-3333-3333-3333-333333333333",
+                    "rotacion_uuid": "11111111-1111-1111-1111-111111111111",
+                    "rotacion_detalle_uuid": "22222222-2222-2222-2222-222222222222",
+                    "producto_variacion_id": 8,
+                    "nombre_producto": "Producto sustituto",
+                    "cantidad": 1,
+                    "precio_unitario": 40.00,
+                    "created_at": "2026-10-03T14:30:00"
+                }
+            ]
+        }
+
+    Ejemplo de respuesta exitosa (HTTP 200):
+        {
+            "message": "Rotaciones sincronizadas correctamente",
+            "rotaciones": 1,
+            "detalles": 1,
+            "sustituciones": 1
+        }
+
+    Ejemplo de respuesta de error (HTTP 400):
+        {
+            "error": "La sustitución no corresponde al detalle de esta rotación"
+        }
+
+    Notes:
+        - Los registros existentes se reutilizan mediante get_or_create().
+        - Las fechas deben tener un formato ISO 8601 válido.
+        - Los valores decimales deben ser finitos.
+        - La diferencia económica no puede ser negativa.
+        - Los tipos de diferencia permitidos son CLIENTE_PAGO,
+          REPARTIDOR_PAGO y SIN_DIFERENCIA.
+        - La única forma de liquidación permitida es EFECTIVO.
+        - Los contadores de respuesta representan registros recibidos,
+          no necesariamente registros nuevos.
+        - Las excepciones se capturan y se devuelven como respuestas HTTP 400.
+    """
     rotaciones_data = request.data.get('rotaciones', [])
     detalles_data = request.data.get('detalles', [])
     sustituciones_data = request.data.get('sustituciones', [])
@@ -1938,6 +2322,78 @@ def sync_rotaciones(request):
 @permission_classes([DispositivoActivoPermission])
 @transaction.atomic
 def sync_cancelaciones_rotaciones(request):
+    """
+    Sincroniza las cancelaciones de rotaciones desde la aplicación Android.
+
+    Procesa las cancelaciones y sus detalles, evitando registros duplicados
+    mediante UUID. Verifica la existencia de los usuarios, minibodegas y
+    productos asociados, y registra el motivo de cada cancelación.
+
+    Valida las diferencias económicas, formas de liquidación, cantidades,
+    precios y tipos de movimiento de los productos involucrados.
+    Todas las operaciones se ejecutan dentro de una transacción atómica,
+    revirtiendo los cambios cuando se produce un error controlado.
+
+    Args:
+        request (Request): Solicitud POST con un cuerpo JSON que contiene
+            las listas de cancelaciones y detalles.
+
+    Returns:
+        Response: Confirmación de la sincronización y cantidad de registros
+            recibidos por categoría. Devuelve HTTP 400 cuando el formato
+            es inválido o se produce un error de validación controlado.
+
+    Ejemplo de solicitud:
+        {
+            "cancelaciones": [
+                {
+                    "uuid": "11111111-1111-1111-1111-111111111111",
+                    "rotacion_uuid": "22222222-2222-2222-2222-222222222222",
+                    "usuario_id": 3,
+                    "mini_bodega_id": 1,
+                    "fecha": "2026-10-03T14:30:00",
+                    "descripcion": "Cancelación de rotación registrada",
+                    "diferencia_dinero": 0.00,
+                    "tipo_diferencia": "SIN_DIFERENCIA",
+                    "forma_liquidacion": "EFECTIVO",
+                    "motivo": "Error al registrar los productos",
+                    "created_at": "2026-10-03T14:35:00"
+                }
+            ],
+            "detalles": [
+                {
+                    "uuid": "33333333-3333-3333-3333-333333333333",
+                    "cancelacion_uuid": "11111111-1111-1111-1111-111111111111",
+                    "producto_variacion_id": 5,
+                    "nombre_producto": "Producto recibido",
+                    "cantidad": 2,
+                    "precio_unitario": 20.00,
+                    "tipo_movimiento": "RECIBIDO"
+                },
+                {
+                    "uuid": "44444444-4444-4444-4444-444444444444",
+                    "cancelacion_uuid": "11111111-1111-1111-1111-111111111111",
+                    "producto_variacion_id": 8,
+                    "nombre_producto": "Producto entregado",
+                    "cantidad": 1,
+                    "precio_unitario": 40.00,
+                    "tipo_movimiento": "ENTREGADO"
+                }
+            ]
+        }
+
+    Ejemplo de respuesta exitosa (HTTP 200):
+        {
+            "message": "Cancelaciones de rotaciones sincronizadas correctamente",
+            "cancelaciones": 1,
+            "detalles": 2
+        }
+
+    Ejemplo de respuesta de error (HTTP 400):
+        {
+            "error": "El motivo de cancelación es obligatorio"
+        }
+    """
     cancelaciones = request.data.get('cancelaciones', [])
     detalles = request.data.get('detalles', [])
 
@@ -2035,17 +2491,56 @@ from .models import Venta
 @method_decorator(login_required,'dispatch')
 @method_decorator(requiere_roles("Producto Terminado","Recursos Humanos"), name='dispatch')
 class DetalleVentaView(DetailView):
+    """
+    Muestra el detalle de una venta registrada en el sistema.
+
+    Presenta los productos vendidos, abonos realizados e información
+    económica de la operación. Calcula el subtotal, descuento histórico
+    y porcentaje aplicado, comparándolo con el descuento actual del cliente.
+
+    El acceso está restringido a usuarios autenticados con los roles
+    Producto Terminado o Recursos Humanos.
+    """
     model = Venta
     template_name = 'appMovil/ventas/detalle_venta.html'
     context_object_name = 'venta'
 
     def get_queryset(self):
+        """
+        Obtiene las ventas con sus productos y abonos relacionados.
+
+        Utiliza prefetch_related para optimizar las consultas de los detalles
+        de venta, variaciones de productos y usuarios asociados a los abonos.
+
+        Returns:
+            QuerySet: Conjunto de ventas con sus relaciones precargadas.
+        """
         return super().get_queryset().prefetch_related(
             'ventadetalle_set__producto_variacion',
             'abonos__usuario'
         )
 
     def get_context_data(self, **kwargs):
+        """
+            Agrega al contexto los cálculos económicos y descuentos de la venta.
+
+            Calcula el subtotal a partir de los detalles registrados y obtiene
+            el descuento histórico mediante la diferencia entre dicho subtotal
+            y el total almacenado. Determina el porcentaje aplicado originalmente
+            y lo compara con el descuento actual del cliente, utilizando una
+            tolerancia de 0.01 puntos porcentuales.
+
+            Args:
+                **kwargs: Argumentos adicionales proporcionados por DetailView.
+
+            Returns:
+                dict: Contexto de la plantilla con los siguientes valores:
+                    - subtotal_venta: Subtotal antes del descuento.
+                    - monto_descuento: Importe descontado en la venta.
+                    - porcentaje_descuento_venta: Porcentaje histórico aplicado.
+                    - porcentaje_descuento_cliente: Porcentaje actual del cliente.
+                    - descuento_coincide: Indica si ambos porcentajes coinciden.
+        """
         context = super().get_context_data(**kwargs)
 
         venta = self.object
@@ -2108,11 +2603,36 @@ from .models import Devolucion
 @method_decorator(login_required,'dispatch')
 @method_decorator(requiere_roles("Producto Terminado","Recursos Humanos"), name='dispatch')
 class DetalleDevolucionView(DetailView):
+    """
+    Muestra el detalle de una devolución registrada en el sistema.
+
+    Presenta la información del cliente, usuario, minibodega, productos
+    devueltos y sustituciones realizadas. Incluye el cálculo del valor
+    total de los productos devueltos.
+
+    El acceso está restringido a usuarios autenticados con los roles
+    Producto Terminado o Recursos Humanos.
+    """
     model = Devolucion
     template_name = 'appMovil/devoluciones/detalle_devolucion.html'
     context_object_name = 'devolucion'
 
     def get_queryset(self):
+        """
+        Obtiene las devoluciones con sus relaciones y totales calculados.
+
+        Utiliza select_related para cargar el cliente, usuario y minibodega,
+        y prefetch_related para optimizar las consultas de los productos
+        devueltos, sustituciones y sus respectivas presentaciones.
+
+        Calcula el importe total de cada devolución mediante la suma
+        de las cantidades multiplicadas por sus precios unitarios.
+
+        Returns:
+            QuerySet: Conjunto de devoluciones con sus relaciones precargadas
+                y el campo calculado 'total', correspondiente al valor de
+                los productos devueltos.
+        """
         return super().get_queryset().select_related(
             'cliente',
             'usuario',
@@ -2133,9 +2653,95 @@ class DetalleDevolucionView(DetailView):
 @method_decorator(login_required, name='dispatch')
 @method_decorator(requiere_roles("Producto Terminado", "Recursos Humanos"), name='dispatch')
 class ResumenOperacionesView(TemplateView):
+    """
+    Muestra el resumen diario de operaciones de los repartidores.
+
+    Centraliza las ventas, abonos, devoluciones y rotaciones registradas
+    en el sistema, permitiendo consultar la información por fecha y
+    repartidor.
+
+    Presenta los movimientos realizados, sus importes, balances
+    económicos, cantidades de operaciones y el efectivo total
+    correspondiente a la jornada.
+
+    El acceso está restringido a usuarios autenticados con los roles
+    Producto Terminado o Recursos Humanos.
+    """
     template_name = 'appMovil/resumen_operaciones.html'
 
     def get_context_data(self, **kwargs):
+        """
+        Genera el contexto del resumen de operaciones para la fecha seleccionada.
+
+        Procesa los filtros de fecha y repartidor, utilizando la fecha actual
+        cuando no se proporciona una. Consulta las ventas, abonos, devoluciones
+        y rotaciones correspondientes, optimizando las relaciones mediante
+        select_related.
+
+        Calcula los importes de ventas de contado y crédito, abonos recibidos,
+        valores de productos devueltos y balances económicos derivados de
+        devoluciones y rotaciones.
+
+        Determina el efectivo total de la jornada sumando las ventas de
+        contado, los abonos y los balances de devoluciones y rotaciones.
+        Incorpora los movimientos ordenados, indicadores económicos y
+        cantidades de operaciones al contexto de la plantilla.
+
+        Args:
+            **kwargs: Argumentos adicionales proporcionados por TemplateView.
+
+        Returns:
+            dict: Contexto de la plantilla con los siguientes grupos de datos:
+
+                Filtros:
+                    - form: Formulario de filtros.
+                    - fecha_seleccionada: Fecha consultada.
+                    - repartidor_seleccionado: Repartidor seleccionado.
+
+                Operaciones:
+                    - ventas: Ventas registradas.
+                    - abonos: Abonos realizados.
+                    - devoluciones: Devoluciones con sus importes calculados.
+                    - rotaciones: Rotaciones con sus importes calculados.
+
+                Ventas y abonos:
+                    - total_ventas: Importe total de ventas.
+                    - total_contado: Ventas de contado.
+                    - total_credito: Ventas a crédito.
+                    - total_abonos: Importe de abonos recibidos.
+                    - total_recibido: Suma de contado y abonos.
+
+                Devoluciones:
+                    - total_devoluciones_recibido: Efectivo recibido.
+                    - total_devoluciones_entregado: Efectivo entregado.
+                    - balance_devoluciones: Diferencia entre ambos importes.
+                    - total_productos_devueltos: Valor de productos devueltos.
+
+                Rotaciones:
+                    - total_rotaciones_recibido: Efectivo recibido.
+                    - total_rotaciones_entregado: Efectivo entregado.
+                    - balance_rotaciones: Diferencia entre ambos importes.
+
+                Resumen general:
+                    - total_efectivo: Efectivo neto de la jornada.
+                    - cantidad_ventas: Número de ventas.
+                    - cantidad_abonos: Número de abonos.
+                    - cantidad_devoluciones: Número de devoluciones.
+                    - cantidad_rotaciones: Número de rotaciones.
+
+        Notes:
+            - La fecha predeterminada es la fecha local actual.
+            - El filtro de repartidor se aplica a todas las operaciones.
+            - Los importes monetarios utilizan Decimal.
+            - El total de ventas incluye operaciones de contado y crédito.
+            - El total recibido incluye únicamente contado y abonos.
+            - El efectivo neto incorpora los balances de devoluciones
+            y rotaciones.
+            - Los productos devueltos se valoran independientemente
+            de los movimientos de efectivo.
+            - Las operaciones se ordenan por fecha e identificador
+            de forma descendente.
+        """
         context = super().get_context_data(**kwargs)
 
         # =========================================================
@@ -2297,16 +2903,59 @@ class ResumenOperacionesView(TemplateView):
 @method_decorator(login_required, name='dispatch')
 @method_decorator(requiere_roles("Producto Terminado", "Recursos Humanos"), name='dispatch')
 class DetalleRotacionView(DetailView):
+    """
+    Muestra el detalle de una rotación de productos registrada en el sistema.
+
+    Presenta la información del cliente, repartidor y minibodega, junto
+    con los productos recibidos y entregados durante la operación.
+
+    Calcula los valores monetarios de ambos grupos de productos y permite
+    regresar al resumen de operaciones conservando los filtros de consulta.
+
+    El acceso está restringido a usuarios autenticados con los roles
+    Producto Terminado o Recursos Humanos.
+    """
     model = Rotacion
     template_name = 'appMovil/rotaciones/detalle_rotacion.html'
     context_object_name = 'rotacion'
 
     def get_queryset(self):
+        """
+        Obtiene las rotaciones con sus relaciones precargadas.
+
+        Utiliza select_related para cargar el cliente, usuario y minibodega,
+        y prefetch_related para obtener los detalles y sustituciones asociados,
+        reduciendo las consultas adicionales a la base de datos.
+
+        Returns:
+            QuerySet: Conjunto de rotaciones con sus relaciones precargadas.
+        """
         return Rotacion.objects.select_related('cliente', 'usuario', 'mini_bodega').prefetch_related(
             'rotaciondetalle_set', 'rotacionsustitucion_set'
         )
 
     def get_context_data(self, **kwargs):
+        """
+        Agrega al contexto los productos y cálculos económicos de la rotación.
+
+        Obtiene los detalles de los productos recibidos y las sustituciones
+        entregadas. Calcula el valor total de cada grupo multiplicando
+        las cantidades por sus respectivos precios unitarios.
+
+        También genera la URL de regreso al resumen de operaciones,
+        conservando los filtros de fecha y repartidor.
+
+        Args:
+            **kwargs: Argumentos adicionales proporcionados por DetailView.
+
+        Returns:
+            dict: Contexto de la plantilla con los siguientes valores:
+                - detalles_rotacion: Productos recibidos en la rotación.
+                - sustituciones_rotacion: Productos entregados como sustitución.
+                - total_devuelto: Valor monetario de los productos recibidos.
+                - total_entregado: Valor monetario de los productos entregados.
+                - url_regreso: URL del resumen con los filtros correspondientes.
+        """
         context = super().get_context_data(**kwargs)
         rotacion = self.object
         detalles = list(rotacion.rotaciondetalle_set.all())
@@ -2326,6 +2975,27 @@ class DetalleRotacionView(DetailView):
         return context
 
     def obtener_url_regreso(self, rotacion):
+        """
+        Genera la URL de regreso al resumen de operaciones.
+
+        Recupera los filtros de fecha y repartidor de los parámetros GET.
+        Si no se proporciona una fecha, utiliza la fecha local de la rotación.
+        Incluye el repartidor únicamente cuando su identificador es numérico.
+
+        Args:
+            rotacion (Rotacion): Instancia de la rotación consultada.
+
+        Returns:
+            str: URL del resumen de operaciones con los filtros aplicados.
+
+        Ejemplo de resultado:
+            /resumen-operaciones/?fecha=2026-10-03&repartidor=3
+
+        Notes:
+            - Conserva la fecha seleccionada cuando está disponible.
+            - Utiliza la fecha de la rotación como valor predeterminado.
+            - Omite el filtro de repartidor si no contiene únicamente dígitos.
+        """
         from django.urls import reverse
         from urllib.parse import urlencode
 
@@ -2348,6 +3018,23 @@ from .models import Cliente, Ruta
 from .forms import CargarCSVForm
 
 def visitas_coinciden(frecuencia_a, semana_a, frecuencia_b, semana_b):
+    """
+    Determina si dos configuraciones de visita coinciden en alguna semana.
+
+    Considera que las visitas coinciden cuando alguna tiene frecuencia
+    semanal, cuando falta una fecha de referencia o cuando ambas visitas
+    quincenales corresponden a la misma alternancia de semanas.
+
+    Args:
+        frecuencia_a (int): Frecuencia de la primera visita (1 o 2).
+        semana_a (date | None): Semana de referencia de la primera visita.
+        frecuencia_b (int): Frecuencia de la segunda visita (1 o 2).
+        semana_b (date | None): Semana de referencia de la segunda visita.
+
+    Returns:
+        bool: True si las visitas coinciden en alguna semana;
+            False si pertenecen a semanas quincenales alternas.
+    """
     if frecuencia_a == 1 or frecuencia_b == 1:
         return True
 
@@ -2361,6 +3048,49 @@ def visitas_coinciden(frecuencia_a, semana_a, frecuencia_b, semana_b):
 @login_required
 @solo_administrador
 def cargar_clientes_csv(request):
+    """
+        Permite registrar clientes y sus configuraciones de visita mediante CSV.
+
+        Presenta el formulario de carga y procesa archivos CSV enviados mediante
+        POST. Admite codificación UTF-8 con BOM y utiliza Latin-1 como alternativa.
+
+        Valida que el archivo contenga las 36 columnas esperadas en el orden
+        establecido, incluyendo los datos generales del cliente y la configuración
+        de visitas para cada día de la semana.
+
+        Comprueba los campos obligatorios, valores numéricos, estado, ruta,
+        días de visita, orden, frecuencia y semanas de referencia. También
+        verifica que los clientes activos no compartan una misma posición
+        de visita en la misma ruta, día y semana coincidente.
+
+        Registra los clientes y sus configuraciones dentro de una transacción
+        atómica, evitando registros parciales cuando ocurre un error.
+
+        Args:
+            request (HttpRequest): Solicitud HTTP que contiene el formulario
+                y, mediante POST, el archivo CSV en el campo 'archivo_csv'.
+
+        Returns:
+            HttpResponse: Renderiza el formulario de carga mediante GET
+                o cuando el formulario no es válido. Redirige a la misma
+                vista después de procesar un archivo válido o detectar
+                un error durante su procesamiento.
+
+        Ejemplo de columnas del CSV:
+            nombre,nombre_negocio,giro,tipo_exhibidor,direccion,localidad,
+            colonia,telefono,observaciones,limite_credito,saldo_adeudo,
+            porcentaje_descuento,ruta_id,estado,dias_visita,
+            orden_miercoles,frecuencia_miercoles,semana_miercoles,...
+
+        Ejemplo de configuración de visitas:
+            dias_visita: "miercoles,viernes"
+            orden_miercoles: "1"
+            frecuencia_miercoles: "1"
+            semana_miercoles: ""
+            orden_viernes: "3"
+            frecuencia_viernes: "2"
+            semana_viernes: "2026-11-04"
+    """
     if request.method == 'POST':
         form = CargarCSVForm(request.POST, request.FILES)
 
@@ -2612,6 +3342,39 @@ from .models import  ProductoVariacion
 @login_required
 @solo_administrador
 def cargar_productos_csv(request):
+    """
+    Permite cargar y actualizar productos terminados mediante un archivo CSV.
+
+    Procesa un archivo CSV con codificación UTF-8, creando las categorías,
+    productos y presentaciones que no existan en la base de datos.
+    Registra o actualiza las variaciones de productos con sus costos,
+    precios, existencias, stock mínimo y códigos de barras.
+
+    Todas las operaciones se ejecutan dentro de una transacción atómica,
+    garantizando que los cambios se reviertan si ocurre algún error.
+
+    Args:
+        request (HttpRequest): Solicitud HTTP que contiene el formulario
+            y el archivo CSV enviado mediante POST.
+
+    Returns:
+        HttpResponse: Renderiza el formulario de carga mediante GET.
+            Después de procesar una solicitud POST, redirige a la vista
+            de carga y muestra un mensaje de éxito o error.
+
+    Ejemplo de contenido CSV:
+        categoria,producto_nombre,presentacion,codigo_barras,costo,precio,stock,stock_min
+        Botanas,Cacahuate japonés,Chico,7501234567890,8.50,15.00,100,20
+        Botanas,Cacahuate japonés,Grande,7501234567891,18.00,30.00,50,10
+        Semillas,Pistache,Mediano,,25.00,40.00,30,5
+
+    Notes:
+        - Solo los administradores autenticados pueden acceder.
+        - El archivo debe tener extensión .csv.
+        - Los códigos de barras vacíos se almacenan como None.
+        - Las variaciones existentes se actualizan en lugar de duplicarse.
+        - Cualquier error durante el procesamiento revierte la transacción.
+    """
     if request.method == 'POST':
         form = CargarCSVForm(request.POST, request.FILES)
 
@@ -2678,7 +3441,32 @@ def cargar_productos_csv(request):
 @login_required
 @solo_administrador
 def registrar_dispositivo(request):
+    """
+    Registra un nuevo dispositivo autorizado para utilizar la aplicación.
 
+    Presenta el formulario de registro y procesa los datos enviados
+    mediante POST. Cuando el formulario es válido, genera una credencial
+    aleatoria y segura utilizando secrets.token_urlsafe.
+
+    Almacena únicamente el hash de la credencial en la base de datos
+    mediante make_password, evitando guardar su valor original.
+    Después del registro, muestra una página con la credencial generada
+    para que el administrador pueda configurarla en el dispositivo.
+
+    Args:
+        request (HttpRequest): Solicitud HTTP con los datos del formulario
+            de registro del dispositivo.
+
+    Returns:
+        HttpResponse: Renderiza el formulario de registro mediante GET
+            o cuando los datos son inválidos. Si el registro es exitoso,
+            muestra la plantilla con el dispositivo y su credencial.
+
+    Notes:
+        - Solo los administradores autenticados pueden acceder.
+        - La credencial se genera con 32 bytes aleatorios.
+        - La credencial original no se almacena en la base de datos.
+    """
     if request.method == "POST":
         form = DispositivoForm(request.POST)
 
@@ -2716,6 +3504,20 @@ def registrar_dispositivo(request):
 @login_required
 @solo_administrador
 def lista_dispositivos(request):
+    """
+    Muestra la lista de dispositivos registrados en el sistema.
+
+    Obtiene todos los dispositivos junto con sus repartidores asociados,
+    utilizando select_related para optimizar las consultas a la base
+    de datos.
+
+    Args:
+        request (HttpRequest): Solicitud HTTP del administrador.
+
+    Returns:
+        HttpResponse: Renderiza la plantilla con el listado de dispositivos
+            y sus respectivos repartidores.
+    """
     dispositivos = Dispositivo.objects.select_related("repartidor").all()
 
     return render(
@@ -2730,6 +3532,26 @@ def lista_dispositivos(request):
 @login_required
 @solo_administrador
 def editar_dispositivo(request, dispositivo_id):
+    """
+    Permite modificar la información de un dispositivo registrado.
+
+    Recupera el dispositivo mediante su identificador y presenta el
+    formulario con sus datos actuales. Procesa las modificaciones
+    enviadas mediante POST y guarda los cambios cuando el formulario
+    es válido.
+
+    Después de actualizar el dispositivo, redirige al listado general.
+    Si el dispositivo no existe, Django devuelve una respuesta HTTP 404.
+
+    Args:
+        request (HttpRequest): Solicitud HTTP con los datos del formulario.
+        dispositivo_id (int): Identificador del dispositivo que se editará.
+
+    Returns:
+        HttpResponse: Renderiza el formulario de edición mediante GET
+            o cuando los datos son inválidos. Si la actualización es
+            exitosa, devuelve una redirección al listado de dispositivos.
+    """
     dispositivo = get_object_or_404(Dispositivo, id=dispositivo_id)
 
     if request.method == "POST":
@@ -2755,6 +3577,18 @@ def editar_dispositivo(request, dispositivo_id):
 @login_required
 @solo_administrador
 def activar_dispositivo(request, dispositivo_id):
+    """
+    Activa un dispositivo registrado en el sistema.
+    Busca el dispositivo mediante su identificador y establece su estado
+    comoa ctivo, permitiendo nuevamente su autenticacion en la API.
+
+    Args:
+        request (HttpResquest): Solicitud del administrador.
+        dispositivo_id (int): Identificador del dispositivo que se activara.
+
+    Returns:
+        HttpResponseRedirect:Redirige al listado de dispositivos despues de actualzair su estado.
+    """
     dispositivo = get_object_or_404(Dispositivo, id=dispositivo_id)
     dispositivo.activo = True
     dispositivo.save(update_fields=["activo"])
@@ -2912,7 +3746,30 @@ def realizar_corte_minibodega(request, pk):
 @login_required
 @requiere_roles("Producto Terminado", "Recursos Humanos")
 def lista_cortes_minibodega(request):
-    cortes =CorteInventarioMiniBodega.objects.select_related(
+    """
+    Muestra los cortes de MiniBodega correspondientes a una fecha.
+
+    Por defecto utiliza el martes más reciente. Permite consultar
+    cualquier otra fecha mediante el parámetro GET 'fecha'.
+
+    Args:
+        request (HttpRequest): Solicitud HTTP del usuario autenticado.
+    Returns:
+        HttpResponse: Renderiza la lista de cortes filtrados por fecha.
+    """
+    hoy = timezone.localdate()
+    dias_desde_martes = (hoy.weekday() - 1) % 7
+    martes_reciente = hoy - timedelta(days=dias_desde_martes)
+
+    fecha_parametro = request.GET.get('fecha')
+    fecha_seleccionada = parse_date(fecha_parametro) if fecha_parametro else martes_reciente
+
+    if fecha_seleccionada is None:
+        fecha_seleccionada = martes_reciente
+
+    cortes = CorteInventarioMiniBodega.objects.filter(
+        fecha__date=fecha_seleccionada
+    ).select_related(
         'mini_bodega',
         'mini_bodega__ruta',
         'mini_bodega__vehiculo',
@@ -2920,10 +3777,11 @@ def lista_cortes_minibodega(request):
     ).order_by('-fecha', '-id')
 
     for corte in cortes:
-        corte.requiere_ajustes=corte.estado=='pendiente'
+        corte.requiere_ajustes = corte.estado == 'pendiente'
 
-    context={
-        'cortes':cortes
+    context = {
+        'cortes': cortes,
+        'fecha_seleccionada': fecha_seleccionada
     }
 
     return render(
@@ -2934,9 +3792,14 @@ def lista_cortes_minibodega(request):
 
 
 
+
 @login_required
 @requiere_roles("Producto Terminado", "Recursos Humanos")
 def detalle_corte_minibodegas(request, corte_id):
+    """
+    Muestra el detalle del corte de MiniBodega y calcula
+    el valor total del inventario registrado en el corte.
+    """
     corte = get_object_or_404(CorteInventarioMiniBodega, id=corte_id)
 
     detalles = ordenar_corte_minibodega(
@@ -2949,11 +3812,18 @@ def detalle_corte_minibodegas(request, corte_id):
         es_detalle_corte=True
     )
 
+    valor_total_inventario = Decimal('0.00')
+    for detalle in detalles:
+        variacion = detalle.mini_bodega_detalle.producto_variacion
+        valor_total_inventario += detalle.stock_real * variacion.precio
+
     context = {
         'corte': corte,
-        'detalles': detalles
+        'detalles': detalles,
+        'valor_total_inventario': valor_total_inventario
     }
     return render(request, 'appMovil/cortes/detalle_corte.html', context)
+
 
 
 
@@ -3250,7 +4120,49 @@ def admin_minibodega_edit(request, pk):
                     return redirect('admin_minibodega_edit', pk=minibodega.pk)
 
                 # =================================================
-                # MODIFICAR CANTIDADES
+                # MODIFICAR VARIAS CANTIDADES
+                # =================================================
+                elif accion == 'modificar_cantidades':
+                    detalles = list(
+                        MiniBodegaDetalle.objects.select_for_update()
+                        .filter(mini_bodega=minibodega)
+                    )
+                    cambios = []
+
+                    for detalle in detalles:
+                        cantidad_inicial = request.POST.get(f'cantidad_inicial_{detalle.id}')
+                        cantidad_actual = request.POST.get(f'cantidad_actual_{detalle.id}')
+
+                        if cantidad_inicial is None or cantidad_actual is None:
+                            raise ValueError(f'Faltan cantidades para el detalle {detalle.id}.')
+
+                        try:
+                            nueva_cantidad_inicial = Decimal(cantidad_inicial)
+                            nueva_cantidad_actual = Decimal(cantidad_actual)
+                        except (InvalidOperation, TypeError, ValueError):
+                            raise ValueError(f'Las cantidades del detalle {detalle.id} no son válidas.')
+
+                        if (not nueva_cantidad_inicial.is_finite() or
+                            not nueva_cantidad_actual.is_finite() or
+                            nueva_cantidad_inicial < 0 or nueva_cantidad_actual < 0):
+                            raise ValueError(f'Las cantidades del detalle {detalle.id} deben ser números no negativos.')
+
+                        if (detalle.cantidad_inicial != nueva_cantidad_inicial or
+                            detalle.cantidad_actual != nueva_cantidad_actual):
+                            detalle.cantidad_inicial = nueva_cantidad_inicial
+                            detalle.cantidad_actual = nueva_cantidad_actual
+                            cambios.append(detalle)
+
+                    if cambios:
+                        MiniBodegaDetalle.objects.bulk_update(
+                            cambios, ['cantidad_inicial', 'cantidad_actual']
+                        )
+
+                    messages.success(request, f'Se actualizaron {len(cambios)} productos correctamente.')
+                    return redirect('admin_minibodega_edit', pk=minibodega.pk)
+
+                # =================================================
+                # MODIFICAR CANTIDAD INDIVIDUAL (SE CONSERVA)
                 # =================================================
                 elif accion == 'modificar_cantidad':
                     detalle_id = request.POST.get('detalle_id')
@@ -3335,7 +4247,7 @@ def admin_minibodega_edit(request, pk):
                     return redirect('admin_minibodega_edit', pk=minibodega.pk)
 
                 # =================================================
-                # QUITAR PRODUCTO
+                # QUITAR PRODUCTO (SIN CAMBIOS)
                 # =================================================
                 elif accion == 'quitar_producto':
                     detalle_id = request.POST.get('detalle_id')
@@ -3356,6 +4268,9 @@ def admin_minibodega_edit(request, pk):
                         'message': 'Acción no válida.'
                     }, status=400)
 
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect('admin_minibodega_edit', pk=minibodega.pk)
         except Exception as e:
             return JsonResponse({
                 'success': False,
@@ -3365,16 +4280,25 @@ def admin_minibodega_edit(request, pk):
     # =========================================================
     # DETALLES DE LA MINIBODEGA
     # =========================================================
-    detalles = MiniBodegaDetalle.objects.filter(
-        mini_bodega=minibodega
-    ).select_related(
-        'producto_variacion',
-        'producto_variacion__producto',
-        'producto_variacion__presentacion'
-    ).order_by(
-        'producto_variacion__producto__nombre',
-        'producto_variacion__presentacion__nombre'
+    # ORDEN PERSONALIZADO DE PRODUCTOS Y PRESENTACIONES
+    orden_productos = {nombre.strip().upper(): i for i, nombre in enumerate(ORDEN_PRODUCTOS_CORTE_MINIBODEGA)}
+    orden_presentaciones = {nombre.strip().upper(): i for i, nombre in enumerate(ORDEN_PRESENTACIONES_CORTE_MINIBODEGA)}
+
+    def clave_orden(variacion):
+        nombre_producto = variacion.producto.nombre.strip().upper()
+        nombre_presentacion = variacion.presentacion.nombre.strip().upper()
+        return (
+            orden_productos.get(nombre_producto, len(orden_productos)),
+            nombre_producto if nombre_producto not in orden_productos else '',
+            orden_presentaciones.get(nombre_presentacion, len(orden_presentaciones)),
+            nombre_presentacion
+        )
+
+    detalles = list(
+        MiniBodegaDetalle.objects.filter(mini_bodega=minibodega)
+        .select_related('producto_variacion__producto', 'producto_variacion__presentacion')
     )
+    detalles.sort(key=lambda detalle: clave_orden(detalle.producto_variacion))
 
     # =========================================================
     # CATÁLOGOS GENERALES
@@ -3386,15 +4310,14 @@ def admin_minibodega_edit(request, pk):
     # =========================================================
     # PRODUCTOS Y VARIACIONES PARA SELECTS DEPENDIENTES
     # =========================================================
-    variaciones = ProductoVariacion.objects.filter(
-        producto__estado=True,
-        presentacion__estado=True
-    ).select_related(
-        'producto', 'presentacion'
-    ).order_by(
-        'producto__nombre',
-        'presentacion__nombre'
+    variaciones = list(
+        ProductoVariacion.objects.filter(
+            producto__estado=True,
+            presentacion__estado=True
+        ).select_related('producto', 'presentacion')
     )
+    variaciones.sort(key=clave_orden)
+
 
     productos = {}
 
@@ -3412,7 +4335,9 @@ def admin_minibodega_edit(request, pk):
             'id': variacion.id,
             'nombre': variacion.presentacion.nombre
         })
+
     productos = list(productos.values())
+
     # =========================================================
     # CONTEXTO
     # =========================================================
@@ -3425,6 +4350,7 @@ def admin_minibodega_edit(request, pk):
         'productos': productos,
         'variaciones': variaciones,
     }
+
     return render(
         request,
         'appMovil/miniBodegas/administracion/edit.html',
