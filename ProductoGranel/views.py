@@ -18,6 +18,17 @@ from .models import ProductoGranel
 from .forms import ProductoGranelForm
 from django.views.decorators.http import require_POST
 from Usuario.decorators import requiere_roles,solo_administrador
+from .utils.lotes import obtener_siguiente_numero_lote
+from datetime import date
+from django.db.models import Prefetch
+from django.utils.dateparse import parse_date
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.utils import timezone
+from django.utils.dateparse import parse_date
+from django.db.models import Count
+from django.db.models.functions import TruncDate
+from datetime import date, timedelta
 
 
 # REGISTRO DE ENTRADAS
@@ -26,34 +37,37 @@ from Usuario.decorators import requiere_roles,solo_administrador
 @requiere_roles("Producto a Granel")
 def agregar_producto_granel(request):
     """
-    Vista para agregar un nuevo producto a granel.
-    Si se ingresa stock inicial mayor a cero, se crea una EntradaGranel y su DetalleEntradaGranel,
-    además de generar un lote con fecha de caducidad calculada.
+    Registra un producto a granel y, si tiene stock inicial,
+    genera su primer lote y la entrada correspondiente.
     """
     if request.method == "POST":
         form = ProductoGranelForm(request.POST, request.FILES)
         if form.is_valid():
-            producto = form.save()
-            # Si se ingresó stock inicial, se crea la entrada correspondiente
-            if producto.stock > 0:
-                entrada = EntradaGranel.objects.create(
-                    usuario=request.user,
-                    nota="Creación de producto con stock inicial"
-                )
-                DetalleEntradaGranel.objects.create(
-                    entrada_granel=entrada,
-                    producto_granel=producto,
-                    cantidad=producto.stock
-                )
-                # Se crea el lote correspondiente
-                fecha_entrada = timezone.now()
-                fecha_caducidad = (fecha_entrada + timedelta(days=producto.tiempo_caducidad)).date()
-                Lote.objects.create(
-                    producto_granel=producto,
-                    cantidad=producto.stock,
-                    fecha_entrada=fecha_entrada,
-                    fecha_caducidad=fecha_caducidad
-                )
+            with transaction.atomic():
+                producto = form.save()
+                if producto.stock > 0:
+                    fecha_entrada = timezone.now()
+                    fecha_caducidad = (fecha_entrada + timedelta(days=producto.tiempo_caducidad)).date()
+                    numero_lote = obtener_siguiente_numero_lote(producto.id)
+
+                    entrada = EntradaGranel.objects.create(
+                        usuario=request.user,
+                        nota="Creación de producto con stock inicial"
+                    )
+                    lote = Lote.objects.create(
+                        producto_granel=producto,
+                        numero_lote=numero_lote,
+                        cantidad=producto.stock,
+                        fecha_entrada=fecha_entrada,
+                        fecha_caducidad=fecha_caducidad
+                    )
+                    DetalleEntradaGranel.objects.create(
+                        entrada_granel=entrada,
+                        producto_granel=producto,
+                        lote=lote,
+                        cantidad=producto.stock
+                    )
+
             messages.success(request, "Producto agregado correctamente.")
             return redirect('listar_productos_granel')
     else:
@@ -69,44 +83,57 @@ def registrar_entrada(request):
     if request.method == "POST":
         nota = request.POST.get('nota', '')
         cantidades_validas = []
+        fecha_entrada = timezone.now()
 
-        # Validar que al menos una cantidad sea mayor a cero
         for producto in productos:
             cantidad_str = request.POST.get(f'cantidad_{producto.id}', '0')
             try:
                 cantidad = Decimal(cantidad_str)
             except Exception:
                 cantidad = Decimal('0')
-            if cantidad > 0:
-                cantidades_validas.append((producto, cantidad))
+
+            if not cantidad.is_finite() or cantidad <= 0:
+                continue
+
+            fecha_manual = request.POST.get(f'fecha_caducidad_{producto.id}', '').strip()
+            if fecha_manual:
+                try:
+                    fecha_caducidad = date.fromisoformat(fecha_manual)
+                except ValueError:
+                    messages.error(request, f"Fecha de caducidad inválida para {producto.nombre}.")
+                    return render(request, 'ProductoGranel/entradas/registrar_entrada.html', {'productos': productos})
+                if fecha_caducidad < timezone.localdate():
+                    messages.error(request, f"La caducidad de {producto.nombre} no puede ser anterior a hoy.")
+                    return render(request, 'ProductoGranel/entradas/registrar_entrada.html', {'productos': productos})
+            else:
+                fecha_caducidad = (fecha_entrada + timedelta(days=producto.tiempo_caducidad)).date()
+
+            cantidades_validas.append((producto, cantidad, fecha_caducidad))
 
         if not cantidades_validas:
             messages.error(request, "Debes ingresar al menos una cantidad mayor a 0.")
             return render(request, 'ProductoGranel/entradas/registrar_entrada.html', {'productos': productos})
 
-        # Crear la entrada porque sí hay cantidades válidas
-        entrada = EntradaGranel.objects.create(
-            usuario=request.user,
-            nota=nota
-        )
+        with transaction.atomic():
+            entrada = EntradaGranel.objects.create(usuario=request.user, nota=nota)
 
-        fecha_entrada = timezone.now()
-        for producto, cantidad in cantidades_validas:
-            DetalleEntradaGranel.objects.create(
-                entrada_granel=entrada,
-                producto_granel=producto,
-                cantidad=cantidad
-            )
-            producto.stock += cantidad
-            producto.save()
+            for producto, cantidad, fecha_caducidad in cantidades_validas:
+                numero_lote = obtener_siguiente_numero_lote(producto.id)
 
-            fecha_caducidad = (fecha_entrada + timedelta(days=producto.tiempo_caducidad)).date()
-            Lote.objects.create(
-                producto_granel=producto,
-                cantidad=cantidad,
-                fecha_entrada=fecha_entrada,
-                fecha_caducidad=fecha_caducidad
-            )
+                lote = Lote.objects.create(
+                    producto_granel=producto,
+                    numero_lote=numero_lote,
+                    cantidad=cantidad,
+                    fecha_entrada=fecha_entrada,
+                    fecha_caducidad=fecha_caducidad
+                )
+                DetalleEntradaGranel.objects.create(
+                    entrada_granel=entrada,
+                    producto_granel=producto,
+                    lote=lote,
+                    cantidad=cantidad
+                )
+                ProductoGranel.objects.filter(pk=producto.id).update(stock=F('stock') + cantidad)
 
         messages.success(request, "Entrada registrada exitosamente.")
         return redirect('registrar_entrada')
@@ -461,15 +488,27 @@ def get_pusher_client():
 
 
 # ----------------------------------------------------------------------------------------------------------------------DEVOLUCIONES
+##Checar la devolucion eh
 
 
 @login_required
 @requiere_roles("Producto a Granel")
 def registrar_devolucion(request, salida_id):
+    """
+    Registra devoluciones únicamente de salidas del día actual.
+    Conserva las validaciones de cantidades, lotes y stock.
+    """
     salida = get_object_or_404(SalidaGranel, id=salida_id)
+
+    es_hoy = timezone.localtime(salida.fecha_salida).date() == timezone.localdate()
+
+    if request.method == "POST" and not es_hoy:
+        messages.error(request, "No puedes registrar devoluciones de salidas anteriores.")
+        return redirect('registrar_devolucion', salida_id=salida.id)
+
     detalles_salida = salida.detallesalidagranel_set.all()
 
-    # Calcular la cantidad ya devuelta para cada detalle
+    # Calcular la cantidad ya devuelta para cada detalle.
     for detalle in detalles_salida:
         resultado = DetalleDevolucionGranel.objects.filter(
             devolucion_granel__salida_granel=salida,
@@ -486,7 +525,7 @@ def registrar_devolucion(request, salida_id):
                     cantidades_validas = False
                     detalles_creados = []
 
-                    # Crear la devolución (aún no se guarda)
+                    # Crear la devolución (aún no se guarda).
                     devolucion = devolucion_form.save(commit=False)
                     devolucion.usuario = request.user
                     devolucion.salida_granel = salida
@@ -503,7 +542,6 @@ def registrar_devolucion(request, salida_id):
                             continue
 
                         cantidades_validas = True
-
                         defecto = request.POST.get(f'defecto_{detalle.id}', None) is not None
 
                         resultado = DetalleDevolucionGranel.objects.filter(
@@ -512,14 +550,14 @@ def registrar_devolucion(request, salida_id):
                             lote=detalle.lote
                         ).aggregate(total=Sum('cantidad'))
                         ya_devolvido = resultado['total'] or Decimal('0')
-
                         cantidad_maxima = detalle.cantidad - ya_devolvido
 
                         if cantidad_devolver > cantidad_maxima:
                             messages.error(
                                 request,
                                 f"Para el producto {detalle.producto_granel.nombre} (lote {detalle.lote.id}) "
-                                f"solo se puede devolver hasta {cantidad_maxima} {detalle.producto_granel.unidad_medida}."
+                                f"solo se puede devolver hasta {cantidad_maxima} "
+                                f"{detalle.producto_granel.unidad_medida}."
                             )
                             raise Exception("Cantidad a devolver excede lo permitido.")
 
@@ -530,14 +568,16 @@ def registrar_devolucion(request, salida_id):
                         })
 
                     if not cantidades_validas:
-                        messages.error(request,
-                                       "Debe ingresar al menos una cantidad mayor a 0 para registrar una devolución.")
+                        messages.error(
+                            request,
+                            "Debe ingresar al menos una cantidad mayor a 0 para registrar una devolución."
+                        )
                         raise Exception("Sin cantidades válidas.")
 
-                    # Guardar devolución principal
+                    # Guardar devolución principal.
                     devolucion.save()
 
-                    # Procesar y guardar los detalles válidos
+                    # Procesar y guardar los detalles válidos.
                     for item in detalles_creados:
                         detalle = item['detalle']
                         cantidad_devolver = item['cantidad']
@@ -575,6 +615,7 @@ def registrar_devolucion(request, salida_id):
         'salida': salida,
         'detalles_salida': detalles_salida,
         'devolucion_form': devolucion_form,
+        'es_hoy': es_hoy,
     }
     return render(request, 'ProductoGranel/devoluciones/registrar_devolucion.html', context)
 
@@ -583,11 +624,27 @@ def registrar_devolucion(request, salida_id):
 @requiere_roles("Producto a Granel")
 def lista_salidas(request):
     """
-    Vista para listar las salidas de productos a granel.
-    Desde esta lista se puede acceder a la funcionalidad de devolución.
+    Muestra las salidas de la fecha seleccionada (hoy por defecto).
+    Solo permite registrar devoluciones de salidas del día actual.
     """
-    salidas = SalidaGranel.objects.all().order_by('-fecha_salida')
-    return render(request, 'ProductoGranel/devoluciones/lista_salidas.html', {'salidas': salidas})
+    hoy = timezone.localdate()
+    fecha_str = request.GET.get('fecha', hoy.isoformat())
+
+    try:
+        fecha_seleccionada = date.fromisoformat(fecha_str)
+    except ValueError:
+        fecha_seleccionada = hoy
+
+    salidas = SalidaGranel.objects.filter(
+        fecha_salida__date=fecha_seleccionada
+    ).select_related('usuario').order_by('-fecha_salida')
+
+    return render(request, 'ProductoGranel/devoluciones/lista_salidas.html', {
+        'salidas': salidas,
+        'fecha_seleccionada': fecha_seleccionada,
+        'hoy': hoy,
+        'permite_devoluciones': fecha_seleccionada == hoy
+    })
 
 
 # --------------------------------------------------------------------------------------------------------------------------------------------------Corte
@@ -679,47 +736,59 @@ def lista_cortes(request):
     return render(request, 'ProductoGranel/cortes/lista_cortes.html', context)
 
 
+
 @login_required
 @requiere_roles("Producto a Granel")
 def ajustar_inventario(request, corte_id):
     """
-    Vista para ajustar el inventario a partir de un corte de inventario.
-    Se recorren los detalles del corte y, para cada producto donde exista diferencia,
-    se actualiza el stock real y se reconcilian los lotes activos.
-    - Si la suma de las cantidades en los lotes activos es menor que el stock real,
-      se suma la diferencia al último lote activo.
-    - Si no existen lotes activos, se crea un nuevo lote.
-    Finalmente, se marca el corte como 'ajustado'.
+    Ajusta el inventario según el stock real del corte.
+    Si no existen lotes activos y hay stock positivo, crea un lote
+    con numeración consecutiva independiente por producto.
     """
     corte = get_object_or_404(CorteInventarioGranel, id=corte_id)
     detalles = corte.detallecorteinventariogranel_set.all()
 
     if request.method == "POST":
-        # Procesar cada detalle del corte
-        for detalle in detalles:
-            if detalle.diferencia != Decimal('0'):
+        with transaction.atomic():
+            corte = CorteInventarioGranel.objects.select_for_update().get(pk=corte_id)
+
+            if corte.estado == 'ajustado':
+                messages.warning(request, "Este corte ya fue ajustado anteriormente.")
+                return redirect('lista_cortes')
+
+            for detalle in detalles:
+                if detalle.diferencia == Decimal('0'):
+                    continue
+
                 producto = detalle.producto_granel
-                # Actualizamos el stock del producto al stock real del corte
                 producto.stock = detalle.stock_real
-                producto.save()
+                producto.save(update_fields=['stock'])
 
-                # Ajustar los lotes activos:
-                # Se obtienen los lotes activos para el producto, ordenados por fecha de entrada
-                lotes = Lote.objects.filter(producto_granel=producto, estado_lote='activo').order_by('fecha_entrada')
-                total_lotes = sum([lote.cantidad for lote in lotes])
+                lotes = Lote.objects.filter(
+                    producto_granel=producto,
+                    estado_lote='activo'
+                ).order_by('fecha_entrada', 'id')
+
+                total_lotes = sum(
+                    (lote.cantidad for lote in lotes),
+                    Decimal('0')
+                )
                 diferencia_lote = detalle.stock_real - total_lotes
+                ultimo_lote = lotes.last()
 
-                if lotes.exists():
-                    # Si hay lotes activos, se ajusta el último lote
-                    ultimo_lote = lotes.last()
+                if ultimo_lote:
                     ultimo_lote.cantidad += diferencia_lote
-                    ultimo_lote.save()
-                else:
-                    # Si no hay lotes activos, se crea uno nuevo con la cantidad total
+                    ultimo_lote.save(update_fields=['cantidad'])
+                elif detalle.stock_real > 0:
                     fecha_entrada = corte.fecha
-                    fecha_caducidad = (fecha_entrada + timedelta(days=producto.tiempo_caducidad)).date()
+                    fecha_caducidad = (
+                        fecha_entrada + timedelta(days=producto.tiempo_caducidad)
+                    ).date()
+                    numero_lote = obtener_siguiente_numero_lote(producto.id)
+
                     Lote.objects.create(
                         producto_granel=producto,
+                        numero_lote=numero_lote,
                         cantidad=detalle.stock_real,
                         fecha_entrada=fecha_entrada,
                         fecha_caducidad=fecha_caducidad,
@@ -727,17 +796,17 @@ def ajustar_inventario(request, corte_id):
                         estado_lote='activo'
                     )
 
-        corte.estado = 'ajustado'
-        corte.save()
+            corte.estado = 'ajustado'
+            corte.save(update_fields=['estado'])
 
         messages.success(request, "Ajuste realizado correctamente.")
         return redirect('lista_cortes')
 
-    context = {
+    return render(request, 'ProductoGranel/cortes/ajuste_inventario.html', {
         'corte': corte,
-        'detalles': detalles,
-    }
-    return render(request, 'ProductoGranel/cortes/ajuste_inventario.html', context)
+        'detalles': detalles
+    })
+
 
 
 @login_required
@@ -757,20 +826,32 @@ def detalle_corte(request, corte_id):
 
 
 @login_required
-@requiere_roles("Producto a Granel","Recursos Humanos")
+@requiere_roles("Producto a Granel", "Recursos Humanos")
 def listar_productos_granel(request):
     """
-    Muestra un listado con todos los productos a granel registrados respetando el swich.
+    Lista productos a granel con sus lotes disponibles,
+    conservando el filtro de productos activos e inactivos.
     """
     mostrar_todos = request.GET.get('mostrar_todos') == '1'
+    lotes_disponibles = Lote.objects.filter(
+        cantidad__gt=0,
+        estado=True,
+        estado_lote='activo'
+    ).order_by('fecha_caducidad', 'fecha_entrada', 'id')
 
-    if mostrar_todos:
-        productos = ProductoGranel.objects.all()
-    else:
-        productos = ProductoGranel.objects.filter(estado=True)
+    productos = ProductoGranel.objects.select_related(
+        'categoria_producto', 'proveedor'
+    ).prefetch_related(
+        Prefetch('lote_set', queryset=lotes_disponibles, to_attr='lotes_disponibles')
+    )
 
-    return render(request, 'ProductoGranel/productos/listar_productos.html',
-                  {'productos': productos, 'mostrar_todos': mostrar_todos})
+    if not mostrar_todos:
+        productos = productos.filter(estado=True)
+
+    return render(request, 'ProductoGranel/productos/listar_productos.html', {
+        'productos': productos,
+        'mostrar_todos': mostrar_todos
+    })
 
 
 @login_required
@@ -1077,13 +1158,47 @@ def pedidos_hoy_json(request):
 
 @login_required
 def historial_entradas(request):
-    entradas=EntradaGranel.objects.all().order_by('-fecha_entrada')
+    hoy = timezone.localdate()
+    fecha_parametro = request.GET.get('fecha')
+    fecha_seleccionada = parse_date(fecha_parametro) if fecha_parametro else hoy
 
-    return render (
-        request,
-        'ProductoGranel/historial/entradas.html',
-        {'entradas':entradas}
+    if fecha_seleccionada is None or fecha_seleccionada > hoy:
+        fecha_seleccionada = hoy
+
+    entradas = EntradaGranel.objects.filter(
+        fecha_entrada__date=fecha_seleccionada
+    ).select_related('usuario').order_by('-fecha_entrada')
+
+    return render(request, 'ProductoGranel/historial/entradas.html', {
+        'entradas': entradas,
+        'fecha_seleccionada': fecha_seleccionada,
+        'hoy': hoy
+    })
+
+
+@login_required
+def fechas_entradas_granel(request):
+    hoy = timezone.localdate()
+    try:
+        anio = int(request.GET.get('anio', hoy.year))
+        mes = int(request.GET.get('mes', hoy.month))
+        inicio = date(anio, mes, 1)
+        fin = date(anio + 1, 1, 1) if mes == 12 else date(anio, mes + 1, 1)
+    except (ValueError, TypeError, OverflowError):
+        return JsonResponse({'error': 'Mes o año inválido'}, status=400)
+
+    fechas = (
+        EntradaGranel.objects.filter(fecha_entrada__date__gte=inicio, fecha_entrada__date__lt=fin)
+        .annotate(dia=TruncDate('fecha_entrada'))
+        .values('dia')
+        .annotate(total=Count('id'))
+        .order_by('dia')
     )
+
+    return JsonResponse({
+        'fechas': {registro['dia'].isoformat(): registro['total'] for registro in fechas}
+    })
+
 
 @login_required
 def detalle_historial_entrada(request,entrada_id):

@@ -61,6 +61,7 @@ urlpatterns = [
     path('pedidos/rechazar/<int:pedido_id>/', rechazar_pedido_produccion, name='rechazar_pedido_produccion'),
 
     path('historial/entradas/', views.historial_entradas, name='historial_entradas'),
+    path('historial/entradas/fechas/', views.fechas_entradas_granel, name='fechas_entradas_granel'),
     path('historial/entrada/<int:entrada_id>/', views.detalle_historial_entrada, name='detalle_historial_entrada'),
 
 

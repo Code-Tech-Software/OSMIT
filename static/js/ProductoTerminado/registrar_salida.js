@@ -12,13 +12,15 @@ $(document).ready(function () {
     const contenedorRuta = document.getElementById('contenedorRuta');
     const ordenPersonalizado = document.getElementById('ordenPersonalizado');
     const tablaProductos = document.getElementById('productosTable');
-    const confirmModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal'));
+    const confirmModalElement = document.getElementById('confirmModal');
+    const confirmModal = bootstrap.Modal.getOrCreateInstance(confirmModalElement);
     const notyf = new Notyf({ duration: 3000, position: { x: 'right', y: 'bottom' }, dismissible: true });
 
     window.productosDT = $('#productosTable').DataTable({
         pageLength: 50,
         responsive: true,
         fixedHeader: { header: true, headerOffset: 70 },
+        ordering: true,
         order: [],
         language: {
             decimal: '',
@@ -54,22 +56,18 @@ $(document).ready(function () {
             headerFlotante.style.transform = 'none';
             headerFlotante.style.marginLeft = '0';
             headerFlotante.style.left = `${headerFlotante.offsetLeft - diferencia}px`;
-
         };
         scrollTablaPT.addEventListener('scroll', sincronizarHeaderPT, { passive: true });
         window.addEventListener('resize', sincronizarHeaderPT);
         window.addEventListener('scroll', sincronizarHeaderPT, { passive: true });
     }
 
-
     // Evitar cambios accidentales en cantidades por scroll o flechas del teclado
     tablaProductos.addEventListener('wheel', function (e) {
         if (e.target.matches('input.cantidad-input')) e.target.blur();
     }, { passive: true });
     tablaProductos.addEventListener('keydown', function (e) {
-        if (e.target.matches('input.cantidad-input') && ['ArrowUp', 'ArrowDown'].includes(e.key)) {
-            e.preventDefault();
-        }
+        if (e.target.matches('input.cantidad-input') && ['ArrowUp', 'ArrowDown'].includes(e.key)) e.preventDefault();
     });
 
     // Cambio de orden de productos
@@ -125,7 +123,6 @@ $(document).ready(function () {
                 input.dataset.stock = nuevoStock;
                 input.max = nuevoStock;
                 const stockValor = input.closest('td')?.querySelector('.stock-valor');
-
                 if (stockValor) {
                     stockValor.textContent = nuevoStock;
                     stockValor.classList.remove('text-danger', 'text-warning', 'text-muted', 'fw-bold');
@@ -151,9 +148,7 @@ $(document).ready(function () {
 
     // Evitar cantidades negativas y envío accidental con Enter
     form.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' && e.target.tagName.toLowerCase() !== 'textarea') {
-            e.preventDefault();
-        }
+        if (e.key === 'Enter' && e.target.tagName.toLowerCase() !== 'textarea') e.preventDefault();
     });
     $(tablaProductos).on('input', 'input.cantidad-input', function () {
         if (this.value !== '' && Number(this.value) < 0) this.value = 0;
@@ -175,7 +170,6 @@ $(document).ready(function () {
             const val = parseFloat(this.value);
             const maxStock = parseFloat(this.dataset.stock);
             if (isNaN(val) || val <= 0) return;
-
             if (val > maxStock) {
                 errorStock = true;
                 this.classList.add('is-invalid');
@@ -236,7 +230,53 @@ $(document).ready(function () {
     });
 
     // Confirmar y registrar salida
-    confirmSubmit.addEventListener('click', function () {
+    let registrandoSalida = false;
+    let comprobandoAdvertencia = false;
+
+    
+
+    confirmSubmit.addEventListener('click', async function () {
+        if (registrandoSalida || comprobandoAdvertencia) return;
+
+        // Advertencia temporal: únicamente para salidas a Ruta
+        if (destinoSelect?.value === 'opcion1') {
+            comprobandoAdvertencia = true;
+            confirmModal.hide();
+
+            // Esperar a que Bootstrap termine de cerrar el modal
+            await new Promise(resolve => {
+                if (!confirmModalElement.classList.contains('show')) return resolve();
+                confirmModalElement.addEventListener('hidden.bs.modal', resolve, { once: true });
+            });
+
+            let resultado;
+            try {
+                resultado = await Swal.fire({
+                    title: '¿Ya te dieron autorización? 🤨',
+                    html: `
+                        <p>¿Estás segura de que ya puedes realizar la salida de esta ruta?</p>
+                        <p class="fw-semibold">¡Recuerda que primero deben terminar los cortes o cerrar el inventario!</p>
+                        <img src="${contenedor.dataset.gifAdvertencia}" alt="Advertencia"
+                             class="img-fluid rounded mt-2" style="max-height:220px;">
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, ya me autorizaron',
+                    cancelButtonText: 'Mejor espero',
+                    confirmButtonColor: '#dc3545',
+                    reverseButtons: true
+                });
+            } catch (error) {
+                console.error('Error al mostrar la advertencia:', error);
+                comprobandoAdvertencia = false;
+                confirmModal.show();
+                return;
+            }
+
+            comprobandoAdvertencia = false;
+            if (!resultado.isConfirmed) return;
+        }
+
+        registrandoSalida = true;
         const dt = window.productosDT;
         confirmSubmit.disabled = true;
         confirmSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Registrando...';

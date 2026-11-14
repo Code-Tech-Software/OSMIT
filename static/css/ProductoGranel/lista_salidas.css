@@ -1,0 +1,283 @@
+
+/* =========================================================
+   LISTA DE SALIDAS PARA DEVOLUCIÓN - GENERAL
+   ========================================================= */
+.filtro-salidas {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding-bottom: 18px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #dee2e6;
+}
+.filtro-salidas > div:first-child {
+    min-width: 200px;
+}
+.filtro-salidas .form-label {
+    margin-bottom: 7px;
+    font-size: 0.9rem;
+}
+.filtro-salidas input[type="date"] {
+    min-width: 200px;
+    border-radius: 7px;
+    min-height: 38px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.filtro-salidas input[type="date"]:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.2rem rgba(13,110,253,0.12);
+}
+.filtro-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.filtro-acciones .btn {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+/* =========================================================
+   ALERTAS
+   ========================================================= */
+.custom-card .alert-info {
+    border-radius: 8px;
+    border: 1px solid #b6d4fe;
+    background-color: #e7f1ff;
+    color: #084298;
+    font-size: 0.9rem;
+}
+
+/* =========================================================
+   TABLA DE SALIDAS
+   ========================================================= */
+#salidasTable {
+    width: 100% !important;
+    border-collapse: collapse;
+}
+#salidasTable th,
+#salidasTable td {
+    vertical-align: middle;
+    padding: 11px 12px;
+}
+#salidasTable thead th {
+    font-weight: 600;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+#salidasTable tbody td {
+    font-size: 0.9rem;
+}
+#salidasTable td:nth-child(2) {
+    min-width: 175px;
+    white-space: nowrap;
+}
+#salidasTable td:last-child {
+    min-width: 170px;
+    white-space: nowrap;
+}
+#salidasTable tbody tr {
+    transition: background-color 0.15s;
+}
+.salida-nota {
+    max-width: 250px;
+    min-width: 120px;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+#salidasTable .btn {
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 6px 10px;
+}
+#salidasTable .badge {
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 7px 10px;
+}
+
+/* =========================================================
+   DATATABLES - MODO CLARO
+   ========================================================= */
+.custom-card .dt-container {
+    width: 100%;
+}
+.custom-card .dt-container .dt-layout-row {
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.custom-card .dt-container .dt-input {
+    border-radius: 7px;
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    background-color: #fff;
+    color: #212529;
+}
+.custom-card .dt-container .dt-search .dt-input {
+    min-width: 210px;
+}
+.custom-card .dt-container .dt-paging .dt-paging-button {
+    border-radius: 6px !important;
+    transition: background-color 0.15s;
+}
+
+/* =========================================================
+   MODO OSCURO - CONTENEDOR Y FILTROS
+   ========================================================= */
+body.dark-mode .filtro-salidas {
+    border-bottom-color: #454545;
+}
+body.dark-mode .filtro-salidas .form-label {
+    color: #e9ecef !important;
+}
+body.dark-mode .filtro-salidas input[type="date"] {
+    background-color: #303030 !important;
+    color: #f8f9fa !important;
+    border-color: #555 !important;
+    color-scheme: dark;
+}
+body.dark-mode .filtro-salidas input[type="date"]:focus {
+    border-color: #6ea8fe !important;
+    box-shadow: 0 0 0 0.2rem rgba(110,168,254,0.15);
+}
+body.dark-mode .custom-card .alert-info {
+    background-color: #183449 !important;
+    color: #b6dfff !important;
+    border-color: #345b78 !important;
+}
+
+/* =========================================================
+   MODO OSCURO - TABLA
+   ========================================================= */
+body.dark-mode #salidasTable {
+    --bs-table-bg: #242424;
+    --bs-table-color: #e9ecef;
+    --bs-table-border-color: #444;
+    --bs-table-striped-bg: #303030;
+    --bs-table-striped-color: #e9ecef;
+    --bs-table-hover-bg: #383838;
+    --bs-table-hover-color: #fff;
+    background-color: #242424 !important;
+    color: #e9ecef !important;
+    border-color: #444 !important;
+}
+body.dark-mode #salidasTable thead th {
+    background-color: #303030 !important;
+    color: #f8f9fa !important;
+    border-color: #444 !important;
+}
+body.dark-mode #salidasTable tbody td {
+    background-color: var(--bs-table-bg) !important;
+    color: #e9ecef !important;
+    border-color: #444 !important;
+}
+body.dark-mode #salidasTable tbody tr:nth-of-type(odd) td {
+    background-color: #303030 !important;
+}
+body.dark-mode #salidasTable tbody td .badge.bg-secondary {
+    background-color: #495057 !important;
+    color: #f8f9fa !important;
+}
+
+/* =========================================================
+   MODO OSCURO - DATATABLES
+   ========================================================= */
+body.dark-mode .custom-card .dt-container {
+    color: #e9ecef !important;
+}
+body.dark-mode .custom-card .dt-container .dt-input {
+    background-color: #303030 !important;
+    color: #f8f9fa !important;
+    border: 1px solid #555 !important;
+}
+body.dark-mode .custom-card .dt-container .dt-input:focus {
+    border-color: #6ea8fe !important;
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(110,168,254,0.12);
+}
+body.dark-mode .custom-card .dt-container .dt-input::placeholder {
+    color: #adb5bd !important;
+}
+body.dark-mode .custom-card .dt-container .dt-info,
+body.dark-mode .custom-card .dt-container .dt-length,
+body.dark-mode .custom-card .dt-container .dt-search {
+    color: #dee2e6 !important;
+}
+body.dark-mode .custom-card .dt-container .dt-paging .dt-paging-button {
+    color: #e9ecef !important;
+    background: #303030 !important;
+    border: 1px solid #444 !important;
+}
+body.dark-mode .custom-card .dt-container .dt-paging .dt-paging-button:hover:not(.disabled) {
+    background: #454545 !important;
+    color: #fff !important;
+    border-color: #666 !important;
+}
+body.dark-mode .custom-card .dt-container .dt-paging .dt-paging-button.current {
+    background: #495057 !important;
+    color: #fff !important;
+    border-color: #666 !important;
+}
+body.dark-mode .custom-card .dt-container .dt-paging .dt-paging-button.disabled {
+    opacity: 0.45;
+}
+
+/* Flechas de ordenamiento DataTables */
+body.dark-mode #salidasTable thead th.dt-orderable-asc,
+body.dark-mode #salidasTable thead th.dt-orderable-desc {
+    color: #f8f9fa !important;
+}
+body.dark-mode #salidasTable thead th .dt-column-order {
+    opacity: 0.85;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+@media (max-width: 768px) {
+    .filtro-salidas {
+        align-items: stretch;
+        gap: 12px;
+    }
+    .filtro-salidas > div:first-child {
+        width: 100%;
+    }
+    .filtro-salidas input[type="date"] {
+        width: 100%;
+    }
+    .filtro-acciones {
+        width: 100%;
+    }
+    .filtro-acciones .btn {
+        flex: 1;
+    }
+    #salidasTable th,
+    #salidasTable td {
+        padding: 9px 10px;
+        font-size: 0.85rem;
+    }
+    .custom-card .dt-container .dt-search .dt-input {
+        min-width: 150px;
+        width: 100%;
+    }
+}
+@media (max-width: 576px) {
+    .filtro-salidas {
+        flex-direction: column;
+    }
+    .filtro-acciones {
+        flex-direction: column;
+    }
+    .filtro-acciones .btn {
+        width: 100%;
+    }
+    .salida-nota {
+        max-width: 180px;
+    }
+}

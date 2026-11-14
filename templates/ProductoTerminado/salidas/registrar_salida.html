@@ -1,3 +1,4 @@
+
 {% extends "Base/Sidebar.html" %}
 {% load static %}
 {% block content %}
@@ -7,7 +8,9 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css">
 <link rel="stylesheet" href="{% static 'css/ProductoTerminado/registrar_salida.css' %}">
 
-<div id="registrarSalidaPT" data-url-stock="{% url 'obtener_stock_productos_pt' %}">
+<div id="registrarSalidaPT"
+     data-url-stock="{% url 'obtener_stock_productos_pt' %}"
+     data-gif-advertencia="{% static 'img/Animacion_de_repartidor.gif' %}">
     <div>
         <span class="fw-bold">Inventario</span>
         <span class="mx-2">|</span>

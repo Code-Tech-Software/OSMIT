@@ -1,0 +1,80 @@
+
+#productosTable th,
+#productosTable td {
+    vertical-align: middle;
+}
+
+#productosTable th:nth-child(2),
+#productosTable th:nth-child(3),
+#productosTable th:nth-child(4) {
+    text-align: left;
+}
+
+.cantidad-entrada {
+    min-width: 110px;
+}
+
+.caducidad-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 170px;
+}
+
+.caducidad-container .form-check {
+    margin-bottom: 0;
+}
+
+.fecha-caducidad {
+    width: 100%;
+}
+
+.fecha-caducidad:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.texto-caducidad {
+    font-size: 0.78rem;
+}
+
+#resumenEntrada {
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-wrap: break-word;
+}
+
+#resumenEntrada table {
+    width: 100%;
+}
+
+#resumenEntrada td,
+#resumenEntrada th {
+    vertical-align: middle;
+}
+
+@media (max-width: 768px) {
+    .cantidad-entrada {
+        min-width: 95px;
+    }
+
+    .caducidad-container {
+        min-width: 155px;
+    }
+
+    #resumenEntrada {
+        max-height: 300px;
+    }
+}
+
+/* Ocultar flechas del campo numérico */
+.cantidad-entrada::-webkit-inner-spin-button,
+.cantidad-entrada::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.cantidad-entrada {
+    appearance: textfield;
+    -moz-appearance: textfield;
+}

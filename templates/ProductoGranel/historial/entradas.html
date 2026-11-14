@@ -1,80 +1,78 @@
+
 {% extends "Base/Sidebar.html" %}
-
+{% load static %}
 {% block content %}
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+<link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="{% static 'css/ProductoGranel/entradas.css' %}">
 
-<div class="container-fluid">
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h4 class="fw-bold text-dark mb-1">Historial de Entradas</h4>
-            <p class="text-secondary mb-0">
-                Historial de entradas de productos a granel
-            </p>
-        </div>
-    </div>
-
-    <div class="card shadow-sm border-0">
-        <div class="card-body">
-
-            <div class="table-responsive">
-                <table id="tablaEntradas" class="table table-hover align-middle w-100">
-
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Fecha</th>
-                            <th>Usuario</th>
-                            <th>Nota</th>
-                            <th>Acción</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        {% for entrada in entradas %}
-                        <tr>
-                            <td>
-                                {{ entrada.id }}
-                            </td>
-
-                            <td>
-                                {{ entrada.fecha_entrada|date:"d/m/Y H:i" }}
-                            </td>
-
-                            <td>
-                                {{ entrada.usuario }}
-                            </td>
-
-                            <td>
-                                {% if entrada.nota %}
-                                    {{ entrada.nota }}
-                                {% else %}
-                                    <span class="text-muted">Sin nota</span>
-                                {% endif %}
-                            </td>
-
-                            <td>
-                                <a href="{% url 'detalle_historial_entrada' entrada.id %}"
-                                   class="btn btn-sm btn-outline-primary">
-                                    Ver detalle
-                                </a>
-                            </td>
-                        </tr>
-
-                        {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center text-muted py-4">
-                                No hay entradas registradas.
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-
-                </table>
-            </div>
-
-        </div>
-    </div>
-
+<div class="section-title">
+    <span class="fw-bold">Logística</span>
+    <span class="mx-2">|</span>
+    <span class="text-secondary">Historial de Entradas</span>
 </div>
 
+<div class="custom-card mt-4" id="historialEntradas"
+     data-url-fechas="{% url 'fechas_entradas_granel' %}">
+    <!-- FILTRO POR FECHA -->
+    <form method="get" id="filtroEntradasForm" class="filtro-entradas mb-4">
+        <div class="filtro-fecha">
+            <label for="fechaEntrada" class="form-label fw-semibold">Fecha de entrada</label>
+            <input type="text" id="fechaEntrada" name="fecha" class="form-control"
+                   value="{{ fecha_seleccionada|date:'Y-m-d' }}"
+                   data-max-fecha="{{ hoy|date:'Y-m-d' }}"
+                   autocomplete="off" readonly required>
+        </div>
+        <div class="filtro-acciones">
+            <button type="submit" class="btn btn-custom-info">
+                <i class="bi bi-search me-1"></i> Consultar
+            </button>
+            <a href="{% url 'historial_entradas' %}" class="btn btn-secondary">
+                <i class="bi bi-calendar-check me-1"></i> Hoy
+            </a>
+        </div>
+    </form>
+
+    <div class="table-responsive">
+        <table id="tablaEntradas" class="table table-striped table-bordered align-middle w-100">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Fecha</th>
+                    <th>Usuario</th>
+                    <th>Nota</th>
+                    <th class="text-center">Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entrada in entradas %}
+                <tr>
+                    <td>{{ entrada.id }}</td>
+                    <td data-order="{{ entrada.fecha_entrada|date:'Y-m-d H:i:s' }}">
+                        {{ entrada.fecha_entrada|date:"d/m/Y H:i" }}
+                    </td>
+                    <td>{{ entrada.usuario }}</td>
+                    <td class="entrada-nota" title="{{ entrada.nota|default:'Sin nota' }}">
+                        {{ entrada.nota|default:"Sin nota" }}
+                    </td>
+                    <td class="text-center">
+                        <a href="{% url 'detalle_historial_entrada' entrada.id %}"
+                           class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye me-1"></i> Ver detalle
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+<script src="{% static 'js/ProductoGranel/entradas.js' %}"></script>
 {% endblock %}

@@ -1,0 +1,314 @@
+
+/* =========================================================
+   HISTORIAL DE ENTRADAS - FILTROS
+   ========================================================= */
+#historialEntradas .filtro-entradas {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #dee2e6;
+}
+#historialEntradas .filtro-fecha {
+    min-width: 200px;
+}
+#historialEntradas .filtro-fecha .form-label {
+    margin-bottom: 7px;
+    font-size: 0.9rem;
+}
+#historialEntradas .filtro-fecha input {
+    min-width: 200px;
+    min-height: 38px;
+    border: 1px solid #ced4da;
+    border-radius: 7px;
+}
+#historialEntradas .filtro-fecha input:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.2rem rgba(13,110,253,0.12);
+}
+#historialEntradas .filtro-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+#historialEntradas .filtro-acciones .btn {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+/* =========================================================
+   TABLA
+   ========================================================= */
+#historialEntradas #tablaEntradas {
+    width: 100% !important;
+    border-collapse: collapse;
+}
+#historialEntradas #tablaEntradas th,
+#historialEntradas #tablaEntradas td {
+    vertical-align: middle;
+    padding: 11px 12px;
+    font-size: 0.9rem;
+}
+#historialEntradas #tablaEntradas thead th {
+    font-weight: 600;
+    white-space: nowrap;
+}
+#historialEntradas #tablaEntradas td:nth-child(2) {
+    min-width: 155px;
+    white-space: nowrap;
+}
+#historialEntradas #tablaEntradas td:last-child {
+    min-width: 140px;
+    white-space: nowrap;
+}
+#historialEntradas .entrada-nota {
+    max-width: 280px;
+    min-width: 120px;
+    overflow-wrap: anywhere;
+}
+#historialEntradas #tablaEntradas .btn {
+    border-radius: 6px;
+    font-size: 0.85rem;
+    padding: 6px 12px;
+}
+
+/* =========================================================
+   DATATABLES
+   ========================================================= */
+#historialEntradas .dt-container {
+    width: 100%;
+}
+#historialEntradas .dt-container .dt-layout-row {
+    gap: 10px;
+    flex-wrap: wrap;
+}
+#historialEntradas .dt-container .dt-input {
+    border-radius: 7px;
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    background-color: #fff;
+    color: #212529;
+}
+#historialEntradas .dt-container .dt-search .dt-input {
+    min-width: 210px;
+}
+#historialEntradas .dt-container .dt-paging .dt-paging-button {
+    border-radius: 6px !important;
+}
+
+/* =========================================================
+   MODO OSCURO - FILTROS
+   ========================================================= */
+body.dark-mode #historialEntradas .filtro-entradas {
+    border-bottom-color: #454545;
+}
+body.dark-mode #historialEntradas .filtro-fecha .form-label {
+    color: #e9ecef !important;
+}
+body.dark-mode #historialEntradas .filtro-fecha input {
+    background-color: #303030 !important;
+    color: #f8f9fa !important;
+    border-color: #555 !important;
+    color-scheme: dark;
+}
+body.dark-mode #historialEntradas .filtro-fecha input:focus {
+    border-color: #6ea8fe !important;
+    box-shadow: 0 0 0 0.2rem rgba(110,168,254,0.15);
+}
+
+/* =========================================================
+   MODO OSCURO - TABLA
+   ========================================================= */
+body.dark-mode #historialEntradas #tablaEntradas {
+    --bs-table-bg: #242424;
+    --bs-table-color: #e9ecef;
+    --bs-table-border-color: #444;
+    --bs-table-striped-bg: #303030;
+    --bs-table-striped-color: #e9ecef;
+    background-color: #242424 !important;
+    color: #e9ecef !important;
+    border-color: #444 !important;
+}
+body.dark-mode #historialEntradas #tablaEntradas thead th {
+    background-color: #303030 !important;
+    color: #f8f9fa !important;
+    border-color: #444 !important;
+}
+body.dark-mode #historialEntradas #tablaEntradas tbody td {
+    background-color: var(--bs-table-bg) !important;
+    color: #e9ecef !important;
+    border-color: #444 !important;
+}
+body.dark-mode #historialEntradas #tablaEntradas tbody tr:nth-of-type(odd) td {
+    background-color: #303030 !important;
+}
+body.dark-mode #historialEntradas #tablaEntradas thead th .dt-column-order {
+    opacity: 0.85;
+}
+
+/* =========================================================
+   MODO OSCURO - DATATABLES
+   ========================================================= */
+body.dark-mode #historialEntradas .dt-container {
+    color: #e9ecef !important;
+}
+body.dark-mode #historialEntradas .dt-container .dt-input {
+    background-color: #303030 !important;
+    color: #f8f9fa !important;
+    border-color: #555 !important;
+}
+body.dark-mode #historialEntradas .dt-container .dt-input::placeholder {
+    color: #adb5bd !important;
+}
+body.dark-mode #historialEntradas .dt-container .dt-info,
+body.dark-mode #historialEntradas .dt-container .dt-length,
+body.dark-mode #historialEntradas .dt-container .dt-search {
+    color: #dee2e6 !important;
+}
+body.dark-mode #historialEntradas .dt-container .dt-paging .dt-paging-button {
+    background: #303030 !important;
+    color: #e9ecef !important;
+    border: 1px solid #444 !important;
+}
+body.dark-mode #historialEntradas .dt-container .dt-paging .dt-paging-button:hover:not(.disabled) {
+    background: #454545 !important;
+    color: #fff !important;
+}
+body.dark-mode #historialEntradas .dt-container .dt-paging .dt-paging-button.current {
+    background: #495057 !important;
+    color: #fff !important;
+    border-color: #666 !important;
+}
+body.dark-mode #historialEntradas .dt-container .dt-paging .dt-paging-button.disabled {
+    opacity: 0.45;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+@media (max-width: 768px) {
+    #historialEntradas .filtro-fecha,
+    #historialEntradas .filtro-fecha input {
+        width: 100%;
+    }
+    #historialEntradas .filtro-acciones {
+        width: 100%;
+    }
+    #historialEntradas .filtro-acciones .btn {
+        flex: 1;
+    }
+    #historialEntradas #tablaEntradas th,
+    #historialEntradas #tablaEntradas td {
+        padding: 9px 10px;
+        font-size: 0.85rem;
+    }
+}
+@media (max-width: 576px) {
+    #historialEntradas .filtro-entradas {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    #historialEntradas .filtro-acciones {
+        flex-direction: column;
+    }
+    #historialEntradas .filtro-acciones .btn {
+        width: 100%;
+    }
+    #historialEntradas .dt-container .dt-search .dt-input {
+        min-width: 150px;
+        width: 100%;
+    }
+}
+
+
+/* =========================================================
+   FLATPICKR - CALENDARIO CON ENTRADAS
+   ========================================================= */
+#historialEntradas #fechaEntrada {
+    cursor: pointer;
+    background-color: #fff;
+}
+.flatpickr-calendar {
+    border-radius: 10px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+.flatpickr-day {
+    position: relative;
+}
+.flatpickr-day.tiene-entrada::after {
+    content: "";
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background-color: #198754;
+}
+.flatpickr-day.tiene-entrada.selected::after {
+    background-color: #fff;
+}
+.flatpickr-day.tiene-entrada:hover::after {
+    background-color: #157347;
+}
+
+/* =========================================================
+   FLATPICKR - MODO OSCURO
+   ========================================================= */
+body.dark-mode #historialEntradas #fechaEntrada {
+    background-color: #303030 !important;
+    color: #f8f9fa !important;
+    border-color: #555 !important;
+}
+body.dark-mode .flatpickr-calendar {
+    background-color: #242424;
+    border: 1px solid #444;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.35);
+}
+body.dark-mode .flatpickr-months,
+body.dark-mode .flatpickr-weekdays {
+    background-color: #303030;
+}
+body.dark-mode .flatpickr-current-month,
+body.dark-mode .flatpickr-current-month input.cur-year,
+body.dark-mode .flatpickr-current-month .flatpickr-monthDropdown-months,
+body.dark-mode .flatpickr-weekday {
+    color: #f8f9fa !important;
+}
+body.dark-mode .flatpickr-day {
+    color: #e9ecef;
+    border-color: transparent;
+}
+body.dark-mode .flatpickr-day:hover {
+    background-color: #454545;
+    border-color: #454545;
+}
+body.dark-mode .flatpickr-day.prevMonthDay,
+body.dark-mode .flatpickr-day.nextMonthDay {
+    color: #777;
+}
+body.dark-mode .flatpickr-day.selected {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+}
+body.dark-mode .flatpickr-day.tiene-entrada::after {
+    background-color: #75d6a3;
+}
+body.dark-mode .flatpickr-day.tiene-entrada.selected::after {
+    background-color: #fff;
+}
+body.dark-mode .flatpickr-months .flatpickr-prev-month,
+body.dark-mode .flatpickr-months .flatpickr-next-month {
+    fill: #e9ecef;
+    color: #e9ecef;
+}
+body.dark-mode .flatpickr-day.flatpickr-disabled,
+body.dark-mode .flatpickr-day.notAllowed {
+    color: #666 !important;
+}

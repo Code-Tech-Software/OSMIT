@@ -1,119 +1,91 @@
+
 {% extends "Base/Sidebar.html" %}
 {% load static %}
 {% block content %}
-    <link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
-    <link rel="stylesheet"
-          href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
-    <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <link href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css"
-          rel="stylesheet">
-    <style>
-        .truncate-text {
-            max-width: 50px; /* ajustar según el diseño */
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+<link rel="stylesheet" href="{% static 'css/base/coloresCustom.css' %}">
+<link rel="stylesheet" href="https://cdn.datatables.net/2.2.2/css/dataTables.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.css">
+<link rel="stylesheet" href="{% static 'css/ProductoGranel/lista_salidas.css' %}">
 
-    </style>
-    <div>
-        <span class="fw-bold">Logística</span>
-        <span class="mx-2">|</span>
-        <span class="text-secondary">Lista de Salidas para Devolución</span>
-    </div>
-    <div class="custom-card mt-4">
-        {% if messages %}
-            <div id="message-container"></div>
-        {% endif %}
-        <div class="table-responsive">
-            <table id="salidasTable" class="table table-striped table-bordered">
-                <thead>
-                    <tr>
-                        <th style="text-align: left">ID</th>
-                        <th class="truncate-text">Fecha de Salida</th>
-                        <th>Usuario</th>
-                        <th>Destino</th>
-                        <th>Nota</th>
-                        <th class="text-center">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for salida in salidas %}
-                        <tr>
-                            <td style="text-align: left">{{ salida.id }}</td>
-                            <td class="truncate-text"
-                                title="{{ salida.fecha_salida|date:'j \d\e F \d\e Y \a \l\a\s h:i A'|lower }}">
-                                {{ salida.fecha_salida|date:'j \d\e F \d\e Y \a \l\a\s h:i A'|lower }}
-                            </td>
-                            <td class="truncate-text">{{ salida.usuario.username }}</td>
-                            <td class="truncate-text">{{ salida.destino }}</td>
-                            <td class="truncate-text">{{ salida.nota }}</td>
-                            <td class="text-center truncate-text">
-                                <a href="{% url 'registrar_devolucion' salida.id %}"
-                                   class="btn btn-sm btn-custom-success">
-                                    <i class="bi bi-box-arrow-in-left me-1"></i> Registrar Devolución
-                                </a>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+<div class="section-title">
+    <span class="fw-bold">Logística</span>
+    <span class="mx-2">|</span>
+    <span class="text-secondary">Lista de Salidas para Devolución</span>
+</div>
+
+<div class="custom-card mt-4">
+    <form method="get" id="filtroSalidasForm" class="filtro-salidas mb-4">
+        <div>
+            <label for="fechaSalida" class="form-label fw-semibold">Fecha de salida</label>
+            <input type="date" id="fechaSalida" name="fecha"
+                   class="form-control" value="{{ fecha_seleccionada|date:'Y-m-d' }}"
+                   max="{{ hoy|date:'Y-m-d' }}">
         </div>
+        <div class="filtro-acciones">
+            <button type="submit" class="btn btn-custom-info">
+                <i class="bi bi-search me-1"></i> Consultar
+            </button>
+            <a href="{% url 'lista_salidas' %}" class="btn btn-secondary">
+                <i class="bi bi-calendar-check me-1"></i> Hoy
+            </a>
+        </div>
+    </form>
+
+    {% if not permite_devoluciones %}
+    <div class="alert alert-info py-2">
+        <i class="bi bi-info-circle me-1"></i>
+        Estás consultando salidas anteriores. Solo puedes registrar devoluciones de las salidas del día actual.
     </div>
-    <!-- JS -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/notyf@3.10.0/notyf.min.js"></script>
-    <script>
-        $(document).ready(function () {
-            $('#salidasTable').DataTable({
-                pageLength: 10,
-                columnDefs: [
-                    {width: "5%", targets: 0},
-                    {width: "20%", targets: 1},
-                    {width: "10%", targets: 2},
-                    {width: "10%", targets: 3},
-                    {width: "25%", targets: 4},
-                    {width: "20%", targets: 5},
-                ],
-                responsive: true,
-                order: [[0, 'desc']],
-                language: {
-                    "emptyTable": "No hay salidas registradas",
-                    "info": "Mostrando _START_ a _END_ de _TOTAL_ salidas",
-                    "infoEmpty": "Mostrando 0 a 0 de 0 salidas",
-                    "infoFiltered": "(filtrado de _MAX_ salidas en total)",
-                    "lengthMenu": "Mostrar _MENU_ salidas",
-                    "loadingRecords": "Cargando...",
-                    "processing": "Procesando...",
-                    "search": "Buscar:",
-                    "zeroRecords": "No se encontraron coincidencias",
-                    "paginate": {
-                        "first": '<i class="bi bi-rewind-fill"></i>',
-                        "last": '<i class="bi bi-fast-forward-fill"></i>',
-                        "next": '<i class="bi bi-caret-right-fill"></i>',
-                        "previous": '<i class="bi bi-caret-left-fill"></i>'
-                    }
-                }
-            });
-        });
+    {% endif %}
 
-        {% if messages %}
-            const notyf = new Notyf({
-                duration: 6000,
-                position: {x: 'right', y: 'bottom'},
-                dismissible: true
-            });
+    <div class="table-responsive">
+        <table id="salidasTable" class="table table-striped table-bordered align-middle">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Fecha de Salida</th>
+                    <th>Usuario</th>
+                    <th>Destino</th>
+                    <th>Nota</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for salida in salidas %}
+                <tr>
+                    <td>{{ salida.id }}</td>
+                    <td data-order="{{ salida.fecha_salida|date:'Y-m-d H:i:s' }}">
+                        {{ salida.fecha_salida|date:'j \d\e F \d\e Y \a \l\a\s h:i A'|lower }}
+                    </td>
+                    <td>{{ salida.usuario.username }}</td>
+                    <td>{{ salida.destino }}</td>
+                    <td class="salida-nota" title="{{ salida.nota }}">
+                        {{ salida.nota|default:"Sin nota" }}
+                    </td>
+                    <td class="text-center">
+                        {% if permite_devoluciones %}
+                            <a href="{% url 'registrar_devolucion' salida.id %}"
+                            class="btn btn-sm btn-custom-success">
+                                <i class="bi bi-box-arrow-in-left me-1"></i> Registrar Devolución
+                            </a>
+                        {% else %}
+                            <a href="{% url 'registrar_devolucion' salida.id %}"
+                            class="btn btn-sm btn-custom-info">
+                                <i class="bi bi-eye me-1"></i> Consultar Salida
+                            </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 
-            {% for message in messages %}
-                {% if message.tags == 'success' %}
-                    notyf.success("{{ message }}");
-                {% elif message.tags == 'error' %}
-                    notyf.error("{{ message }}");
-                {% endif %}
-            {% endfor %}
-        {% endif %}
-    </script>
+{% include "Partials/notificaciones.html" %}
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/2.2.2/js/dataTables.min.js"></script>
+<script src="{% static 'js/ProductoGranel/lista_salidas.js' %}"></script>
 {% endblock %}

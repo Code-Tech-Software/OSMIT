@@ -33,6 +33,7 @@ class ProductoGranel(models.Model):
     imagen = models.ImageField(upload_to='fotos_productoGranel/', blank=True, null=True)
     proveedor = models.ForeignKey(Proveedor, on_delete=models.CASCADE)
     estado = models.BooleanField(default=True)
+    ultimo_numero_lote = models.PositiveSmallIntegerField(default=0)
 
     def __str__(self):
         return self.nombre
@@ -48,6 +49,7 @@ class EntradaGranel(models.Model):
 class DetalleEntradaGranel(models.Model):
     entrada_granel = models.ForeignKey(EntradaGranel, on_delete=models.CASCADE)
     producto_granel = models.ForeignKey(ProductoGranel, on_delete=models.CASCADE)
+    lote = models.ForeignKey("Lote", on_delete=models.CASCADE, null=True, blank=True)
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
@@ -111,14 +113,19 @@ class DetalleDevolucionGranel(models.Model):
 
 class Lote(models.Model):
     producto_granel = models.ForeignKey(ProductoGranel, on_delete=models.CASCADE)
+    numero_lote = models.PositiveSmallIntegerField(null=True, blank=True)
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     fecha_entrada = models.DateTimeField()
     fecha_caducidad = models.DateField()
     estado = models.BooleanField(default=True)
-    estado_lote = models.CharField(max_length=20, choices=[('activo', 'Activo'), ('agotado', 'Agotado'), ('caducado', 'Caducado')], default='activo')
+    estado_lote = models.CharField(max_length=20, choices=[
+        ('activo', 'Activo'),
+        ('agotado', 'Agotado'),
+        ('caducado', 'Caducado')
+    ], default='activo')
 
     def __str__(self):
-        return f"Lote {self.id} - Estado: {self.estado_lote}"
+        return f"Lote {self.numero_lote:02d}" if self.numero_lote is not None else f"Lote {self.id}"
 
 class CorteInventarioGranel(models.Model):
     fecha = models.DateTimeField(auto_now_add=True)
